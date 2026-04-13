@@ -18,7 +18,7 @@ jobs:
 
       - name: Fetch all branches
         run: |
-          git fetch origin '+refs/heads/*:refs/heads/*'
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*'
 
       - name: Set remote repository
         env:
@@ -30,6 +30,9 @@ jobs:
 
       - name: Force push everything
         run: |
-          git push -f --all gitlab;
+          for branch in $(git branch -r | grep 'origin/' | grep -v 'HEAD' | sed 's|origin/||'); do
+            echo "Pushing $branch..."
+            git push -f gitlab "refs/remotes/origin/${branch}:refs/heads/${branch}"
+          done
           git push -f --tags gitlab;
-          git push -f gitlab main:master || true;
+          git push -f gitlab refs/remotes/origin/main:refs/heads/master || true;
