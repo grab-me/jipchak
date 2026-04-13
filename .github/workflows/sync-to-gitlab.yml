@@ -31,6 +31,10 @@ jobs:
       - name: Force push everything
         run: |
           for branch in $(git branch -r | grep 'origin/' | grep -v 'HEAD' | sed 's|origin/||'); do
+            if [ "$branch" = "main" ]; then
+              echo "Skipping main (mapped to master)"
+              continue
+            fi
             echo "Pushing $branch..."
             git push -f gitlab "refs/remotes/origin/${branch}:refs/heads/${branch}"
           done
