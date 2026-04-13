@@ -10,14 +10,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch all branches
+        run: |
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*'
+
       - name: Wait for sync to complete
-        run: sleep 10
+        run: sleep 15
 
       - name: Create and merge MR on GitLab
         env:
           GITLAB_TOKEN: ${{ secrets.LABSSAFY_TOKEN }}
           GITLAB_PROJECT_ID: ${{ secrets.LABSSAFY_PROJECT_ID }}
           GITLAB_URL: ${{ secrets.LABSSAFY_URL }}
+          LABSSAFY_TOKEN_NAME: ${{ secrets.LABSSAFY_TOKEN_NAME }}
         run: |
           # GitHub PR 정보 추출
           PR_TITLE="${{ github.event.pull_request.title }}"
@@ -30,11 +39,16 @@ jobs:
           PR_NUMBER="${{ github.event.pull_request.number }}"
           PR_URL="${{ github.event.pull_request.html_url }}"
 
-          # GitLab API base URL 추출 (https://lab.ssafy.com/...)
-          # TARGET_URL에서 .git 제거하고 API용 base URL 생성
-          GITLAB_API_BASE=$(echo "$GITLAB_URL" | sed 's|/.*||')
-          # lab.ssafy.com 등의 호스트만 추출
+          # GitHub main → GitLab master 매핑
+          GITLAB_TARGET="$TARGET_BRANCH"
+          if [ "$TARGET_BRANCH" = "main" ]; then
+            GITLAB_TARGET="master"
+          fi
+
           GITLAB_HOST=$(echo "$GITLAB_URL" | sed -E 's|https?://([^/]+).*|\1|')
+
+          # GitLab remote 추가
+          git remote add gitlab "https://${LABSSAFY_TOKEN_NAME}:${GITLAB_TOKEN}@${GITLAB_URL#https://}"
 
           DESCRIPTION="🔗 GitHub PR: ${PR_URL}
 
@@ -51,7 +65,7 @@ jobs:
               --arg title "[#${PR_NUMBER}] ${PR_TITLE}" \
               --arg desc "$DESCRIPTION" \
               --arg source "$SOURCE_BRANCH" \
-              --arg target "$TARGET_BRANCH" \
+              --arg target "$GITLAB_TARGET" \
               '{
                 source_branch: $source,
                 target_branch: $target,
@@ -82,7 +96,7 @@ jobs:
 
           echo "Created GitLab MR !${MR_IID}"
 
-          # MR 즉시 merge (이미 GitHub에서 merge된 상태이므로)
+          # MR merge
           sleep 3
           MERGE_RESPONSE=$(curl -s -w "\n%{http_code}" \
             --request PUT \
@@ -100,3 +114,8 @@ jobs:
           else
             echo "Successfully merged GitLab MR !${MR_IID}"
           fi
+
+          # MR merge 후 target 브랜치를 GitHub과 동기화 (히스토리 일치)
+          sleep 3
+          echo "Syncing target branch ${GITLAB_TARGET} to match GitHub..."
+          git push -f gitlab "refs/remotes/origin/${TARGET_BRANCH}:refs/heads/${GITLAB_TARGET}" || true
