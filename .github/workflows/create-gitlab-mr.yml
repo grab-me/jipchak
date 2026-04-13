@@ -1,0 +1,102 @@
+name: Create GitLab MR on PR merge
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  create-gitlab-mr:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Wait for sync to complete
+        run: sleep 10
+
+      - name: Create and merge MR on GitLab
+        env:
+          GITLAB_TOKEN: ${{ secrets.LABSSAFY_TOKEN }}
+          GITLAB_PROJECT_ID: ${{ secrets.LABSSAFY_PROJECT_ID }}
+          GITLAB_URL: ${{ secrets.LABSSAFY_URL }}
+        run: |
+          # GitHub PR 정보 추출
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_BODY=$(cat <<'BODY_EOF'
+          ${{ github.event.pull_request.body }}
+          BODY_EOF
+          )
+          SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
+          TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_URL="${{ github.event.pull_request.html_url }}"
+
+          # GitLab API base URL 추출 (https://lab.ssafy.com/...)
+          # TARGET_URL에서 .git 제거하고 API용 base URL 생성
+          GITLAB_API_BASE=$(echo "$GITLAB_URL" | sed 's|/.*||')
+          # lab.ssafy.com 등의 호스트만 추출
+          GITLAB_HOST=$(echo "$GITLAB_URL" | sed -E 's|https?://([^/]+).*|\1|')
+
+          DESCRIPTION="🔗 GitHub PR: ${PR_URL}
+
+          ---
+
+          ${PR_BODY}"
+
+          # GitLab MR 생성
+          MR_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            --request POST \
+            --header "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data "$(jq -n \
+              --arg title "[#${PR_NUMBER}] ${PR_TITLE}" \
+              --arg desc "$DESCRIPTION" \
+              --arg source "$SOURCE_BRANCH" \
+              --arg target "$TARGET_BRANCH" \
+              '{
+                source_branch: $source,
+                target_branch: $target,
+                title: $title,
+                description: $desc,
+                remove_source_branch: false
+              }'
+            )" \
+            "https://${GITLAB_HOST}/api/v4/projects/${GITLAB_PROJECT_ID}/merge_requests")
+
+          HTTP_CODE=$(echo "$MR_RESPONSE" | tail -1)
+          MR_BODY=$(echo "$MR_RESPONSE" | sed '$d')
+
+          echo "GitLab MR API response (HTTP ${HTTP_CODE}):"
+          echo "$MR_BODY" | jq '.' 2>/dev/null || echo "$MR_BODY"
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::warning::Failed to create GitLab MR (HTTP ${HTTP_CODE})"
+            exit 0
+          fi
+
+          MR_IID=$(echo "$MR_BODY" | jq -r '.iid')
+
+          if [ "$MR_IID" = "null" ] || [ -z "$MR_IID" ]; then
+            echo "::warning::Could not extract MR IID"
+            exit 0
+          fi
+
+          echo "Created GitLab MR !${MR_IID}"
+
+          # MR 즉시 merge (이미 GitHub에서 merge된 상태이므로)
+          sleep 3
+          MERGE_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            --request PUT \
+            --header "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
+            "https://${GITLAB_HOST}/api/v4/projects/${GITLAB_PROJECT_ID}/merge_requests/${MR_IID}/merge")
+
+          MERGE_HTTP=$(echo "$MERGE_RESPONSE" | tail -1)
+          MERGE_BODY=$(echo "$MERGE_RESPONSE" | sed '$d')
+
+          echo "GitLab Merge response (HTTP ${MERGE_HTTP}):"
+          echo "$MERGE_BODY" | jq '.' 2>/dev/null || echo "$MERGE_BODY"
+
+          if [ "$MERGE_HTTP" -ge 400 ]; then
+            echo "::warning::MR created but auto-merge failed. Manual merge may be needed."
+          else
+            echo "Successfully merged GitLab MR !${MR_IID}"
+          fi
