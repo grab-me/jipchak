@@ -1,0 +1,42 @@
+name: Sync to GitLab
+
+on:
+  push:
+    branches: '**'
+  pull_request:
+    branches: '**'
+  workflow_dispatch:
+
+jobs:
+  push-to-gitlab:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch all branches
+        run: |
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*'
+
+      - name: Set remote repository
+        env:
+          gitlab_url: ${{ secrets.LABSSAFY_URL }}
+          gitlab_token_name: ${{ secrets.LABSSAFY_TOKEN_NAME }}
+          gitlab_token: ${{ secrets.LABSSAFY_TOKEN }}
+        run: |
+          git remote add gitlab https://${gitlab_token_name}:${gitlab_token}@${gitlab_url#https://};
+
+      - name: Force push everything
+        run: |
+          for branch in $(git branch -r | grep 'origin/' | grep -v 'HEAD' | sed 's|origin/||'); do
+            if [ "$branch" = "main" ]; then
+              echo "Skipping main (mapped to master)"
+              continue
+            fi
+            echo "Pushing $branch..."
+            git push -f gitlab "refs/remotes/origin/${branch}:refs/heads/${branch}"
+          done
+          git push -f --tags gitlab;
+          git push -f gitlab refs/remotes/origin/main:refs/heads/master || true;
