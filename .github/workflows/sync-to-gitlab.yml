@@ -34,7 +34,7 @@ jobs:
         run: |
           CURRENT_BRANCH="${GITHUB_REF#refs/heads/}"
           CURRENT_SHA="${{ github.sha }}"
-          SKIP_BRANCHES="main"
+          SKIP_BRANCHES=""
 
           # 현재 push가 PR merge 결과인지 확인
           if [ "${{ github.event_name }}" = "push" ]; then
