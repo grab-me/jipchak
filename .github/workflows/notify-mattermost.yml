@@ -17,10 +17,26 @@ jobs:
           PR_URL="${{ github.event.pull_request.html_url }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          MERGED_BY="${{ github.event.pull_request.merged_by.login }}"
           PR_ACTION="${{ github.event.action }}"
           PR_MERGED="${{ github.event.pull_request.merged }}"
           TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
           SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
+
+          # GitHub ID → 한국이름(@mmID) 매핑
+          get_display_name() {
+            case "$1" in
+              "ChaeMok") echo "이채목(@lcm9211)" ;;
+              "KSY") echo "김상연(@iscss123)" ;;
+              "1421176") echo "진현제(@mkhggh)" ;;
+              "smoothie-99") echo "임보경(@l-elizabeth99)" ;;
+              "qhrudlim") echo "강한솔(@kanghansol9266)" ;;
+              *) echo "$1" ;;
+            esac
+          }
+
+          AUTHOR_DISPLAY=$(get_display_name "$PR_AUTHOR")
+          MERGER_DISPLAY=$(get_display_name "$MERGED_BY")
 
           if [ "$PR_ACTION" = "opened" ]; then
             EMOJI=":arrow_right:"
@@ -33,13 +49,24 @@ jobs:
             STATUS="PR이 닫혔습니다"
           fi
 
+          # 머지 알림일 때 머지한 사람 표시
+          if [ "$PR_ACTION" = "closed" ] && [ "$PR_MERGED" = "true" ]; then
+            TABLE="| 항목 | 내용 |
+          |---|---|
+          | 작성자 | ${AUTHOR_DISPLAY} |
+          | 머지한 사람 | ${MERGER_DISPLAY} |
+          | 브랜치 | \`${SOURCE_BRANCH}\` → \`${TARGET_BRANCH}\` |"
+          else
+            TABLE="| 항목 | 내용 |
+          |---|---|
+          | 작성자 | ${AUTHOR_DISPLAY} |
+          | 브랜치 | \`${SOURCE_BRANCH}\` → \`${TARGET_BRANCH}\` |"
+          fi
+
           PAYLOAD=$(jq -n \
             --arg text "### ${EMOJI} ${STATUS}
           **[#${PR_NUMBER} ${PR_TITLE}](${PR_URL})**
-          | 항목 | 내용 |
-          |---|---|
-          | 작성자 | ${PR_AUTHOR} |
-          | 브랜치 | \`${SOURCE_BRANCH}\` → \`${TARGET_BRANCH}\` |" \
+          ${TABLE}" \
             '{text: $text}')
 
           curl -s -X POST \
