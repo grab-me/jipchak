@@ -30,9 +30,19 @@ jobs:
 
       - name: Force push everything
         run: |
+          # PR 타겟 브랜치는 GitLab MR로 업데이트 (sync 제외)
+          SKIP_BRANCHES="main dev frontend backend ai embedded infra"
+
           for branch in $(git branch -r | grep 'origin/' | grep -v 'HEAD' | sed 's|origin/||'); do
-            if [ "$branch" = "main" ]; then
-              echo "Skipping main (mapped to master)"
+            SKIP=false
+            for skip in $SKIP_BRANCHES; do
+              if [ "$branch" = "$skip" ]; then
+                SKIP=true
+                break
+              fi
+            done
+            if [ "$SKIP" = "true" ]; then
+              echo "Skipping $branch (updated via GitLab MR)"
               continue
             fi
             echo "Pushing $branch..."
