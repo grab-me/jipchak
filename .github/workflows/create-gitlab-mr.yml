@@ -45,12 +45,36 @@ jobs:
             GITLAB_TARGET="master"
           fi
 
+          # PR merge한 사람, PR 작성자
+          MERGED_BY="${{ github.event.pull_request.merged_by.login }}"
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+
+          # GitHub ID → 한국이름 매핑 (팀원 추가 시 여기에 추가)
+          get_korean_name() {
+            case "$1" in
+              "ChaeMok") echo "이채목" ;;
+              "KSY") echo "김상연" ;;
+              "1421176") echo "진현제" ;;
+              "smoothie-99") echo "임보경" ;;
+              "qhrudlim") echo "강한솔" ;;
+              *) echo "$1" ;;
+            esac
+          }
+
+          MERGED_BY_KR=$(get_korean_name "$MERGED_BY")
+          PR_AUTHOR_KR=$(get_korean_name "$PR_AUTHOR")
+
           GITLAB_HOST=$(echo "$GITLAB_URL" | sed -E 's|https?://([^/]+).*|\1|')
 
           # GitLab remote 추가
           git remote add gitlab "https://${LABSSAFY_TOKEN_NAME}:${GITLAB_TOKEN}@${GITLAB_URL#https://}"
 
           DESCRIPTION="🔗 GitHub PR: ${PR_URL}
+
+          | 항목 | 내용 |
+          |---|---|
+          | 작성자 | ${PR_AUTHOR} (${PR_AUTHOR_KR}) |
+          | 머지한 사람 | ${MERGED_BY} (${MERGED_BY_KR}) |
 
           ---
 
