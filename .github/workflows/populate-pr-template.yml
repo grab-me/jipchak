@@ -89,7 +89,7 @@ jobs:
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD" \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}")
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
