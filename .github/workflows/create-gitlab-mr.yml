@@ -49,20 +49,34 @@ jobs:
           MERGED_BY="${{ github.event.pull_request.merged_by.login }}"
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
 
-          # GitHub ID → 한국이름 매핑 (팀원 추가 시 여기에 추가)
-          get_korean_name() {
-            case "$1" in
-              "ChaeMok") echo "이채목" ;;
-              "KSY") echo "김상연" ;;
-              "1421176") echo "진현제" ;;
-              "qhrudlim") echo "임보경" ;;
-              "smoothie-99") echo "강한솔" ;;
-              *) echo "$1" ;;
+          # GitHub ID → 표시용 이름. 외부 기여자는 API로 프로필 조회
+          get_display_name() {
+            local github_id="$1"
+            case "$github_id" in
+              "ChaeMok") echo "${github_id} (이채목)"; return ;;
+              "KSY") echo "${github_id} (김상연)"; return ;;
+              "1421176") echo "${github_id} (진현제)"; return ;;
+              "qhrudlim") echo "${github_id} (임보경)"; return ;;
+              "smoothie-99") echo "${github_id} (강한솔)"; return ;;
             esac
+
+            USER_INFO=$(curl -s -H "Authorization: token ${{ github.token }}" \
+              "https://api.github.com/users/${github_id}")
+            NAME=$(echo "$USER_INFO" | jq -r '.name // empty')
+            EMAIL=$(echo "$USER_INFO" | jq -r '.email // empty')
+
+            DETAIL=""
+            [ -n "$NAME" ] && DETAIL="$NAME"
+            if [ -n "$EMAIL" ]; then
+              [ -n "$DETAIL" ] && DETAIL="${DETAIL}, ${EMAIL}" || DETAIL="$EMAIL"
+            fi
+            [ -z "$DETAIL" ] && DETAIL="외부 기여자"
+
+            echo "🌍 [${github_id}](https://github.com/${github_id}) (${DETAIL})"
           }
 
-          MERGED_BY_KR=$(get_korean_name "$MERGED_BY")
-          PR_AUTHOR_KR=$(get_korean_name "$PR_AUTHOR")
+          MERGED_BY_DISP=$(get_display_name "$MERGED_BY")
+          PR_AUTHOR_DISP=$(get_display_name "$PR_AUTHOR")
 
           GITLAB_HOST=$(echo "$GITLAB_URL" | sed -E 's|https?://([^/]+).*|\1|')
 
@@ -73,8 +87,8 @@ jobs:
 
           | 항목 | 내용 |
           |---|---|
-          | 작성자 | ${PR_AUTHOR} (${PR_AUTHOR_KR}) |
-          | 머지한 사람 | ${MERGED_BY} (${MERGED_BY_KR}) |
+          | 작성자 | ${PR_AUTHOR_DISP} |
+          | 머지한 사람 | ${MERGED_BY_DISP} |
 
           ---
 
