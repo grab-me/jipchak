@@ -86,20 +86,35 @@ jobs:
           }')
 
           # Gemini API 호출
-          RESPONSE=$(curl -s -X POST \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD" \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}")
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}")
 
-          echo "Gemini API response received"
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "=== Gemini API HTTP status: ${HTTP_CODE} ==="
+          echo "$RESPONSE_BODY" | jq '.' 2>/dev/null || echo "$RESPONSE_BODY"
+          echo "=== end of raw response ==="
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::warning::Gemini API returned HTTP ${HTTP_CODE}"
+          fi
 
           # 응답에서 텍스트 추출
-          AI_BODY=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // ""')
+          AI_BODY=$(echo "$RESPONSE_BODY" | jq -r '.candidates[0].content.parts[0].text // ""')
+
+          # 코드 펜스로 감싸진 경우 제거
+          AI_BODY=$(echo "$AI_BODY" | sed -E 's/^```(markdown|md)?$//; s/^```$//' | sed '/^$/N;/\n$/d')
 
           if [ -z "$AI_BODY" ] || [ "$AI_BODY" = "null" ]; then
             echo "::warning::Failed to get AI response, falling back to template only"
-            echo "Response: $RESPONSE"
             AI_BODY=$(cat .github/PULL_REQUEST_TEMPLATE.md)
+          else
+            echo "=== AI generated body ==="
+            echo "$AI_BODY"
+            echo "=== end of AI body ==="
           fi
 
           # 기존 본문(보통 커밋 메시지)을 참고용으로 아래에 붙임
