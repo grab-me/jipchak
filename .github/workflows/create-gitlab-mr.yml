@@ -55,8 +55,8 @@ jobs:
               "ChaeMok") echo "이채목" ;;
               "KSY") echo "김상연" ;;
               "1421176") echo "진현제" ;;
-              "smoothie-99") echo "임보경" ;;
-              "qhrudlim") echo "강한솔" ;;
+              "qhrudlim") echo "임보경" ;;
+              "smoothie-99") echo "강한솔" ;;
               *) echo "$1" ;;
             esac
           }

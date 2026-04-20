@@ -3,6 +3,8 @@ name: Notify Mattermost on PR
 on:
   pull_request:
     types: [opened, closed]
+  pull_request_review:
+    types: [submitted]
 
 jobs:
   notify:
@@ -22,6 +24,9 @@ jobs:
           PR_MERGED="${{ github.event.pull_request.merged }}"
           TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
           SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
+          EVENT_NAME="${{ github.event_name }}"
+          REVIEW_STATE="${{ github.event.review.state }}"
+          REVIEWER="${{ github.event.review.user.login }}"
 
           # GitHub ID → 한국이름(@mmID) 매핑
           get_display_name() {
@@ -29,38 +34,69 @@ jobs:
               "ChaeMok") echo "이채목(@lcm9211)" ;;
               "KSY") echo "김상연(@iscss123)" ;;
               "1421176") echo "진현제(@mkhggh)" ;;
-              "smoothie-99") echo "임보경(@l-elizabeth99)" ;;
-              "qhrudlim") echo "강한솔(@kanghansol9266)" ;;
+              "qhrudlim") echo "임보경(@l-elizabeth99)" ;;
+              "smoothie-99") echo "강한솔(@kanghansol9266)" ;;
               *) echo "$1" ;;
             esac
           }
 
           AUTHOR_DISPLAY=$(get_display_name "$PR_AUTHOR")
           MERGER_DISPLAY=$(get_display_name "$MERGED_BY")
+          REVIEWER_DISPLAY=$(get_display_name "$REVIEWER")
 
-          if [ "$PR_ACTION" = "opened" ]; then
+          SKIP=false
+
+          if [ "$EVENT_NAME" = "pull_request_review" ]; then
+            case "$REVIEW_STATE" in
+              "approved")
+                EMOJI=":thumbsup:"
+                STATUS="PR이 승인되었습니다"
+                ;;
+              "changes_requested")
+                EMOJI=":warning:"
+                STATUS="PR에 변경 요청이 있습니다"
+                ;;
+              "commented")
+                SKIP=true
+                ;;
+              *)
+                SKIP=true
+                ;;
+            esac
+            TABLE="| 항목 | 내용 |
+          |---|---|
+          | 리뷰어 | ${REVIEWER_DISPLAY} |
+          | 작성자 | ${AUTHOR_DISPLAY} |
+          | 브랜치 | \`${SOURCE_BRANCH}\` → \`${TARGET_BRANCH}\` |"
+          elif [ "$PR_ACTION" = "opened" ]; then
             EMOJI=":arrow_right:"
             STATUS="새 PR이 올라왔습니다"
+            TABLE="| 항목 | 내용 |
+          |---|---|
+          | 작성자 | ${AUTHOR_DISPLAY} |
+          | 브랜치 | \`${SOURCE_BRANCH}\` → \`${TARGET_BRANCH}\` |"
           elif [ "$PR_ACTION" = "closed" ] && [ "$PR_MERGED" = "true" ]; then
             EMOJI=":white_check_mark:"
             STATUS="PR이 머지되었습니다"
-          elif [ "$PR_ACTION" = "closed" ]; then
-            EMOJI=":x:"
-            STATUS="PR이 닫혔습니다"
-          fi
-
-          # 머지 알림일 때 머지한 사람 표시
-          if [ "$PR_ACTION" = "closed" ] && [ "$PR_MERGED" = "true" ]; then
             TABLE="| 항목 | 내용 |
           |---|---|
           | 작성자 | ${AUTHOR_DISPLAY} |
           | 머지한 사람 | ${MERGER_DISPLAY} |
           | 브랜치 | \`${SOURCE_BRANCH}\` → \`${TARGET_BRANCH}\` |"
-          else
+          elif [ "$PR_ACTION" = "closed" ]; then
+            EMOJI=":x:"
+            STATUS="PR이 닫혔습니다"
             TABLE="| 항목 | 내용 |
           |---|---|
           | 작성자 | ${AUTHOR_DISPLAY} |
           | 브랜치 | \`${SOURCE_BRANCH}\` → \`${TARGET_BRANCH}\` |"
+          else
+            SKIP=true
+          fi
+
+          if [ "$SKIP" = "true" ]; then
+            echo "Skipping notification for this event"
+            exit 0
           fi
 
           PAYLOAD=$(jq -n \
