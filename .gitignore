@@ -253,6 +253,23 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+infra/.env
+backend/.env
+frontend/react/.env
+
+# React 빌드 결과물
+frontend/react/dist/
+
+# Jenkins 데이터
+infra/jenkins_home/
+
+# Gradle 빌드 캐시 및 결과물
+backend/.gradle/
+backend/build/
+
+# SSH 키 파일
+*.pem
+*.key
 
 # Spyder project settings
 .spyderproject
