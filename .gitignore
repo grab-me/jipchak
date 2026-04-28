@@ -303,6 +303,9 @@ logs
 
 node_modules
 bower_components
+.vite/
+.env.local
+.env.*.local
 
 *.sublime*
 
