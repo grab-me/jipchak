@@ -37,7 +37,7 @@ async def stream_handler(websocket, path="/ws/camera"):
             if depth_compressed and depth_shape:
                 depth_decompressed = lz4.frame.decompress(depth_compressed)
                 depth_frame = np.frombuffer(depth_decompressed, dtype=np.uint16).reshape(depth_shape)
-                
+
                 depth_colormap = cv2.normalize(depth_frame, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
                 depth_colormap = cv2.applyColorMap(depth_colormap, cv2.COLORMAP_JET)
                 cv2.imshow("Dummy Server: 3D Depth", depth_colormap)
