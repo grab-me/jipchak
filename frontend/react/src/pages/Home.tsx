@@ -11,7 +11,6 @@ const Home = () => {
       </h1>
       <StartButton onStart={() => navigate('/play')} />
       <div className="absolute bottom-[5%] text-gray-400 text-[clamp(14px,1.5vw,20px)]">
-        (팀원분의 시작 페이지 작업이 완료되면 이 곳을 교체해 주세요)
       </div>
     </div>
   );
