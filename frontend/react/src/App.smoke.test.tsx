@@ -25,7 +25,7 @@ describe('App routing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'START' }));
 
     expect(screen.getByText('Cam1')).toBeTruthy();
-    expect(screen.getByText('Tool Area')).toBeTruthy();
+    expect(screen.getByText('나의 기록')).toBeTruthy();
     expect(window.location.hash).toContain('/play');
   });
 });
