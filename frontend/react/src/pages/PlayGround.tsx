@@ -1,5 +1,6 @@
 import React from 'react';
 import CameraView from '@/components/machine/CameraView';
+import RecordList from '@/components/machine/RecordList';
 
 const PlayGround = () => {
   return (
@@ -18,10 +19,8 @@ const PlayGround = () => {
       <div className="flex-[194] flex flex-col gap-[calc(16/600*100vh)]">
         
         {/* Tool 영역 (우상단): 각종 컨트롤러 및 정보 표시 */}
-        <div className="flex-[411] bg-white rounded-[1vw] shadow-sm relative overflow-hidden flex flex-col items-center justify-center p-[8%]">
-          <div className="w-full h-full border-2 border-dashed border-gray-200 rounded-[1vw] flex items-center justify-center">
-             <span className="text-gray-400 font-bold text-[clamp(18px,2.5vw,32px)] select-none">Tool Area</span>
-          </div>
+        <div className="flex-[411] rounded-[1vw] shadow-sm relative overflow-hidden flex flex-col items-center justify-center">
+          <RecordList />
         </div>
 
         {/* Cam2 영역 (우하단): 집게 이동형 카메라 */}
