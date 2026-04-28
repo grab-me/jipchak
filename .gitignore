@@ -303,6 +303,12 @@ logs
 
 node_modules
 bower_components
+.vite/
+.env.local
+.env.*.local
+.gradle/
+backend/build_codex/
+backend/videos/*_test_video.mp4
 
 *.sublime*
 

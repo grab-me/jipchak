@@ -5,10 +5,10 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: './', // local build path as per convention
+  base: './',
   server: {
-    host: true, // 외부 접속 허용 (Network 주소 노출)
-    port: 5173, // 포트 고정
+    host: 'localhost',
+    port: 5173,
   },
   resolve: {
     alias: {
