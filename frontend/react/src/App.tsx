@@ -1,28 +1,27 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Route, Routes } from 'react-router-dom';
 import Home from './pages/Home';
 import PlayGround from './pages/PlayGround';
 
 const App = () => {
-  // 앱 전역 설정: 우클릭 방지 등 키오스크 최적화
+  // 키오스크 모드에서는 브라우저 기본 우클릭 메뉴를 막아 의도치 않은 이탈을 줄인다.
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
     document.addEventListener('contextmenu', handleContextMenu);
+
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
     };
   }, []);
 
   return (
-    <BrowserRouter>
+    // 정적/상대 경로 배포에서도 새로고침과 직접 진입이 깨지지 않도록 해시 라우팅을 사용한다.
+    <HashRouter>
       <Routes>
-        {/* 대기 화면 (팀원분 작업 구역) */}
         <Route path="/" element={<Home />} />
-        
-        {/* 게임 레이아웃 화면 (우리 작업 구역) */}
         <Route path="/play" element={<PlayGround />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 };
 

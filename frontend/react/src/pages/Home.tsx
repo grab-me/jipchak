@@ -5,12 +5,11 @@ const Home = () => {
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-screen bg-[#dfdfdf] gap-[4vw]">
-      {/* 팀원분 작업 공간: 시작 화면 UI가 들어올 자리 */}
       <h1 className="text-[clamp(32px,6vw,80px)] font-bold text-gray-800 select-none">
         Jipchak Kiosk
       </h1>
-      
-      <button 
+
+      <button
         onClick={() => navigate('/play')}
         className="px-[6vw] py-[2vw] bg-white rounded-[1.5vw] shadow-lg active:scale-95 transition-transform"
       >
