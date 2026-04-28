@@ -7,7 +7,9 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "test:ci": "jest --runInBand --passWithNoTests",
+    "check": "npm run test:ci"
   },
   "dependencies": {
     "react": "19.2.5",
