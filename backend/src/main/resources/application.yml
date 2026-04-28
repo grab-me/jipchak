@@ -1,7 +1,3 @@
-server:
-  servlet:
-    context-path: /jipchak
-
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/jipchak_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
