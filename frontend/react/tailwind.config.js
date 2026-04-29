@@ -6,18 +6,25 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        brand: {
-          light: '#f3f4f6',
-          DEFAULT: '#9ca3af',
-          dark: '#4b5563',
-        }
-      },
       zIndex: {
         header: '10',
         overlay: '50',
         modal: '100',
         toast: '150',
+      },
+      fontFamily: {
+        crayon: ['HakgyoansimDoldam', 'sans-serif'],
+      },
+      colors: {
+        brand: {
+          light: '#f3f4f6',
+          DEFAULT: '#9ca3af',
+          dark: '#4b5563',
+        },
+        crayon: {
+          bg: '#fdfaf0',
+          line: '#1f2937', // gray-800
+        }
       }
     },
   },
