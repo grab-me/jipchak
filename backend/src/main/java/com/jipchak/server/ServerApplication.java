@@ -8,7 +8,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class ServerApplication {
 
 	public static void main(String[] args) {
-
 		// .env 파일 로드
 		Dotenv dotenv = Dotenv.configure()
 				.directory(".") // 현재 작업 디렉토리에서 .env 찾기

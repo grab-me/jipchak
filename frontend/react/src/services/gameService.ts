@@ -27,7 +27,7 @@ const gameService = {
    * 홈 화면 환영 메시지 확인
    */
   getHomeMessage: async () => {
-    const response = await axiosInstance.get('/home');
+    const response = await axiosInstance.get('/api/home');
     return response.data;
   },
 };
