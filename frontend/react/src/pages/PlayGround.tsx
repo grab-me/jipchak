@@ -1,5 +1,5 @@
 import CameraView from '@/components/machine/CameraView';
-import RecordList from '@/components/machine/RecordList';
+import ToolArea from '@/components/machine/ToolArea';
 
 const PlayGround = () => {
   return (
@@ -15,7 +15,7 @@ const PlayGround = () => {
         
         {/* Tool 영역 (우상단): 각종 컨트롤러 및 정보 표시 */}
         <div className="flex-[411] rounded-[1vw] shadow-sm relative overflow-hidden flex flex-col items-center justify-center">
-          <RecordList />
+          <ToolArea />
         </div>
 
         <div className="flex-[125] bg-black rounded-[1vw] shadow-sm relative overflow-hidden">
