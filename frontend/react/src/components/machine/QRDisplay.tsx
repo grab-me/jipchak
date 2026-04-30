@@ -25,7 +25,7 @@ const QRDisplay = () => {
   return (
     <CrayonWrapper className="justify-around items-center relative py-1">
       {/* 남은 시간 표시: Safe Zone 안쪽 상단에 작게 배치 */}
-      <div className="absolute top-0 right-0 px-[2%] py-[0.5%] bg-red-100 text-red-600 font-bold rounded-full border-[clamp(1px,0.15vw,2px)] border-red-300 text-[clamp(10px,1.2vw,14px)] z-20">
+      <div className="absolute top-0 right-0 px-[2%] py-[0.5%] bg-red-100 text-red-600 font-bold rounded-full border-[clamp(1px,0.15vw,2px)] border-red-300 text-[clamp(10px,1.2vw,14px)] z-header">
         {qrTimer}s
       </div>
 
