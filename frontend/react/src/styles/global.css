@@ -34,6 +34,7 @@ body {
   -webkit-user-drag: none;
   overscroll-behavior: none;
   background-color: #d1d5db; /* gray-300 */
+  touch-action: manipulation; /* Disable double-tap zoom */
 }
 
 /* Hide scrollbar for kiosk environment (default) */
@@ -62,4 +63,13 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

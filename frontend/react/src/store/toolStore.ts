@@ -1,0 +1,127 @@
+import { create } from 'zustand';
+import { sessionService } from '@/services/sessionService';
+
+export type ToolAreaView = 'RECORDS' | 'CHEERING' | 'QR_CONSENT' | 'QR_DISPLAY';
+
+export interface RecordItem {
+  id: string;
+  filename: string;
+  thumbnailUrl?: string;
+}
+
+interface ToolState {
+  viewType: ToolAreaView;
+  qrValue: string;
+  
+  // 세션 상태 관리
+  isSessionActive: boolean;
+  records: RecordItem[];
+  qrTimer: number;
+
+  // Actions
+  setViewType: (view: ToolAreaView) => void;
+  startSession: () => void;
+  addRecord: (record: RecordItem) => void;
+  forceStopGame: () => void;
+  handleQRConsent: (agreed: boolean) => Promise<void>;
+  tickQrTimer: () => void;
+  resetSession: () => void;
+}
+
+const MAX_RECORDS = 5;
+const QR_TIMEOUT_SECONDS = 30;
+
+/**
+ * useToolStore
+ * 비로그인 세션 기반 기록 관리 및 ToolArea 제어
+ */
+export const useToolStore = create<ToolState>((set, get) => ({
+  viewType: 'RECORDS',
+  qrValue: '',
+  isSessionActive: false,
+  records: [],
+  qrTimer: 0,
+
+  setViewType: (view) => set({ viewType: view }),
+
+  // 1. 시작하기 버튼 클릭 시 세션 시작
+  startSession: () => {
+    set({
+      isSessionActive: true,
+      records: [],
+      viewType: 'RECORDS',
+      qrValue: '',
+      qrTimer: 0,
+    });
+    console.log('[Session] 새로운 세션이 시작되었습니다.');
+  },
+
+  // 2. 게임 한판 끝날 때마다 영상 추가
+  addRecord: (record) => {
+    const { isSessionActive, records, forceStopGame } = get();
+    
+    if (!isSessionActive) return;
+
+    const newRecords = [...records, record];
+    set({ records: newRecords });
+    console.log(`[Session] 기록 추가됨: ${newRecords.length} / ${MAX_RECORDS}`);
+
+    // 최대 개수 도달 시 강제 중지 로직 트리거
+    if (newRecords.length >= MAX_RECORDS) {
+      forceStopGame();
+    }
+  },
+
+  // 3. 5개가 차면 강제 중지 및 동의 화면 전환
+  forceStopGame: () => {
+    console.log('[Session] 최대 기록 도달. 게임을 강제 중지하고 QR 동의를 받습니다.');
+    // TODO: 게임 로직 멈추는 트리거(전역 상태 변경 등) 필요 시 여기에 추가
+    set({ viewType: 'QR_CONSENT' });
+  },
+
+  // 4. QR 수락 / 거절 처리
+  handleQRConsent: async (agreed: boolean) => {
+    const { resetSession } = get();
+
+    if (!agreed) {
+      // 거절 시: EC2 영상 삭제 후 홈으로 강제 이동
+      await sessionService.deleteSessionVideos();
+      resetSession();
+    } else {
+      // 수락 시: QR 생성 후 화면 전환 및 30초 타이머 시작
+      const qrUrl = await sessionService.generateSessionQr();
+      set({ 
+        qrValue: qrUrl, 
+        viewType: 'QR_DISPLAY',
+        qrTimer: QR_TIMEOUT_SECONDS
+      });
+    }
+  },
+
+  // 5. 타이머 틱 (컴포넌트에서 호출)
+  tickQrTimer: () => {
+    const currentTimer = get().qrTimer;
+    if (currentTimer <= 1) {
+      // 0초가 되면 세션 초기화 및 홈으로 이동
+      console.log('[Session] QR 표시 시간이 만료되어 세션을 초기화합니다.');
+      get().resetSession();
+    } else {
+      set({ qrTimer: currentTimer - 1 });
+    }
+  },
+
+  // 6. 세션 초기화 및 홈으로 강제 이동
+  resetSession: () => {
+    set({
+      isSessionActive: false,
+      records: [],
+      viewType: 'RECORDS',
+      qrValue: '',
+      qrTimer: 0,
+    });
+    console.log('[Session] 세션 초기화 완료. 홈으로 이동합니다.');
+    
+    // 강제로 홈 경로로 이동 (react-router-dom이 없는 환경도 고려하여 location.href 사용)
+    window.location.href = '/';
+  },
+}));
