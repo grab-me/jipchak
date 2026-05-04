@@ -7,11 +7,6 @@ const RecordList = () => {
   const { records } = useToolStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const isSuccess = (filename: string) => {
-    const nameWithoutExt = filename.split('.')[0];
-    return nameWithoutExt.endsWith('1');
-  };
-
   const getDisplayName = (filename: string) => {
     return filename.split('.')[0];
   };
@@ -40,7 +35,7 @@ const RecordList = () => {
           <>
             {[...records].reverse().map((record, index) => {
               const displayIndex = records.length - index;
-              const success = isSuccess(record.filename);
+              const success = record.isSuccess;
 
               return (
                 <div 

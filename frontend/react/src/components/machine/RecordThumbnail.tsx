@@ -15,6 +15,12 @@ const RecordThumbnail = ({ src, alt, success }: RecordThumbnailProps) => {
   const [imgSrc, setImgSrc] = React.useState(src || fallbackImage);
   const [isError, setIsError] = React.useState(!src);
 
+  // src prop 변경 시 상태 동기화 (반응성 확보)
+  React.useEffect(() => {
+    setImgSrc(src || fallbackImage);
+    setIsError(!src);
+  }, [src]);
+
   const handleError = () => {
     setImgSrc(fallbackImage);
     setIsError(true);

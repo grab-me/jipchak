@@ -7,6 +7,7 @@ export interface RecordItem {
   id: string;
   filename: string;
   thumbnailUrl?: string;
+  isSuccess: boolean;
 }
 
 interface ToolState {
@@ -91,18 +92,25 @@ export const useToolStore = create<ToolState>((set, get) => ({
   handleQRConsent: async (agreed: boolean) => {
     const { resetSession } = get();
 
-    if (!agreed) {
-      // 거절 시: EC2 영상 삭제 후 홈으로 강제 이동
-      await sessionService.deleteSessionVideos();
+    try {
+      if (!agreed) {
+        // 거절 시: EC2 영상 삭제 후 홈으로 강제 이동
+        await sessionService.deleteSessionVideos();
+        resetSession();
+      } else {
+        // 수락 시: QR 생성 후 화면 전환 및 30초 타이머 시작
+        const qrUrl = await sessionService.generateSessionQr();
+        set({ 
+          qrValue: qrUrl, 
+          viewType: 'QR_DISPLAY',
+          qrTimer: QR_TIMEOUT_SECONDS
+        });
+      }
+    } catch (error) {
+      console.error('[Session] QR 처리 중 오류 발생:', error);
+      alert('요청 처리 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      // 에러 시 세션 초기화하여 안전하게 홈으로 복귀 유도 (상황에 따라 조정 가능)
       resetSession();
-    } else {
-      // 수락 시: QR 생성 후 화면 전환 및 30초 타이머 시작
-      const qrUrl = await sessionService.generateSessionQr();
-      set({ 
-        qrValue: qrUrl, 
-        viewType: 'QR_DISPLAY',
-        qrTimer: QR_TIMEOUT_SECONDS
-      });
     }
   },
 
@@ -131,7 +139,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
     });
     console.log('[Session] 세션 초기화 완료. 홈으로 이동합니다.');
     
-    window.location.href = '/';
+    window.location.hash = '#/';
   },
 
   setCatching: (catching) => set({ isCatching: catching }),
