@@ -57,6 +57,10 @@ export const ConfettiBurst: React.FC<ConfettiOptions & {
     // 7인치 키오스크(800px)를 기준으로 물리량을 스케일링하는 유닛
     const unitScale = typeof window !== 'undefined' ? window.innerWidth / 800 : 1;
 
+    // 리렌더링 시 onComplete 함수가 바뀌어도 이펙트가 재실행되지 않도록 Ref 사용
+    const onCompleteRef = useRef(onComplete);
+    onCompleteRef.current = onComplete;
+
     useEffect(() => {
       particlesRef.current = Array.from({ length: count }).map(() => {
         // 지정된 angle을 중심으로 spread 범위 내에서 발사
@@ -84,9 +88,11 @@ export const ConfettiBurst: React.FC<ConfettiOptions & {
         };
       });
 
-      const timer = setTimeout(onComplete, 4500);
+      const timer = setTimeout(() => {
+        onCompleteRef.current();
+      }, 4500);
       return () => clearTimeout(timer);
-    }, [count, velocity, spread, colors, angle, onComplete, unitScale]);
+    }, [count, velocity, spread, colors, angle, unitScale]); // onComplete를 의존성에서 제외하여 리셋 방지
 
     useAnimationFrame((time, delta) => {
       const dt = delta / 16.66;
@@ -128,7 +134,7 @@ export const ConfettiBurst: React.FC<ConfettiOptions & {
             ref={(el) => {
               if (el && particlesRef.current[i]) {
                 el.style.backgroundColor = particlesRef.current[i].color;
-                el.style.width = `${particlesRef.current[i].size}px`; // Physics-based size is okay to keep dynamic
+                el.style.width = `${particlesRef.current[i].size}px`;
                 el.style.height = `${particlesRef.current[i].size * 0.6}px`;
                 el.style.borderRadius = '1px';
               }
@@ -144,8 +150,12 @@ export const ConfettiBurst: React.FC<ConfettiOptions & {
  * ConfettiPopper Component
  * 원뿔 모양의 폭죽 통 오브젝트와 발사 로직을 결합합니다.
  */
-export const ConfettiPopper: React.FC<ConfettiOptions & { onComplete: () => void }> = ({
+export const ConfettiPopper: React.FC<ConfettiOptions & { 
+  onComplete: () => void;
+  isActive?: boolean; // 현재 성공 화면이 떠 있는지 여부
+}> = ({
   onComplete,
+  isActive = true,
   ...options
 }) => {
   // ToolArea 중앙부(88vw)에서 좌상단(215도)으로 조준
@@ -154,24 +164,28 @@ export const ConfettiPopper: React.FC<ConfettiOptions & { onComplete: () => void
 
   return (
     <div className="fixed inset-0 pointer-events-none z-toast">
-      {/* 원뿔 폭죽 통 비주얼 - vw 단위 적용 */}
-      <motion.div
-        initial={{ scale: 0, rotate: targetAngle + 90 }}
-        animate={{ scale: 1, rotate: targetAngle + 90 }}
-        exit={{ scale: 0 }}
-        className="absolute w-[4vw] h-[6vw] bg-gradient-to-b from-pink-500 via-purple-600 to-indigo-800"
-        style={{
-          left: popperOrigin.x,
-          top: popperOrigin.y,
-          clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)', // 원뿔 모양
-          transformOrigin: '50% 100%'
-        }}
-      >
-        {/* 통 내부 장식 */}
-        <div className="absolute inset-x-0 bottom-0 h-[1vw] bg-yellow-400 opacity-50" />
-      </motion.div>
+      {/* 폭죽 통 비주얼: 대성공 글자를 가리는 문제로 임시 주석 처리
+      <AnimatePresence>
+        {isActive && (
+          <motion.div
+            initial={{ scale: 0, rotate: targetAngle + 90 }}
+            animate={{ scale: 1, rotate: targetAngle + 90 }}
+            exit={{ scale: 0, opacity: 0 }}
+            className="absolute w-[4vw] h-[6vw] bg-gradient-to-b from-pink-500 via-purple-600 to-indigo-800"
+            style={{
+              left: popperOrigin.x,
+              top: popperOrigin.y,
+              clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)', // 원뿔 모양
+              transformOrigin: '50% 100%'
+            }}
+          >
+            <div className="absolute inset-x-0 bottom-0 h-[1vw] bg-yellow-400 opacity-50" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      */}
 
-      {/* 실제 종이 파편 발사 */}
+      {/* 실제 종이 파편 발사: 통의 유무와 상관없이 물리 엔진은 수명만큼 작동 */}
       <ConfettiBurst
         {...options}
         origin={popperOrigin}
@@ -187,10 +201,12 @@ export const ConfettiPopper: React.FC<ConfettiOptions & { onComplete: () => void
  */
 const ConfettiContainer: React.FC<{
   bursts: { id: number; options?: ConfettiOptions; type?: 'direct' | 'launch' }[];
-  onBurstComplete: (id: number) => void
+  onBurstComplete: (id: number) => void;
+  isActive?: boolean;
 }> = ({
   bursts,
-  onBurstComplete
+  onBurstComplete,
+  isActive = true
 }) => {
     return (
       <div className="fixed inset-0 pointer-events-none z-toast">
@@ -200,6 +216,7 @@ const ConfettiContainer: React.FC<{
               <ConfettiPopper
                 key={b.id}
                 {...b.options}
+                isActive={isActive}
                 onComplete={() => onBurstComplete(b.id)}
               />
             ) : (

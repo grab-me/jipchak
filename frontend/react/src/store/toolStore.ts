@@ -18,6 +18,10 @@ interface ToolState {
   records: RecordItem[];
   qrTimer: number;
 
+  // 뽑기 프로세스 상태
+  isCatching: boolean;
+  lastResult: 'win' | 'lose' | null;
+
   // Actions
   setViewType: (view: ToolAreaView) => void;
   startSession: () => void;
@@ -26,6 +30,8 @@ interface ToolState {
   handleQRConsent: (agreed: boolean) => Promise<void>;
   tickQrTimer: () => void;
   resetSession: () => void;
+  setCatching: (catching: boolean) => void;
+  setLastResult: (result: 'win' | 'lose' | null) => void;
 }
 
 const MAX_RECORDS = 5;
@@ -41,6 +47,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   isSessionActive: false,
   records: [],
   qrTimer: 0,
+  isCatching: false,
+  lastResult: null,
 
   setViewType: (view) => set({ viewType: view }),
 
@@ -118,10 +126,14 @@ export const useToolStore = create<ToolState>((set, get) => ({
       viewType: 'RECORDS',
       qrValue: '',
       qrTimer: 0,
+      isCatching: false,
+      lastResult: null,
     });
     console.log('[Session] 세션 초기화 완료. 홈으로 이동합니다.');
     
-    // 강제로 홈 경로로 이동 (react-router-dom이 없는 환경도 고려하여 location.href 사용)
     window.location.href = '/';
   },
+
+  setCatching: (catching) => set({ isCatching: catching }),
+  setLastResult: (result) => set({ lastResult: result }),
 }));

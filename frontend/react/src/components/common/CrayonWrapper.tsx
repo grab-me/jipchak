@@ -31,7 +31,7 @@ const CrayonWrapper = ({ children, showCharacter = true, className = '' }: Crayo
       )}
 
       {/* 실제 콘텐츠 영역 (가로 패딩 최적화: 썸네일 크기 확보) */}
-      <div className={`relative z-10 w-full h-full flex flex-col px-[clamp(12px,2.8vw,24px)] py-[clamp(16px,4vh,36px)] overflow-hidden min-h-0 min-w-0 ${className}`}>
+      <div className={`relative z-header w-full h-full flex flex-col px-[clamp(12px,2.8vw,24px)] py-[clamp(16px,4vh,36px)] overflow-hidden min-h-0 min-w-0 ${className}`}>
         {children}
       </div>
     </div>

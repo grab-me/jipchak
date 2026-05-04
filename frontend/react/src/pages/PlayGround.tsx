@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToolStore } from '@/store/toolStore';
 import CameraView from '@/components/machine/CameraView';
@@ -7,10 +7,23 @@ import Confetti from '@/components/common/Confetti';
 
 const PlayGround = () => {
   const navigate = useNavigate();
-  const { isSessionActive } = useToolStore();
+  const { isSessionActive, lastResult } = useToolStore();
   
   // 연타 지원을 위한 폭죽 리스트 상태
   const [confettiBursts, setConfettiBursts] = useState<{ id: number; options?: any; type?: 'direct' | 'launch' }[]>([]);
+
+  // 성공 결과 감시: win 상태가 되는 '그 순간'에만 폭죽 발사
+  const lastProcessedResult = useRef<string | null>(null);
+
+  useEffect(() => {
+    // 이전 결과와 현재 결과가 다를 때만 로직 수행
+    if (lastResult !== lastProcessedResult.current) {
+      if (lastResult === 'win') {
+        triggerConfetti('launch');
+      }
+      lastProcessedResult.current = lastResult;
+    }
+  }, [lastResult]);
 
   // 폭죽 터뜨리기 (연타 방지 적용)
   const triggerConfetti = (type: 'direct' | 'launch' = 'direct') => {
@@ -40,23 +53,12 @@ const PlayGround = () => {
   if (!isSessionActive) return null; // 리다이렉트 전 찰나의 렌더링 방지
   return (
     <div className="flex w-full h-screen bg-[#dfdfdf] p-[calc(24/1024*100vw)] gap-[calc(16/1024*100vw)] overflow-hidden">
-      {/* 폭죽 버스트 매니저 (연타 지원) */}
-      <Confetti bursts={confettiBursts} onBurstComplete={removeBurst} />
-      
-      <div className="fixed bottom-[4%] left-[4%] z-toast flex gap-[1vw]">
-        <button 
-          onClick={() => triggerConfetti('direct')}
-          className="px-[1.5vw] py-[0.8vw] bg-[#FF5E7E] text-white rounded-full shadow-lg font-bold active:scale-90 transition-all hover:brightness-110"
-        >
-          🎊 일반 폭죽
-        </button>
-        <button 
-          onClick={() => triggerConfetti('launch')}
-          className="px-[1.5vw] py-[0.8vw] bg-[#FFA62D] text-white rounded-full shadow-lg font-bold active:scale-90 transition-all border-[0.2vw] border-white hover:brightness-110"
-        >
-          🚀 조준 사격!
-        </button>
-      </div>
+      {/* 폭죽 버스트 매니저 (성공 화면 활성 여부 전달) */}
+      <Confetti 
+        bursts={confettiBursts} 
+        onBurstComplete={removeBurst} 
+        isActive={lastResult === 'win'} 
+      />
 
       <div
         className="flex-[766] bg-black rounded-[1vw] shadow-sm relative overflow-hidden"
