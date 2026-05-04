@@ -8,6 +8,7 @@ export default {
     extend: {
       zIndex: {
         header: '10',
+        sub: '20',
         overlay: '50',
         modal: '100',
         toast: '150',

@@ -24,17 +24,12 @@ const QRDisplay = () => {
 
   return (
     <CrayonWrapper className="justify-around items-center relative py-1">
-      {/* 남은 시간 표시: Safe Zone 안쪽 상단에 작게 배치 */}
-      <div className="absolute top-0 right-0 px-[2%] py-[0.5%] bg-red-100 text-red-600 font-bold rounded-full border-[clamp(1px,0.15vw,2px)] border-red-300 text-[clamp(10px,1.2vw,14px)] z-20">
-        {qrTimer}s
-      </div>
-
       <div className="flex flex-col items-center w-full">
         <h3 className="text-[clamp(18px,2.4vw,24px)] font-bold text-gray-800 text-center leading-tight">
           QR 스캔하여 영상 받기
         </h3>
         <p className="text-[clamp(11px,1.2vw,14px)] text-gray-500 font-medium text-center mt-1">
-          30초 후 자동으로 삭제됩니다.
+          <span className="text-red-500 font-black">{qrTimer}</span>초 후 자동으로 삭제됩니다.
         </p>
       </div>
 
