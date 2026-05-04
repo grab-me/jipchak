@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useAnimationFrame } from 'framer-motion';
+import { AnimatePresence, useAnimationFrame } from 'framer-motion';
 
 // 6가지 핵심 옵션 인터페이스
 export interface ConfettiOptions {
