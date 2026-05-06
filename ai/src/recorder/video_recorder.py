@@ -13,6 +13,10 @@ class VideoRecorder:
     """
     세션(=한 게임 한 판)별로 mp4 파일을 적재한다.
 
+    동시성 가정: 같은 session_id에 대해 start/write/stop 은 단일 호출자
+    (RPi WS 핸들러)에서만 호출된다. 다른 session_id 끼리는 await 없이
+    수행되는 동기 dict 연산이라 asyncio race-free.
+
     사용 흐름:
         recorder.start_session(session_id, frame_shape)
         recorder.write(session_id, bgr_frame)   # 매 프레임

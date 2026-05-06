@@ -1,5 +1,5 @@
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, Optional
 
 import numpy as np
@@ -23,6 +23,10 @@ class SessionManager:
     """
     세션 시작/프레임 적재/세션 종료 -> 판정 -> Spring 전송 의 일련 흐름을 조율한다.
 
+    동시성 가정: 하나의 session_id는 단일 RPi WebSocket 핸들러에서만
+    on_frame을 호출한다. 따라서 on_frame은 동기 시퀀스로 race-free 이며,
+    여러 session_id 사이의 dict 조작만 lock으로 보호한다.
+
     의존성은 외부에서 주입(DI)하여 단위 테스트가 가능하게 한다.
     """
 
@@ -39,6 +43,16 @@ class SessionManager:
         self._lock = asyncio.Lock()
 
     async def start(self, session_id: str) -> None:
+        """
+        새 세션 시작. 이미 같은 session_id가 진행 중이면
+        기존 세션을 먼저 정리하여 녹화 파일이 누수되지 않게 한다.
+        """
+        async with self._lock:
+            existing = self._sessions.pop(session_id, None)
+        if existing is not None:
+            print(f"[SessionManager] duplicate START for {session_id}, closing previous")
+            self._recorder.stop_session(session_id)
+
         async with self._lock:
             self._sessions[session_id] = GameSession(session_id=session_id)
         print(f"[SessionManager] session started: {session_id}")
