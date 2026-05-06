@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useToolStore } from '@/store/toolStore';
+import { useCameraStream } from '@/hooks/useCameraStream';
 import Thermometer from './Thermometer';
 
 interface CameraViewProps {
@@ -10,6 +11,11 @@ const CameraView = ({ label }: CameraViewProps) => {
   const { addRecord, setCatching, setLastResult, isCatching, records } = useToolStore();
   const timer1Ref = useRef<NodeJS.Timeout | null>(null);
   const timer2Ref = useRef<NodeJS.Timeout | null>(null);
+
+  // Cam1 = 일반 웹캠(color_2d), Cam2 = D435 RGB(color_3d).
+  // AI 서버가 송출하는 WebSocket 스트림에서 채널별로 가장 최근 프레임을 받아 표시.
+  const channel = label === 'Cam1' ? '2d' : '3d';
+  const { frameUrl, connected } = useCameraStream(channel);
 
   // 언마운트 시 타이머 정리
   useEffect(() => {
@@ -68,14 +74,35 @@ const CameraView = ({ label }: CameraViewProps) => {
 
   return (
     <div className="w-full h-full bg-black relative flex flex-col items-center justify-center overflow-hidden gap-[4%]">
-      {/* 실제 영상 연결 전까지는 카메라 구분용 라벨만 표시한다. */}
-      <span className="text-white/20 font-bold text-[clamp(24px,5vw,64px)] select-none uppercase tracking-widest">
-        {label}
-      </span>
-      
+      {/* 라이브 영상 layer: 프레임이 도착했을 때만 렌더링.
+          object-cover 로 컨테이너에 꽉 채우되 비율은 유지. */}
+      {frameUrl && (
+        <img
+          src={frameUrl}
+          alt={`${label} live`}
+          className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+          draggable={false}
+        />
+      )}
+
+      {/* 영상이 아직 안 왔을 때만 라벨을 보여주는 placeholder */}
+      {!frameUrl && (
+        <span className="text-white/20 font-bold text-[clamp(24px,5vw,64px)] select-none uppercase tracking-widest">
+          {label}
+        </span>
+      )}
+
+      {/* 연결 상태 인디케이터 (우상단 작은 점). 운영 디버그 용. */}
+      <span
+        className={`absolute top-2 right-2 w-2 h-2 rounded-full z-overlay ${
+          connected ? 'bg-green-400' : 'bg-red-500'
+        }`}
+        title={connected ? 'WS connected' : 'WS disconnected'}
+      />
+
       {/* 임시 로직 테스트 버튼 (Cam1에만 표시) */}
       {label === 'Cam1' && (
-        <button 
+        <button
           onClick={handleTestRecord}
           className="px-4 py-2 bg-red-600/80 text-white rounded-lg font-bold text-[clamp(12px,1vw,16px)] shadow-lg active:scale-95 transition-all z-overlay absolute"
         >
