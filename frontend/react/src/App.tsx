@@ -3,6 +3,8 @@ import { HashRouter, Route, Routes } from 'react-router-dom';
 import Home from './pages/Home';
 import PlayGround from './pages/PlayGround';
 
+import MobileLanding from './pages/mobile/MobileLanding';
+
 const App = () => {
   // 키오스크 모드에서는 브라우저 기본 우클릭 메뉴를 막아 의도치 않은 이탈을 줄인다.
   useEffect(() => {
@@ -20,6 +22,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/play" element={<PlayGround />} />
+        <Route path="/m/:sessionId" element={<MobileLanding />} />
       </Routes>
     </HashRouter>
   );
