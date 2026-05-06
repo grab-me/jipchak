@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useToolStore } from '@/store/toolStore';
 import CameraView from '@/components/machine/CameraView';
 import ToolArea from '@/components/machine/ToolArea';
-import Confetti from '@/components/common/Confetti';
+import Confetti, { ConfettiOptions } from '@/components/common/Confetti';
 
 const PlayGround = () => {
   const navigate = useNavigate();
   const { isSessionActive, lastResult } = useToolStore();
   
   // 연타 지원을 위한 폭죽 리스트 상태
-  const [confettiBursts, setConfettiBursts] = useState<{ id: number; options?: any; type?: 'direct' | 'launch' }[]>([]);
+  const [confettiBursts, setConfettiBursts] = useState<{ id: number; options?: ConfettiOptions; type?: 'direct' | 'launch' }[]>([]);
 
   // 성공 결과 감시: win 상태가 되는 '그 순간'에만 폭죽 발사
   const lastProcessedResult = useRef<string | null>(null);

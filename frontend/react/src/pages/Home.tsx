@@ -17,8 +17,7 @@ const Home = () => {
         JIPCHAK
       </h1>
       <StartButton onStart={handleStart} />
-      <div className="absolute bottom-[5%] text-gray-400 text-[clamp(14px,1.5vw,20px)]">
-      </div>
+
     </div>
   );
 };
