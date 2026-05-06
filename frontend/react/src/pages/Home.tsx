@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import StartButton from '@/components/common/StartButton';
 import { useToolStore } from '@/store/toolStore';
+import StartButton from '@/components/common/StartButton';
+import CrayonWrapper from '@/components/common/CrayonWrapper';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -12,12 +13,16 @@ const Home = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center w-full h-screen bg-[radial-gradient(circle_at_center,#FFFFFF_0%,#D9D9D9_40%,#8A8A8A_100%)] gap-[4vw]">
-      <h1 className="text-[clamp(32px,6vw,80px)] font-bold text-gray-800 select-none">
-        JIPCHAK
-      </h1>
-      <StartButton onStart={handleStart} />
-
+    // 모서리 제거
+    <div className="w-full h-screen [&>div]:!rounded-none">
+      <CrayonWrapper showCharacter={false}>
+        <div className="flex flex-col items-center justify-center w-full h-screen gap-[4vw]">
+          <h1 className="text-[clamp(32px,6vw,80px)] font-bold font-crayon text-yellow-400 select-none">
+            JIPCHAK
+          </h1>
+          <StartButton onStart={handleStart} />
+        </div>
+      </CrayonWrapper>
     </div>
   );
 };
