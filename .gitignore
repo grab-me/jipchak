@@ -337,3 +337,6 @@ thumb
 sketch
 
 # End of https://www.toptal.com/developers/gitignore/api/eclipse,java,react,python,c++
+
+# Claude Code 세션 메타데이터 (사용자별 로컬)
+.claude/
