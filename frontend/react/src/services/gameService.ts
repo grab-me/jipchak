@@ -15,11 +15,7 @@ const gameService = {
     formData.append('isSuccess', String(data.isSuccess));
     formData.append('video', data.video);
 
-    const response = await axiosInstance.post('/api/game/log', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await axiosInstance.post('/api/game/log', formData);
     return response.data;
   },
 
@@ -27,7 +23,7 @@ const gameService = {
    * 홈 화면 환영 메시지 확인
    */
   getHomeMessage: async () => {
-    const response = await axiosInstance.get('/home');
+    const response = await axiosInstance.get('/api/home');
     return response.data;
   },
 };
