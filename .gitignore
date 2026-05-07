@@ -2,6 +2,9 @@
 ### C++ ###
 # Prerequisites
 *.d
+# 단, nginx conf.d 디렉토리는 *.d 패턴에 우연히 매칭되니 예외 처리
+!**/conf.d/
+!**/conf.d/**
 
 # Compiled Object files
 *.slo
