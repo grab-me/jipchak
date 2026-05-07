@@ -18,9 +18,13 @@ def build_router(relay_hub: RelayHub) -> APIRouter:
         await ws.accept()
         await relay_hub.subscribe(ws)
         try:
-            # 브라우저는 송신할 일이 없지만 ping/close를 수신해야 하므로 receive로 대기
+            # 브라우저는 송신할 일이 없지만 ping/close를 수신해야 하므로 receive 로 대기.
+            # disconnect 메시지를 받은 직후 다시 receive() 를 호출하면 starlette 가
+            # RuntimeError 를 던지므로, type 을 보고 명시적으로 break.
             while True:
-                await ws.receive()
+                msg = await ws.receive()
+                if msg.get("type") == "websocket.disconnect":
+                    break
         except WebSocketDisconnect:
             pass
         finally:
