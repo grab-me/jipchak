@@ -10,7 +10,10 @@ services:
     env_file:
       - .env
     ports:
-      - "3306:3306"
+      - "${DB_PORT}:3306"
+    # 컨테이너 재생성에도 DB 데이터 보존
+    volumes:
+      - ./mysql_data:/var/lib/mysql
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}" ]
       interval: 10s
@@ -29,8 +32,8 @@ services:
     container_name: jenkins
     user: root
     ports:
-      - "8080:8080"
-      - "50000:50000"
+      - "${JENKINS_PORT}:8080"
+      - "${JENKINS_AGENT_PORT}:50000"
     env_file:
       - .env
     volumes:
@@ -42,14 +45,13 @@ services:
     image: nginx:latest
     container_name: nginx
     ports:
-      - "80:80"
-      - "443:443"
+      - "${NGINX_HTTP_PORT}:80"
+      - "${NGINX_HTTPS_PORT}:443"
     env_file:
       - .env
     volumes:
-      - ../nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/conf.d:/etc/nginx/conf.d
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ../frontend/react/dist:/usr/share/nginx/html:ro
     depends_on:
       - app-jipchak
 
@@ -66,10 +68,45 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
+    ports:
+      - "${BACKEND_PORT}:8080" # Spring Boot 내부 기본 포트 8080을 외부 8108로 매핑
     env_file:
       - .env
+    # 영상 영속화 (JIPCHAK_VIDEO_BASE_DIR=/data/videos 매핑, QR 다운로드용)
+    volumes:
+      - ./videos:/data/videos
     depends_on:
       db-jipchak:
         condition: service_healthy
       redis-jipchak:
         condition: service_started
+
+  # 6. AI Server
+  ai-jipchak:
+    build:
+      context: ../ai
+      dockerfile: Dockerfile
+    container_name: ai-jipchak
+    restart: on-failure
+    ports:
+      - "${AI_PORT}:8000"
+    env_file:
+      - .env
+    # 임시 mp4 보존 (RECORDING_DIR=/data/recordings 매핑, 업로드 실패 디버깅용)
+    volumes:
+      - ./ai_recordings:/data/recordings
+    # Spring 먼저 기동 보장 — 첫 게임 결과 POST 의 race 방지
+    depends_on:
+      - app-jipchak
+
+  # 7. Frontend (React)
+  frontend-jipchak:
+    build:
+      context: ../frontend/react
+      dockerfile: Dockerfile
+    container_name: frontend-jipchak
+    restart: on-failure
+    ports:
+      - "${FRONTEND_PORT}:80"
+    env_file:
+      - .env

@@ -2,6 +2,9 @@
 ### C++ ###
 # Prerequisites
 *.d
+# 단, nginx conf.d 디렉토리는 *.d 패턴에 우연히 매칭되니 예외 처리
+!**/conf.d/
+!**/conf.d/**
 
 # Compiled Object files
 *.slo
@@ -263,6 +266,11 @@ frontend/react/dist/
 # Jenkins 데이터
 infra/jenkins_home/
 
+# docker-compose 호스트 볼륨 (영속 데이터)
+infra/mysql_data/
+infra/videos/
+infra/ai_recordings/
+
 # Gradle 빌드 캐시 및 결과물
 backend/.gradle/
 backend/build/
@@ -323,6 +331,12 @@ logs
 
 node_modules
 bower_components
+.vite/
+.env.local
+.env.*.local
+.gradle/
+backend/build_codex/
+backend/videos/*_test_video.mp4
 
 *.sublime*
 
