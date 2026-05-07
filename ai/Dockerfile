@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# stdout/stderr 를 즉시 flush — print 로그가 docker logs 에 즉시 보이게
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
 # OpenCV가 필요로 하는 시스템 라이브러리
