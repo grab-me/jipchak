@@ -33,6 +33,8 @@ interface ToolState {
   resetSession: () => void;
   setCatching: (catching: boolean) => void;
   setLastResult: (result: 'win' | 'lose' | null) => void;
+  isAskingNextStep: boolean;
+  setAskingNextStep: (val: boolean) => void;
 }
 
 const MAX_RECORDS = 5;
@@ -50,6 +52,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   qrTimer: 0,
   isCatching: false,
   lastResult: null,
+  isAskingNextStep: false,
 
   setViewType: (view) => set({ viewType: view }),
 
@@ -136,6 +139,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
       qrTimer: 0,
       isCatching: false,
       lastResult: null,
+      isAskingNextStep: false,
     });
     console.log('[Session] 세션 초기화 완료. 홈으로 이동합니다.');
     
@@ -144,4 +148,5 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
   setCatching: (catching) => set({ isCatching: catching }),
   setLastResult: (result) => set({ lastResult: result }),
+  setAskingNextStep: (val) => set({ isAskingNextStep: val }),
 }));

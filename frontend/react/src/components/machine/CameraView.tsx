@@ -8,7 +8,7 @@ interface CameraViewProps {
 }
 
 const CameraView = ({ label }: CameraViewProps) => {
-  const { addRecord, setCatching, setLastResult, isCatching, records } = useToolStore();
+  const { addRecord, setCatching, setLastResult, isCatching, records, setAskingNextStep } = useToolStore();
   const timer1Ref = useRef<NodeJS.Timeout | null>(null);
   const timer2Ref = useRef<NodeJS.Timeout | null>(null);
 
@@ -68,6 +68,11 @@ const CameraView = ({ label }: CameraViewProps) => {
       // 3. 3초 후 결과 화면 닫기
       timer2Ref.current = setTimeout(() => {
         setLastResult(null);
+        
+        // 5판을 다 채우지 않았다면 다음 동작 확인 모달 표시
+        if (records.length < 4) {
+          setAskingNextStep(true);
+        }
       }, 3000);
     }, 5000);
   };

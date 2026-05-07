@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useToolStore } from '@/store/toolStore';
 import CameraView from '@/components/machine/CameraView';
 import ToolArea from '@/components/machine/ToolArea';
+import NextStepModal from '@/components/machine/NextStepModal';
 import Confetti, { ConfettiOptions } from '@/components/common/Confetti';
 
 const PlayGround = () => {
   const navigate = useNavigate();
-  const { isSessionActive, lastResult } = useToolStore();
+  const { isSessionActive, lastResult, setAskingNextStep } = useToolStore();
   
   // 연타 지원을 위한 폭죽 리스트 상태
   const [confettiBursts, setConfettiBursts] = useState<{ id: number; options?: ConfettiOptions; type?: 'direct' | 'launch' }[]>([]);
@@ -50,6 +51,18 @@ const PlayGround = () => {
     }
   }, [isSessionActive, navigate]);
 
+  // 하드웨어 입력(키보드) 감지 시 안내 모달 자동 닫기
+  useEffect(() => {
+    const handleInteraction = () => {
+      setAskingNextStep(false);
+    };
+
+    window.addEventListener('keydown', handleInteraction);
+    return () => {
+      window.removeEventListener('keydown', handleInteraction);
+    };
+  }, [setAskingNextStep]);
+
   if (!isSessionActive) return null; // 리다이렉트 전 찰나의 렌더링 방지
   return (
     <div className="flex w-full h-screen bg-[#dfdfdf] p-[calc(24/1024*100vw)] gap-[calc(16/1024*100vw)] overflow-hidden">
@@ -65,6 +78,8 @@ const PlayGround = () => {
         style={{ aspectRatio: '766 / 552' }}
       >
         <CameraView label="Cam1" />
+        {/* 세션 지속 여부 확인 모달 (Cam1 위에 배치) */}
+        <NextStepModal />
       </div>
 
       <div className="flex-[194] min-w-0 flex flex-col gap-[calc(16/600*100vh)]">
