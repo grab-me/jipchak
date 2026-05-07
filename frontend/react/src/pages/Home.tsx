@@ -15,7 +15,10 @@ const Home = () => {
 
   return (
     // 모서리 제거
-    <div className="w-full h-screen [&>div]:!rounded-none">
+    <div 
+      className="w-full h-screen [&>div]:!rounded-none"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <CrayonWrapper showCharacter={false}>
         <div className="flex flex-col items-center justify-center w-full h-screen gap-[4vw]">
           <h1 className="text-[clamp(32px,6vw,80px)] font-bold font-crayon text-yellow-400 select-none">

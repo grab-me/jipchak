@@ -76,7 +76,10 @@ const PlayGround = () => {
 
   if (!isSessionActive) return null; // 리다이렉트 전 찰나의 렌더링 방지
   return (
-    <div className="flex w-full h-screen bg-[#dfdfdf] p-[calc(24/1024*100vw)] gap-[calc(16/1024*100vw)] overflow-hidden">
+    <div 
+      className="flex w-full h-screen bg-[#dfdfdf] p-[calc(24/1024*100vw)] gap-[calc(16/1024*100vw)] overflow-hidden"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {/* 폭죽 버스트 매니저 (성공 화면 활성 여부 전달) */}
       <Confetti 
         bursts={confettiBursts} 
