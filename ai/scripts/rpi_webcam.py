@@ -39,7 +39,8 @@ def _install_signal_handlers() -> None:
 
 
 def _open_camera(device: int, width: int, height: int, fps: int) -> cv2.VideoCapture:
-    cap = cv2.VideoCapture(device)
+    # V4L2 backend 명시: 자동 선택은 RPi 환경에서 FFMPEG 로 fallback 후 실패할 수 있음
+    cap = cv2.VideoCapture(device, cv2.CAP_V4L2)
     if not cap.isOpened():
         raise RuntimeError(f"웹캠을 열 수 없습니다 (device={device}).")
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)

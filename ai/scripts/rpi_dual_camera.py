@@ -45,8 +45,10 @@ def _install_signal_handlers() -> None:
             pass
 
 
-def _open_camera(device: int, width: int, height: int, fps: int, label: str) -> Optional[cv2.VideoCapture]:
-    cap = cv2.VideoCapture(device)
+def _open_camera(device, width: int, height: int, fps: int, label: str) -> Optional[cv2.VideoCapture]:
+    # device 는 int (예: 8) 또는 str path (예: /dev/v4l/by-id/usb-Intel...) 둘 다 지원.
+    # V4L2 backend 명시: 자동 선택은 RPi 환경에서 FFMPEG 로 fallback 후 실패할 수 있음.
+    cap = cv2.VideoCapture(device, cv2.CAP_V4L2)
     if not cap.isOpened():
         print(f"[{label}] 카메라를 열 수 없습니다 (device={device}).")
         return None
@@ -83,8 +85,8 @@ def _pack(frame_2d: Optional[np.ndarray], frame_3d: Optional[np.ndarray], q: int
 
 async def run(
     url: str,
-    webcam_idx: int,
-    d435_idx: int,
+    webcam_idx,
+    d435_idx,
     width: int,
     height: int,
     fps: int,
@@ -152,18 +154,30 @@ async def run(
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--url", required=True, help="ws://<AI 서버>:8000/ws/camera")
-    p.add_argument("--webcam", type=int, default=0, help="일반 웹캠 device 인덱스 (보통 0)")
-    p.add_argument("--d435", type=int, default=4, help="D435 RGB device 인덱스 (보통 2 또는 4)")
+    # 정수 인덱스(예: 0) 또는 path (예: /dev/v4l/by-id/usb-...) 둘 다 허용.
+    # path 형태는 인덱스 변동에 영향 안 받아 안정적.
+    p.add_argument("--webcam", default="0", help="웹캠 인덱스 또는 /dev/v4l/by-id/... path")
+    p.add_argument("--d435", default="4", help="D435 RGB 인덱스 또는 /dev/v4l/by-id/... path")
     p.add_argument("--width", type=int, default=640)
     p.add_argument("--height", type=int, default=480)
     p.add_argument("--fps", type=int, default=30)
     p.add_argument("--jpeg-quality", type=int, default=80)
     args = p.parse_args()
 
+    # 숫자 문자열이면 int 로, 아니면 path 그대로 사용
+    def _to_device(v):
+        try:
+            return int(v)
+        except ValueError:
+            return v
+
+    webcam_dev = _to_device(args.webcam)
+    d435_dev = _to_device(args.d435)
+
     async def _main() -> None:
         _install_signal_handlers()
         await run(
-            args.url, args.webcam, args.d435,
+            args.url, webcam_dev, d435_dev,
             args.width, args.height, args.fps, args.jpeg_quality,
         )
 
