@@ -109,7 +109,7 @@ const CameraView = ({ label }: CameraViewProps) => {
       {label === 'Cam1' && (
         <button
           onClick={handleTestRecord}
-          className="px-4 py-2 bg-red-600/80 text-white rounded-lg font-bold text-[clamp(12px,1vw,16px)] shadow-lg active:scale-95 transition-all z-overlay absolute"
+          className="px-4 py-2 bg-red-600/80 text-white rounded-lg font-bold text-[clamp(12px,1vw,16px)] shadow-lg active:scale-95 transition-all z-overlay absolute cursor-pointer"
         >
           로직 테스트<br/>(기록 추가)
         </button>

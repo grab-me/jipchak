@@ -23,7 +23,7 @@ const QRDisplay = () => {
   }, [tickQrTimer]);
 
   return (
-    <CrayonWrapper className="justify-around items-center relative py-1">
+    <CrayonWrapper showCharacter={false} className="justify-around items-center relative py-1">
       <div className="flex flex-col items-center w-full">
         <h3 className="text-[clamp(18px,2.4vw,24px)] font-bold text-gray-800 text-center leading-tight">
           QR 스캔하여 영상 받기

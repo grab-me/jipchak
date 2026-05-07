@@ -1,15 +1,35 @@
+import { useState, useEffect } from 'react';
 import { useToolStore } from '@/store/toolStore';
 import CrayonWrapper from '../common/CrayonWrapper';
+
+const AUTO_RESET_SECONDS = 30;
 
 /**
  * QRConsent 컴포넌트
  * 게임 5회 종료 후 사용자의 동영상 다운로드 QR 생성 동의를 구합니다.
  */
 const QRConsent = () => {
-  const { handleQRConsent, records } = useToolStore();
+  const { handleQRConsent, records, resetSession } = useToolStore();
+  const [countdown, setCountdown] = useState(AUTO_RESET_SECONDS);
+
+  // 자동 종료 타이머
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          resetSession(); // 시간 만료 시 세션 파기
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [resetSession]);
 
   return (
-    <CrayonWrapper className="justify-around items-center gap-[4%]">
+    <CrayonWrapper showCharacter={false} className="justify-around items-center gap-[4%]">
       <div className="flex flex-col items-center w-full">
         <h3 className="text-[clamp(16px,2.2vw,22px)] font-bold text-gray-800 text-center leading-tight">
           총 <span className="text-yellow-500">{records.length}개</span>의 영상이 저장되었습니다.<br />
@@ -37,6 +57,11 @@ const QRConsent = () => {
           네!
         </button>
       </div>
+
+      {/* 카운트다운 표시 */}
+      <p className="text-[clamp(10px,1.1vw,12px)] text-red-400 font-bold">
+        <span className="animate-pulse">{countdown}</span>초 후 자동으로 종료됩니다.
+      </p>
     </CrayonWrapper>
   );
 };

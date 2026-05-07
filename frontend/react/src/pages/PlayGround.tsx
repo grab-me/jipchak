@@ -8,7 +8,7 @@ import Confetti, { ConfettiOptions } from '@/components/common/Confetti';
 
 const PlayGround = () => {
   const navigate = useNavigate();
-  const { isSessionActive, lastResult, setAskingNextStep } = useToolStore();
+  const { isSessionActive, lastResult, setAskingNextStep, records, resetSession, setAutoStarting } = useToolStore();
   
   // 연타 지원을 위한 폭죽 리스트 상태
   const [confettiBursts, setConfettiBursts] = useState<{ id: number; options?: ConfettiOptions; type?: 'direct' | 'launch' }[]>([]);
@@ -51,17 +51,28 @@ const PlayGround = () => {
     }
   }, [isSessionActive, navigate]);
 
-  // 하드웨어 입력(키보드) 감지 시 안내 모달 자동 닫기
+  // 하드웨어 입력(키보드) 감지 시 로직 처리
   useEffect(() => {
-    const handleInteraction = () => {
-      setAskingNextStep(false);
+    const handleInteraction = (e: KeyboardEvent) => {
+      // 스페이스바 등으로 포커스된 버튼이 클릭되는 기본 동작 방지
+      e.preventDefault();
+
+      if (records.length >= 5) {
+        // 5판 종료 후 입력 시: 홈으로 이동하여 자동 시작 연출 실행
+        console.log('[Session] 사용자 입력 감지: 자동 재시작 연출을 시작합니다.');
+        resetSession();
+        setAutoStarting(true);
+      } else {
+        // 일반 상황: 안내 모달만 닫기
+        setAskingNextStep(false);
+      }
     };
 
     window.addEventListener('keydown', handleInteraction);
     return () => {
       window.removeEventListener('keydown', handleInteraction);
     };
-  }, [setAskingNextStep]);
+  }, [setAskingNextStep, records, resetSession, setAutoStarting]);
 
   if (!isSessionActive) return null; // 리다이렉트 전 찰나의 렌더링 방지
   return (

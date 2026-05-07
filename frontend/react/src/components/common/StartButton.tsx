@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, useAnimationControls } from 'framer-motion';
 import CrayonWrapper from '@/components/common/CrayonWrapper';
 
 type StartButtonProps = {
   onStart: () => void;
+  autoClick?: boolean;
 };
 
 /**
  * StartButton
  * 홈 화면에서 플레이 시작을 위한 버튼입니다. (클릭 시 축소 -> 복원 -> 콜백 함수 실행 순으로 동작)
  */
-const StartButton = ({ onStart }: StartButtonProps) => {
+const StartButton = ({ onStart, autoClick }: StartButtonProps) => {
   const animationControls = useAnimationControls();
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -40,6 +41,16 @@ const StartButton = ({ onStart }: StartButtonProps) => {
       setIsAnimating(false);
     }
   };
+
+  useEffect(() => {
+    if (autoClick && !isAnimating) {
+      // 잠깐의 지연 후 자동 클릭 실행 (사용자가 홈 화면에 진입했음을 인지할 시간)
+      const timer = setTimeout(() => {
+        handleStartClick();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [autoClick, isAnimating]);
 
   return (
     <motion.button

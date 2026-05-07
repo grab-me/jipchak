@@ -22,7 +22,7 @@ const ToolArea = () => {
         return <QRDisplay />;
       case 'CHEERING':
         return (
-          <CrayonWrapper className="justify-center">
+          <CrayonWrapper showCharacter={false} className="justify-center">
             <span className="text-gray-500 font-bold text-[clamp(18px,2vw,28px)]">
               인형뽑기 진행 중... 화이팅! 🧸
             </span>

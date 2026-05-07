@@ -5,10 +5,11 @@ import CrayonWrapper from '@/components/common/CrayonWrapper';
 
 const Home = () => {
   const navigate = useNavigate();
-  const { startSession } = useToolStore();
+  const { startSession, isAutoStarting, setAutoStarting } = useToolStore();
 
   const handleStart = () => {
     startSession(); // 세션 시작
+    if (isAutoStarting) setAutoStarting(false); // 자동 시작 플래그 해제
     navigate('/play');
   };
 
@@ -20,7 +21,7 @@ const Home = () => {
           <h1 className="text-[clamp(32px,6vw,80px)] font-bold font-crayon text-yellow-400 select-none">
             JIPCHAK
           </h1>
-          <StartButton onStart={handleStart} />
+          <StartButton onStart={handleStart} autoClick={isAutoStarting} />
         </div>
       </CrayonWrapper>
     </div>
