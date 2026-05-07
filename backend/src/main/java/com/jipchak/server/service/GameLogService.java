@@ -13,6 +13,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -105,13 +107,10 @@ public class GameLogService {
         }
     }
 
-    /**
-     * 파일명 규칙: "<sessionId>_<UUID 8자>.mp4"
-     * sessionId 가 없으면 "anon_<UUID 8자>.mp4" 로 fallback.
-     */
+    /** 파일명 규칙: "yyMMdd_HHmmss.mp4" — 같은 초 동시 종료는 거의 없으므로 초 단위로 충분. */
+    private static final DateTimeFormatter FILE_NAME_FORMAT = DateTimeFormatter.ofPattern("yyMMdd_HHmmss");
+
     private String buildFileName(String sessionId) {
-        String safeSession = (sessionId == null || sessionId.isBlank()) ? "anon" : sessionId;
-        String shortId = UUID.randomUUID().toString().substring(0, 8);
-        return safeSession + "_" + shortId + ".mp4";
+        return LocalDateTime.now().format(FILE_NAME_FORMAT) + ".mp4";
     }
 }
