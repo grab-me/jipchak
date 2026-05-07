@@ -42,17 +42,19 @@ const StartButton = ({ onStart }: StartButtonProps) => {
   };
 
   return (
-    <motion.div
+    <motion.button
+      type="button"
+      aria-label="START"
       onClick={handleStartClick}
       animate={animationControls}
-      className="min-w-[28%] max-w-[48%] min-h-[13vh] drop-shadow-lg cursor-pointer"
+      className="min-w-[28%] max-w-[48%] min-h-[13vh] drop-shadow-lg cursor-pointer appearance-none bg-transparent border-none p-0 outline-none"
     >
       <CrayonWrapper showCharacter={false}>
         <span className="flex items-center justify-center w-full h-full font-black tracking-[0.08em] text-[clamp(28px,3.4vw,44px)]">
           START
         </span>
       </CrayonWrapper>
-    </motion.div>
+    </motion.button>
   );
 };
 

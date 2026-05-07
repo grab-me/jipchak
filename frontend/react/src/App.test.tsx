@@ -19,12 +19,13 @@ describe('App routing', () => {
     expect(screen.getByRole('button', { name: 'START' })).toBeTruthy();
   });
 
-  it('navigates to the play screen from the landing page', () => {
+  it('navigates to the play screen from the landing page', async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'START' }));
 
-    expect(screen.getByText('Cam1')).toBeTruthy();
+    // 애니메이션 및 페이지 이동 대기
+    expect(await screen.findByText('Cam1')).toBeTruthy();
     expect(screen.getByText('나의 기록')).toBeTruthy();
     expect(window.location.hash).toContain('/play');
   });
