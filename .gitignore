@@ -266,6 +266,11 @@ frontend/react/dist/
 # Jenkins 데이터
 infra/jenkins_home/
 
+# docker-compose 호스트 볼륨 (영속 데이터)
+infra/mysql_data/
+infra/videos/
+infra/ai_recordings/
+
 # Gradle 빌드 캐시 및 결과물
 backend/.gradle/
 backend/build/
