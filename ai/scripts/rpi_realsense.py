@@ -7,10 +7,12 @@
     - depth_3d 도 함께 송신 (LZ4 압축, FramePacker 와 동일 포맷)
     - RGB-Depth 를 SDK 의 align 필터로 픽셀단위 동기화
 
-채널 매핑 (사용자 목표 "Cam1=D435, Cam2=웹캠" 반영):
-    - payload["color_2d"]  ← D435 RGB        → 브라우저 Cam1
-    - payload["color_3d"]  ← 일반 USB 웹캠   → 브라우저 Cam2
+채널 매핑 (고정):
+    - payload["color_2d"]  ← 일반 USB 웹캠   → 브라우저 Cam1   (★ 녹화 대상)
+    - payload["color_3d"]  ← D435 RGB        → 브라우저 Cam2
     - payload["depth_3d"]  ← D435 Depth (LZ4 압축, uint16 mm)
+    프론트는 추후 클릭 이벤트로 Cam1/Cam2 표시 위치를 swap 할 수 있으나
+    채널 의미(2d=웹캠, 3d=D435) 자체는 고정. 녹화는 항상 웹캠(color_2d).
 
 의존성 (RPi):
     pip install opencv-python-headless msgpack websockets numpy lz4
@@ -133,9 +135,9 @@ def _pack(d435_color: Optional[np.ndarray],
           jpeg_q: int) -> Optional[bytes]:
     payload = {
         "timestamp": time.time_ns(),
-        # 사용자 매핑: D435 → Cam1 (color_2d), 일반 웹캠 → Cam2 (color_3d)
-        "color_2d": _encode_jpeg(d435_color, jpeg_q),
-        "color_3d": _encode_jpeg(webcam_color, jpeg_q),
+        # 고정 매핑: 웹캠 → Cam1 (color_2d, 녹화 대상), D435 → Cam2 (color_3d)
+        "color_2d": _encode_jpeg(webcam_color, jpeg_q),
+        "color_3d": _encode_jpeg(d435_color, jpeg_q),
         "depth_3d": b"",
         "depth_3d_shape": (),
     }

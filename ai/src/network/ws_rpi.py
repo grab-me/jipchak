@@ -52,10 +52,10 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
                 if current_session is not None:
                     frame = FrameUnpacker.unpack(payload)
                     if frame is not None:
-                        # 영상은 2D 웹캠을 우선, 없으면 3D color
-                        color = frame.color_2d if frame.color_2d is not None else frame.color_3d
+                        # 녹화 대상은 일반 웹캠(color_2d) 만. D435(color_3d) 는 시각화용이라 녹화 X.
+                        # color_2d 가 없으면 그 프레임은 녹화 스킵 (depth/판정 컨텍스트는 갱신).
                         await session_manager.on_frame(
-                            current_session, color, frame.depth_3d
+                            current_session, frame.color_2d, frame.depth_3d
                         )
 
         except WebSocketDisconnect:
