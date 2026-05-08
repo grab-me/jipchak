@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from src.config import APP_HOST, APP_PORT
+from src.config import APP_HOST, APP_PORT, GRCONVNET_CHECKPOINT, GRASP_DEVICE
 from src.inference.judge import CatchJudge
 from src.inference.grasp_service import GraspService
 from src.network import ws_browser, ws_rpi
@@ -16,7 +16,10 @@ relay_hub = RelayHub()
 recorder = VideoRecorder()
 judge = CatchJudge()
 spring = SpringClient()
-grasp_service = GraspService()
+grasp_service = GraspService(
+    checkpoint_path=GRCONVNET_CHECKPOINT,
+    device=GRASP_DEVICE,
+)
 session_manager = SessionManager(
     recorder=recorder, judge=judge, spring=spring, grasp_service=grasp_service,
 )
