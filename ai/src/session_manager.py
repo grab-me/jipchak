@@ -14,6 +14,7 @@ from .recorder.video_recorder import VideoRecorder
 class GameSession:
     """게임 한 판의 컨텍스트"""
     session_id: str
+    first_depth_frame: Optional[np.ndarray] = None
     last_color_frame: Optional[np.ndarray] = None
     last_depth_frame: Optional[np.ndarray] = None
     frame_count: int = 0
@@ -88,6 +89,8 @@ class SessionManager:
             self._recorder.write(session_id, color_frame)
 
         if depth_frame is not None:
+            if session.first_depth_frame is None:
+                session.first_depth_frame = depth_frame.copy()
             session.last_depth_frame = depth_frame
 
     async def infer_grasp(self, session_id: str) -> Optional[dict]:
@@ -131,6 +134,7 @@ class SessionManager:
         result = self._judge.judge(
             color_frame=session.last_color_frame,
             depth_frame=session.last_depth_frame,
+            first_depth_frame=session.first_depth_frame,
         )
         print(
             f"[SessionManager] session={session_id} frames={session.frame_count} "
