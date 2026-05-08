@@ -54,94 +54,30 @@ class GraspGroupAdapter(BaseGraspAdapter):
 
 
 @AdapterFactory.register("grconvnet")
-class RectGraspAdapter(BaseGraspAdapter):
+class Grasp3DoFAdapter(BaseGraspAdapter):
     """
-    Rectangle Grasp 계열 (robotic-grasping-cornell / GR-ConvNet 변형) 어댑터.
+    GR-ConvNet Grasp3DoF 리스트 → GraspCandidate 변환 어댑터.
 
-    좌표계:
-        center_x, center_y: 이미지 픽셀 좌표 (px)
-        center_z          : depth 맵 값 (미터). depth 없으면 0.0
-        angle             : 라디안 (rad). GR-ConvNet의 각도 bin 인덱스를 변환.
-
-    raw_output 포맷:
-        GR-ConvNet (robotic-grasping-cornell) 기준:
-            rect_pred : np.ndarray [4]  — [x1, y1, x2, y2] (픽셀 좌표)
-            cls_score : np.ndarray [20] — 각도 bin별 점수 (logits 또는 softmax)
-
-        adapt()에 전달할 때는 다음과 같이 딕셔너리로 감싸서 전달:
-            raw_output = {
-                'rect_pred': rect_pred,   # shape [4]
-                'cls_score': cls_score,   # shape [20]
-                'depth'    : depth_map,   # shape [H, W], float32 m (없으면 None)
-            }
-
-    변환 로직:
-        - center = (rect_pred[0:2] + rect_pred[2:4]) / 2  (픽셀)
-        - width   = rect_pred 대각선 길이 / 2
-        - angle   = argmax(cls_score) 번째 bin → 라디안 변환
-                    GR-ConvNet은 [0°, 180°] 를 20등분 → bin_i → (bin_i / 20) * π
-        - score   = softmax(cls_score)[argmax]  (0~1 범위로 정규화)
-        - center_z= depth_map[center_y, center_x] (있으면)
+    raw_output: list[Grasp3DoF]  (from GRConvNetWrapper.predict / GraspInfer.predict)
+        각 원소: x (px), y (px), z (m or None), score (0~1)
     """
-
-    # GR-ConvNet 기본 각도 bin 개수 (network.py: n_classes = 20)
-    N_ANGLE_BINS: int = 20
 
     def adapt(self, raw_output: Any) -> List[GraspCandidate]:
-        """
-        Parameters
-        ----------
-        raw_output : dict
-            {
-                'rect_pred': np.ndarray [4]    — [x1, y1, x2, y2] (픽셀)
-                'cls_score': np.ndarray [20]   — 각도 bin 점수
-                'depth'    : np.ndarray [H,W] | None
-            }
+        if not raw_output:
+            return []
 
-        Returns
-        -------
-        list[GraspCandidate]  — 단수 후보 1개 (GR-ConvNet은 이미지당 1개 예측)
-        """
-        rect  = raw_output['rect_pred']   # [x1, y1, x2, y2]
-        score = raw_output['cls_score']   # [20]
-        depth = raw_output.get('depth', None)
-
-        # 중심 좌표 (픽셀)
-        cx = (rect[0] + rect[2]) / 2.0
-        cy = (rect[1] + rect[3]) / 2.0
-
-        # 파지 폭: 대각선 절반 (픽셀 단위 — 실제 사용 시 카메라 내부 파라미터로 미터 변환 필요)
-        width_px = math.sqrt((rect[2] - rect[0]) ** 2 + (rect[3] - rect[1]) ** 2) / 2.0
-
-        # 각도 bin → 라디안
-        ind_max = int(np.argmax(score))
-        angle_rad = (ind_max / self.N_ANGLE_BINS) * math.pi - math.pi / 2
-
-        # 원본 모델 신뢰도 (softmax 후 최대 확률)
-        exp_s = np.exp(score - score.max())
-        softmax_score = float(exp_s[ind_max] / exp_s.sum())
-
-        # Z (depth 있으면 중심 픽셀 값, 없으면 0)
-        center_z = 0.0
-        if depth is not None:
-            ix, iy = int(round(cx)), int(round(cy))
-            h, w = depth.shape
-            if 0 <= iy < h and 0 <= ix < w:
-                center_z = float(depth[iy, ix])
-
-        return [GraspCandidate(
-            center_x=float(cx),
-            center_y=float(cy),
-            center_z=center_z,
-            width=width_px,
-            angle=angle_rad,
-            original_score=softmax_score,
-            raw={
-                'rect_pred' : rect.tolist() if hasattr(rect, 'tolist') else list(rect),
-                'cls_score' : score.tolist() if hasattr(score, 'tolist') else list(score),
-                'angle_bin' : ind_max,
-            }
-        )]
+        candidates = []
+        for g in raw_output:
+            candidates.append(GraspCandidate(
+                center_x=float(g.x),
+                center_y=float(g.y),
+                center_z=float(g.z) if g.z is not None else 0.0,
+                width=0.0,
+                angle=0.0,
+                original_score=float(g.score),
+                raw=getattr(g, 'metadata', {}),
+            ))
+        return candidates
 
 
 @AdapterFactory.register("anygrasp")

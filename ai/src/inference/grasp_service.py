@@ -1,7 +1,7 @@
 """
 파지점 추론 서비스.
-GraspPipeline (three-jaw-grasp) 을 감싸서
-RGB-D 프레임 → 최적 파지점 (x_mm, y_mm) 를 반환한다.
+GR-ConvNet (GraspInfer) 을 직접 사용하여
+RGB-D 프레임 → 최적 파지 확률 (confidence) 을 반환한다.
 """
 from dataclasses import dataclass
 from typing import Optional
@@ -29,74 +29,37 @@ class CameraIntrinsics:
 
 
 class GraspService:
-    """
-    프레임 → 파지점 추론 서비스.
-
-    사용법:
-        service = GraspService(checkpoint_path="path/to/model.pth")
-        result = service.infer(rgb, depth)
-        # result.x_mm, result.y_mm → Arduino 로 전달
-    """
 
     def __init__(
         self,
         checkpoint_path: Optional[str] = None,
-        evaluator_type: str = "chick",
         device: str = "cpu",
         intrinsics: Optional[CameraIntrinsics] = None,
-        detector_threshold: float = 0.35,
-        detector_target_labels: Optional[list] = None,
     ):
         self.intrinsics = intrinsics or CameraIntrinsics()
         self.device = device
-        self._pipeline = None
         self._checkpoint_path = checkpoint_path
-        self._evaluator_type = evaluator_type
-        self._detector_threshold = detector_threshold
-        self._detector_target_labels = detector_target_labels
+        self._infer = None
 
     def load(self) -> None:
-        """모델 로드. 서버 시작 시 한 번만 호출."""
-        from three_jaw_grasp.pipeline import GraspPipeline
-        from three_jaw_grasp.factory import ModelFactory, AdapterFactory, EvaluatorFactory
-        from three_jaw_grasp.detector import SSDLiteDetector
+        if self._checkpoint_path is None:
+            print("[GraspService] no checkpoint — dummy mode")
+            return
 
-        # GR-ConvNet 모델
-        import external_models.grconvnet.plugin  # noqa: F401 (register)
-        model = ModelFactory.create(
-            "grconvnet",
-            checkpoint_path=self._checkpoint_path,
+        from external_models.grconvnet.infer import GraspInfer
+        self._infer = GraspInfer(
+            checkpoint=self._checkpoint_path,
             device=self.device,
         )
+        print("[GraspService] loaded")
 
-        adapter = AdapterFactory.create("grconvnet")
-
-        # Evaluator (register decorator 트리거)
-        import three_jaw_grasp.evaluator_chick  # noqa: F401
-        evaluator = EvaluatorFactory.create(self._evaluator_type)
-
-        detector = SSDLiteDetector(
-            score_threshold=self._detector_threshold,
-            target_labels=self._detector_target_labels,
-            device=self.device,
-        )
-
-        self._pipeline = GraspPipeline(
-            model=model,
-            adapter=adapter,
-            evaluator=evaluator,
-            detector=detector,
-        )
-        print("[GraspService] pipeline loaded")
+    @property
+    def is_ready(self) -> bool:
+        return self._infer is not None
 
     def pixel_to_mm(
         self, px_x: float, px_y: float, depth_mm: float
     ) -> tuple:
-        """
-        pixel 좌표 + depth(mm) → 카메라 좌표계 mm.
-        X_mm = (px_x - cx) * depth_mm / fx
-        Y_mm = (px_y - cy) * depth_mm / fy
-        """
         intr = self.intrinsics
         x_mm = (px_x - intr.cx) * depth_mm / intr.fx
         y_mm = (px_y - intr.cy) * depth_mm / intr.fy
@@ -108,31 +71,40 @@ class GraspService:
 
         Parameters
         ----------
-        rgb : np.ndarray (H, W, 3) uint8 BGR
+        rgb : np.ndarray (H, W, 3) uint8
         depth : np.ndarray (H, W) uint16 mm 단위
 
         Returns
         -------
-        GraspResult or None (추론 실패 시)
+        GraspResult or None
         """
-        if self._pipeline is None:
-            raise RuntimeError("load()를 먼저 호출하세요")
-
-        depth_m = depth.astype(np.float32) / 1000.0 if depth is not None else None
-
-        try:
-            best = self._pipeline.predict_best(rgb, depth_m)
-        except ValueError:
+        if self._infer is None:
             return None
 
-        px_x, px_y = best.center_x, best.center_y
+        depth_m = depth.astype(np.float32) / 1000.0 if depth is not None else None
+        if depth_m is None:
+            return None
+
+        try:
+            candidates = self._infer.predict(
+                rgb, depth_m,
+                top_k=1,
+                peak_threshold=0.2,
+            )
+        except (ValueError, Exception):
+            return None
+
+        if not candidates:
+            return None
+
+        best = candidates[0]
+        px_x, px_y = best.x, best.y
         ix, iy = int(round(px_x)), int(round(px_y))
 
         depth_at_center_mm = 0.0
-        if depth is not None:
-            h, w = depth.shape
-            if 0 <= iy < h and 0 <= ix < w:
-                depth_at_center_mm = float(depth[iy, ix])
+        h, w = depth.shape
+        if 0 <= iy < h and 0 <= ix < w:
+            depth_at_center_mm = float(depth[iy, ix])
 
         if depth_at_center_mm > 0:
             x_mm, y_mm = self.pixel_to_mm(px_x, px_y, depth_at_center_mm)
@@ -143,8 +115,8 @@ class GraspService:
             x_mm=x_mm,
             y_mm=y_mm,
             z_mm=depth_at_center_mm,
-            confidence=best.original_score,
+            confidence=best.score,
             center_px=(px_x, px_y),
-            width_px=best.width,
-            angle_rad=best.angle,
+            width_px=0.0,
+            angle_rad=0.0,
         )

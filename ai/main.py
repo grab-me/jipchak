@@ -43,5 +43,5 @@ async def health():
     return {
         "status": "ok",
         "subscribers": relay_hub.subscriber_count,
-        "grasp_loaded": grasp_service._pipeline is not None,
+        "grasp_loaded": grasp_service.is_ready,
     }
