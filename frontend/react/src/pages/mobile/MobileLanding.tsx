@@ -3,23 +3,25 @@ import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import byeByeImg from '../../assets/images/bye_bye.png';
 
-// --- 가상(Mock) 데이터 정의 ---
+import { sessionService } from '../../services/sessionService';
+
+// --- 세션 설정 상수 ---
 const MOCK_SESSION_TIME_MINUTES = 30; // 30분 유효기간
-const MOCK_VIDEOS = [
-  { id: 'vid1', url: 'https://www.w3schools.com/html/mov_bbb.mp4', thumb: 'https://www.w3schools.com/html/pic_trulli.jpg' },
-  { id: 'vid2', url: 'https://www.w3schools.com/html/mov_bbb.mp4', thumb: 'https://www.w3schools.com/html/pic_trulli.jpg' },
-  { id: 'vid3', url: 'https://www.w3schools.com/html/mov_bbb.mp4', thumb: 'https://www.w3schools.com/html/pic_trulli.jpg' },
-  { id: 'vid4', url: 'https://www.w3schools.com/html/mov_bbb.mp4', thumb: 'https://www.w3schools.com/html/pic_trulli.jpg' },
-  { id: 'vid5', url: 'https://www.w3schools.com/html/mov_bbb.mp4', thumb: 'https://www.w3schools.com/html/pic_trulli.jpg' },
-];
 
 const MobileLanding = () => {
   const { sessionId } = useParams();
 
-  // 백엔드 연동 전 미사용 변수(sessionId) 경고 방지 및 미래 API 호출 위치 확보
+  // 비디오 데이터 관리
+  const [videos, setVideos] = useState<any[]>([]);
+
   useEffect(() => {
     if (sessionId) {
-      console.log(`[MobileLanding] Session ID ${sessionId} 에 대한 데이터를 로드할 준비가 되었습니다.`);
+      console.log(`[MobileLanding] Session ID ${sessionId} 데이터 로드 시작.`);
+      sessionService.getSessionVideos(sessionId)
+        .then(data => {
+          setVideos(data);
+        })
+        .catch(err => console.error("데이터 로드 실패:", err));
     }
   }, [sessionId]);
 
@@ -185,9 +187,8 @@ const MobileLanding = () => {
         {/* 영상 리스트 (스크롤 영역) */}
         <div className="flex-1 overflow-y-auto px-[5%] pb-[5%] flex flex-col gap-[4%] snap-y snap-mandatory">
 
-          {MOCK_VIDEOS.map((video, index) => {
-            // 백엔드 데이터(isSuccess)가 있다고 가정하고 교대로(짝/홀수) 테스트
-            const isSuccess = index % 2 === 0;
+          {videos.map((video, index) => {
+            const isSuccess = video.isSuccess;
 
             return (
               <motion.div

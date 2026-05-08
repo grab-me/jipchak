@@ -28,10 +28,10 @@ class GameLogServiceTest {
                 "dummy video content".getBytes());
 
         // 2. When: 서비스를 실행해서 로그를 저장
-        Long savedId = gameLogService.saveGameLog(true, mockVideo);
+        Long response = gameLogService.saveGameLog("test-session", true, mockVideo);
 
         // 3. Then: 결과가 완벽한지 검증!
-        assertThat(savedId).isNotNull();
-        System.out.println("✅ 테스트 성공! 생성된 로그 ID: " + savedId);
+        assertThat(response).isNotNull();
+        System.out.println("✅ 테스트 성공! 생성된 로그 ID: " + response);
     }
 }
