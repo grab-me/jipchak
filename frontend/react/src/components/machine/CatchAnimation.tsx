@@ -154,7 +154,7 @@ const CatchAnimation = () => {
             >
               실패
             </motion.div>
-            <span className="text-gray-400 font-bold text-[clamp(14px,2.5vw,22px)] mt-6 tracking-widest select-none">
+            <span className="text-gray-400 font-bold text-[clamp(14px,2.5vw,22px)] mt-6 tracking-widest select-none break-keep">
               다음 기회에...
             </span>
           </motion.div>

@@ -27,7 +27,7 @@ const RecordList = () => {
       >
         {records.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
-            <span className="text-gray-400/60 font-medium text-[clamp(14px,1.8vw,20px)] text-center select-none">
+            <span className="text-gray-400/60 font-medium text-[clamp(14px,1.8vw,20px)] text-center select-none break-keep">
               아직 기록이 없어요!
             </span>
           </div>
@@ -75,7 +75,7 @@ const RecordList = () => {
                     success={success} 
                   />
 
-                  <span className="text-[clamp(12px,1.4vw,17px)] font-medium text-gray-800 break-words leading-tight select-none text-center">
+                  <span className="text-[clamp(12px,1.4vw,17px)] font-medium text-gray-800 break-words leading-tight select-none text-center break-keep">
                     {getDisplayName(record.filename)}
                   </span>
                 </div>

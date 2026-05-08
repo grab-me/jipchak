@@ -54,14 +54,21 @@ const CameraView = ({ label }: CameraViewProps) => {
       setCatching(false);
       
       const isWin = records.length % 2 === 0;
-      const resultValue = isWin ? '1' : '0';
+      const now = new Date();
+      const yy = now.getFullYear().toString().slice(-2);
+      const mm = (now.getMonth() + 1).toString().padStart(2, '0');
+      const dd = now.getDate().toString().padStart(2, '0');
+      const hh = now.getHours().toString().padStart(2, '0');
+      const min = now.getMinutes().toString().padStart(2, '0');
+      const ss = now.getSeconds().toString().padStart(2, '0');
+      const formattedDate = `${yy}${mm}${dd}_${hh}${min}${ss}`;
       
       setLastResult(isWin ? 'win' : 'lose');
 
-      // 기록 추가 (isSuccess 필드 명시적 전달)
+      // 기록 추가 (isSuccess 필드 명시적 전달, 파일명 형식: yymmdd_hhmmss.mp4)
       addRecord({
         id: Date.now().toString(),
-        filename: `test_${Date.now()}_${resultValue}.mp4`,
+        filename: `${formattedDate}.mp4`,
         isSuccess: isWin,
       });
 
@@ -109,7 +116,7 @@ const CameraView = ({ label }: CameraViewProps) => {
       {label === 'Cam1' && (
         <button
           onClick={handleTestRecord}
-          className="px-4 py-2 bg-red-600/80 text-white rounded-lg font-bold text-[clamp(12px,1vw,16px)] shadow-lg active:scale-95 transition-all z-overlay absolute cursor-pointer"
+          className="px-4 py-2 bg-red-600/80 text-white rounded-lg font-bold text-[clamp(12px,1vw,16px)] shadow-lg active:scale-95 transition-all z-overlay absolute cursor-pointer break-keep text-center"
         >
           로직 테스트<br/>(기록 추가)
         </button>
