@@ -8,7 +8,7 @@ interface CameraViewProps {
 }
 
 const CameraView = ({ label }: CameraViewProps) => {
-  const { addRecord, setCatching, setLastResult, isCatching, records } = useToolStore();
+  const { addRecord, setCatching, setLastResult, isCatching, records, setAskingNextStep } = useToolStore();
   const timer1Ref = useRef<NodeJS.Timeout | null>(null);
   const timer2Ref = useRef<NodeJS.Timeout | null>(null);
 
@@ -68,6 +68,11 @@ const CameraView = ({ label }: CameraViewProps) => {
       // 3. 3초 후 결과 화면 닫기
       timer2Ref.current = setTimeout(() => {
         setLastResult(null);
+        
+        // 5판을 다 채우지 않았다면 다음 동작 확인 모달 표시
+        if (records.length < 4) {
+          setAskingNextStep(true);
+        }
       }, 3000);
     }, 5000);
   };
@@ -104,7 +109,7 @@ const CameraView = ({ label }: CameraViewProps) => {
       {label === 'Cam1' && (
         <button
           onClick={handleTestRecord}
-          className="px-4 py-2 bg-red-600/80 text-white rounded-lg font-bold text-[clamp(12px,1vw,16px)] shadow-lg active:scale-95 transition-all z-overlay absolute"
+          className="px-4 py-2 bg-red-600/80 text-white rounded-lg font-bold text-[clamp(12px,1vw,16px)] shadow-lg active:scale-95 transition-all z-overlay absolute cursor-pointer"
         >
           로직 테스트<br/>(기록 추가)
         </button>

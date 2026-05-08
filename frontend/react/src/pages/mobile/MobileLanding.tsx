@@ -99,7 +99,10 @@ const MobileLanding = () => {
   };
 
   return (
-    <div className="w-full h-[100dvh] bg-crayon-bg text-crayon-line font-crayon overflow-hidden relative flex flex-col items-center">
+    <div 
+      className="w-full h-[100dvh] bg-crayon-bg text-crayon-line font-crayon overflow-hidden relative flex flex-col items-center"
+      onContextMenu={(e) => e.preventDefault()}
+    >
 
       {/* 1. 만료 안내 모달 (isExpired가 true일 때 전체 화면 덮음) */}
       <AnimatePresence>
@@ -109,7 +112,7 @@ const MobileLanding = () => {
             animate={{ opacity: 1 }}
             className="absolute inset-0 bg-black/80 z-modal flex flex-col items-center justify-center p-[5%]"
           >
-            <div className="bg-white p-[8%] rounded-3xl flex flex-col items-center text-center shadow-2xl max-w-[400px] w-full border-[4px] border-crayon-line">
+            <div className="bg-white p-[clamp(20px,6%,32px)] rounded-3xl flex flex-col items-center text-center shadow-2xl max-w-[400px] w-full border-[4px] border-crayon-line">
 
               {/* 모든 환경에서 줄바꿈 없이 정돈된 구조 (노트북 겹침/줄바꿈 방지) */}
               <div className="w-full mb-8 flex items-center justify-center gap-2">
@@ -132,9 +135,9 @@ const MobileLanding = () => {
                 />
               </div>
 
-              <h2 className="text-[clamp(20px,5vw,26px)] font-bold mb-3 text-crayon-line">세션이 만료되었습니다</h2>
-              <p className="text-[clamp(14px,3.5vw,16px)] text-gray-500 leading-relaxed mb-4">
-                보안을 위해 30분이 지난 영상은<br />서버에서 영구적으로 삭제되었습니다.
+              <h2 className="text-[clamp(20px,5vw,26px)] font-bold mb-3 text-crayon-line break-keep text-center">세션이 만료되었습니다</h2>
+              <p className="text-[clamp(14px,3.5vw,16px)] text-gray-500 leading-relaxed mb-4 break-keep text-center">
+                보안을 위해 30분이 지난 영상은 서버에서 영구적으로 삭제되었습니다.
               </p>
 
               {/* 버튼은 연결할 곳이 없으므로 삭제됨 */}
@@ -156,10 +159,10 @@ const MobileLanding = () => {
           >
             🎉
           </motion.div>
-          <h1 className="text-[clamp(24px,6vw,32px)] font-bold mb-1 tracking-wide text-center text-crayon-line">
+          <h1 className="text-[clamp(24px,6vw,32px)] font-bold mb-1 tracking-wide text-center text-crayon-line break-keep">
             CONGRATULATIONS!
           </h1>
-          <p className="text-[clamp(14px,3.5vw,18px)] text-gray-500 mb-4 text-center">
+          <p className="text-[clamp(14px,3.5vw,18px)] text-gray-500 mb-4 text-center break-keep">
             성공적인 플레이를 축하합니다!<br />영상을 기기에 저장해 보세요.
           </p>
 
@@ -212,7 +215,7 @@ const MobileLanding = () => {
 
                   {/* 상단: 성공/실패 안내 문구 */}
                   <div className={`w-full text-center py-2.5 rounded-xl mb-3 border-2 ${isSuccess ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
-                    <p className={`text-[clamp(14px,3.8vw,17px)] font-bold ${isSuccess ? 'text-blue-600' : 'text-red-500'}`}>
+                    <p className={`text-[clamp(14px,3.8vw,17px)] font-bold break-keep ${isSuccess ? 'text-blue-600' : 'text-red-500'}`}>
                       이 영상은 뽑기에 <span className="underline underline-offset-4 decoration-[3px]">{isSuccess ? '성공' : '실패'}</span>한 영상이에요!
                     </p>
                   </div>
@@ -229,7 +232,7 @@ const MobileLanding = () => {
                       onClick={() => handleDownload(video.url, index)}
                       className="px-5 py-2.5 bg-[#FFD100] text-crayon-line border-[3px] border-crayon-line rounded-2xl font-bold shadow-[3px_3px_0px_0px_rgba(31,41,55,1)] active:shadow-none active:translate-x-[1.5px] active:translate-y-[1.5px] transition-all flex items-center justify-center min-w-[110px] shrink-0"
                     >
-                      <span className="text-[clamp(15px,4vw,18px)] tracking-tight">저장하기</span>
+                      <span className="text-[clamp(15px,4vw,18px)] tracking-tight break-keep">저장하기</span>
                     </button>
                   </div>
                 </div>
