@@ -23,12 +23,12 @@ const QRDisplay = () => {
   }, [tickQrTimer]);
 
   return (
-    <CrayonWrapper className="justify-around items-center relative py-1">
+    <CrayonWrapper showCharacter={false} className="justify-around items-center relative py-1">
       <div className="flex flex-col items-center w-full">
-        <h3 className="text-[clamp(18px,2.4vw,24px)] font-bold text-gray-800 text-center leading-tight">
+        <h3 className="text-[clamp(20px,2.8vw,26px)] font-bold text-gray-800 text-center leading-tight break-keep">
           QR 스캔하여 영상 받기
         </h3>
-        <p className="text-[clamp(11px,1.2vw,14px)] text-gray-500 font-medium text-center mt-1">
+        <p className="text-[clamp(13px,1.6vw,16px)] text-gray-500 font-medium text-center mt-1 break-keep w-full">
           <span className="text-red-500 font-black">{qrTimer}</span>초 후 자동으로 삭제됩니다.
         </p>
       </div>
@@ -47,7 +47,7 @@ const QRDisplay = () => {
       {/* 완료 버튼: 세로 높이 최소화 */}
       <button 
         onClick={resetSession}
-        className="px-[clamp(16px,2vw,32px)] py-[clamp(6px,0.8vw,12px)] bg-gray-800 text-white rounded-[255px_15px_225px_15px/15px_225px_15px_255px] font-bold shadow-lg border-[clamp(1px,0.2vw,2px)] border-white active:scale-95 transition-transform text-[clamp(12px,1.4vw,16px)]"
+        className="px-[clamp(20px,2.4vw,36px)] py-[clamp(8px,1vw,14px)] bg-gray-800 text-white rounded-[255px_15px_225px_15px/15px_225px_15px_255px] font-bold shadow-lg border-[clamp(1px,0.2vw,2px)] border-white active:scale-95 transition-transform text-[clamp(14px,1.8vw,18px)]"
       >
         처음으로 돌아가기
       </button>
