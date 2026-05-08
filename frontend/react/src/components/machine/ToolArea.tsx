@@ -3,7 +3,6 @@ import RecordList from './RecordList';
 import QRConsent from './QRConsent';
 import QRDisplay from './QRDisplay';
 import CatchAnimation from './CatchAnimation';
-import CrayonWrapper from '../common/CrayonWrapper';
 
 /**
  * ToolArea 컴포넌트
@@ -20,14 +19,6 @@ const ToolArea = () => {
         return <QRConsent />;
       case 'QR_DISPLAY':
         return <QRDisplay />;
-      case 'CHEERING':
-        return (
-          <CrayonWrapper showCharacter={false} className="justify-center">
-            <span className="text-gray-500 font-bold text-[clamp(18px,2vw,28px)]">
-              인형뽑기 진행 중... 화이팅! 🧸
-            </span>
-          </CrayonWrapper>
-        );
       default:
         return <RecordList />;
     }
