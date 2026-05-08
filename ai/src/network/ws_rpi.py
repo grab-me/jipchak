@@ -1,4 +1,5 @@
 import json
+import time
 from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -26,6 +27,8 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
         print(f"[ws_rpi] connected from {ws.client}")
 
         current_session: Optional[str] = None
+        last_infer_time: float = 0.0
+        infer_interval: float = 1.0  # 초당 1회 추론
 
         try:
             while True:
@@ -52,16 +55,27 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
                 if current_session is not None:
                     frame = FrameUnpacker.unpack(payload)
                     if frame is not None:
-                        # 녹화 대상은 일반 웹캠(color_2d) 만. D435(color_3d) 는 시각화용이라 녹화 X.
-                        # color_2d 가 없으면 그 프레임은 녹화 스킵 (depth/판정 컨텍스트는 갱신).
                         await session_manager.on_frame(
                             current_session, frame.color_2d, frame.depth_3d
                         )
 
+                # ③ 주기적 파지 확률 추론 → 브라우저로 전송
+                now = time.monotonic()
+                if current_session and now - last_infer_time >= infer_interval:
+                    last_infer_time = now
+                    grasp = await session_manager.infer_grasp(current_session)
+                    if grasp:
+                        score_msg = json.dumps({
+                            "event": "GRASP_SCORE",
+                            "confidence": grasp["confidence"],
+                            "center_px": grasp["center_px"],
+                            "width_px": grasp["width_px"],
+                        }).encode()
+                        await relay_hub.broadcast_text(score_msg)
+
         except WebSocketDisconnect:
             pass
         finally:
-            # 연결이 끊어진 시점에 세션이 남아있으면 정리
             if current_session is not None:
                 await session_manager.stop(current_session)
             print(f"[ws_rpi] disconnected")
@@ -91,14 +105,6 @@ async def _apply_control(
     if event == "STOP" and session_id:
         await session_manager.stop(session_id)
         return None
-
-    if event == "INFER" and session_id:
-        grasp = await session_manager.infer_grasp(session_id)
-        if grasp:
-            print(f"[ws_rpi] grasp result: {grasp}")
-        else:
-            print(f"[ws_rpi] grasp inference failed for {session_id}")
-        return current_session
 
     print(f"[ws_rpi] unknown control: {data}")
     return current_session

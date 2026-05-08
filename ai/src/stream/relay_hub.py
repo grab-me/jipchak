@@ -48,10 +48,34 @@ class RelayHub:
                     self._clients.discard(ws)
             print(f"[RelayHub] cleaned {len(dead)} dead client(s)")
 
+    async def broadcast_text(self, data: bytes) -> None:
+        """텍스트(JSON) 메시지를 모든 브라우저 구독자에게 전송."""
+        if not self._clients:
+            return
+        async with self._lock:
+            targets = list(self._clients)
+        results = await asyncio.gather(
+            *[self._safe_send_text(ws, data) for ws in targets],
+            return_exceptions=False,
+        )
+        dead = [ws for ws, ok in zip(targets, results) if not ok]
+        if dead:
+            async with self._lock:
+                for ws in dead:
+                    self._clients.discard(ws)
+
     @staticmethod
     async def _safe_send(ws: WebSocket, payload: bytes) -> bool:
         try:
             await ws.send_bytes(payload)
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
+    async def _safe_send_text(ws: WebSocket, data: bytes) -> bool:
+        try:
+            await ws.send_text(data.decode())
             return True
         except Exception:
             return False
