@@ -65,14 +65,14 @@ const MobileLanding = () => {
 
   // 파일명을 YYYYMMDDHHmmss 포맷으로 변환
   const formatFilename = (baseTime: number, index: number) => {
-    const date = new Date(baseTime + index * 1000); // 각 영상마다 미세하게 시간 차이 부여
-    const y = date.getFullYear();
-    const m = (date.getMonth() + 1).toString().padStart(2, '0');
-    const d = date.getDate().toString().padStart(2, '0');
-    const h = date.getHours().toString().padStart(2, '0');
+    const date = new Date(baseTime + index * 1000);
+    const yy = date.getFullYear().toString().slice(-2);
+    const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+    const dd = date.getDate().toString().padStart(2, '0');
+    const hh = date.getHours().toString().padStart(2, '0');
     const min = date.getMinutes().toString().padStart(2, '0');
-    const s = date.getSeconds().toString().padStart(2, '0');
-    return `${y}${m}${d}${h}${min}${s}`;
+    const ss = date.getSeconds().toString().padStart(2, '0');
+    return `${yy}${mm}${dd}_${hh}${min}${ss}`;
   };
 
   // 영상 다운로드 핸들러
@@ -168,7 +168,7 @@ const MobileLanding = () => {
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-red-50 text-red-500 px-4 py-2 rounded-full border border-red-100 shadow-sm">
-              <span className="text-sm font-bold">만료까지</span>
+              <span className="text-sm font-bold break-keep">만료까지</span>
               <span className="text-lg font-bold tracking-widest">{formatTime(timeLeft)}</span>
             </div>
 

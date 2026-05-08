@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { sessionService } from '@/services/sessionService';
 
-export type ToolAreaView = 'RECORDS' | 'CHEERING' | 'QR_CONSENT' | 'QR_DISPLAY';
+export type ToolAreaView = 'RECORDS' | 'QR_CONSENT' | 'QR_DISPLAY';
 
 export interface RecordItem {
   id: string;
