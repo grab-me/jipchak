@@ -74,7 +74,7 @@ services:
       - .env
     # 영상 영속화 (JIPCHAK_VIDEO_BASE_DIR=/data/videos 매핑, QR 다운로드용)
     volumes:
-      - ./videos:/data/videos
+      - ${HOST_VIDEO_DIR}:/data/videos
     depends_on:
       db-jipchak:
         condition: service_healthy

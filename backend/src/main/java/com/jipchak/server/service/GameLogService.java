@@ -2,6 +2,8 @@ package com.jipchak.server.service;
 
 import com.jipchak.server.dto.GameLogResponse;
 import com.jipchak.server.entity.GameLog;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jipchak.server.dto.SessionVideoDto;
 import com.jipchak.server.repository.GameLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,15 +17,17 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 /**
  * 게임 로그 저장 + 영상 파일 관리.
  *
  * 호출 흐름:
- *   1. AI 서버가 멀티파트(sessionId, isSuccess, video) 로 호출
- *   2. 디스크에 영상 저장 → DB에 메타 저장
- *   3. 보관 한도 초과 시 가장 오래된 영상부터 삭제
- *   4. 응답 DTO(GameLogResponse) 반환
+ * 1. AI 서버가 멀티파트(sessionId, isSuccess, video) 로 호출
+ * 2. 디스크에 영상 저장 → DB에 메타 저장
+ * 3. 보관 한도 초과 시 가장 오래된 영상부터 삭제
+ * 4. 응답 DTO(GameLogResponse) 반환
  */
 @Slf4j
 @Service
@@ -32,6 +36,8 @@ import java.util.UUID;
 public class GameLogService {
 
     private final GameLogRepository gameLogRepository;
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
     /** 보관 영상 최대 개수. application.yml 의 jipchak.video.max-count 와 매핑. */
     @Value("${jipchak.video.max-count:50}")
@@ -41,7 +47,7 @@ public class GameLogService {
     @Value("${jipchak.video.base-dir:videos}")
     private String videoBaseDir;
 
-    public GameLogResponse saveGameLog(String sessionId, Boolean isSuccess, MultipartFile video) throws IOException {
+    public Long saveGameLog(String sessionId, Boolean isSuccess, MultipartFile video) throws IOException {
         // 1. 영상 저장 폴더 보장
         String uploadPath = resolveUploadPath();
         File folder = new File(uploadPath);
@@ -60,18 +66,37 @@ public class GameLogService {
         video.transferTo(new File(fullPath));
 
         // 5. DB 메타 저장
-        GameLog log = GameLog.builder()
+        GameLog gameLogEntity = GameLog.builder()
                 .sessionId(sessionId)
                 .isSuccess(isSuccess)
                 .videoPath(fullPath)
                 // QR 다운로드용 short key (8자리)
                 .qrCodeKey(UUID.randomUUID().toString().substring(0, 8))
                 .build();
-        GameLog saved = gameLogRepository.save(log);
+        GameLog saved = gameLogRepository.save(gameLogEntity);
 
         // 6. 응답 DTO 빌드 (Nginx /videos/<fileName> 로 외부 접근)
         String videoUrl = "/videos/" + fileName;
-        return GameLogResponse.from(saved, videoUrl);
+
+        // 7. Redis 세션 정보 업데이트 (TTL 10분)
+        if (sessionId != null && !sessionId.isBlank()) {
+            try {
+                SessionVideoDto dto = SessionVideoDto.builder()
+                        .id(saved.getId().toString())
+                        .url(videoUrl)
+                        .thumb("/logo.png") // 클라이언트가 처리할 수 있게 기본 로고 경로 지정
+                        .isSuccess(isSuccess)
+                        .build();
+                String jsonString = objectMapper.writeValueAsString(dto);
+                String redisKey = "session:" + sessionId;
+                redisTemplate.opsForList().rightPush(redisKey, jsonString);
+                redisTemplate.expire(redisKey, 10, TimeUnit.MINUTES);
+            } catch (Exception e) {
+                log.error("Redis 세션 정보 업데이트 실패: {}", e.getMessage());
+            }
+        }
+
+        return saved.getId();
     }
 
     /**
