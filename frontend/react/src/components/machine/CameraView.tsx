@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useToolStore } from '@/store/toolStore';
 import { useCameraStream } from '@/hooks/useCameraStream';
 import Thermometer from './Thermometer';
@@ -15,7 +15,7 @@ const CameraView = ({ label }: CameraViewProps) => {
   // Cam1 = 일반 웹캠(color_2d), Cam2 = D435 RGB(color_3d).
   // AI 서버가 송출하는 WebSocket 스트림에서 채널별로 가장 최근 프레임을 받아 표시.
   const channel = label === 'Cam1' ? '2d' : '3d';
-  const { frameUrl, connected } = useCameraStream(channel);
+  const { frameUrl, connected, graspScore } = useCameraStream(channel);
 
   // 언마운트 시 타이머 정리
   useEffect(() => {
@@ -24,23 +24,6 @@ const CameraView = ({ label }: CameraViewProps) => {
       if (timer2Ref.current) clearTimeout(timer2Ref.current);
     };
   }, []);
-
-  const [testProb, setTestProb] = useState(0);
-
-  // 테스트용 연속 확률 생성 로직 (사인파 형태)
-  useEffect(() => {
-    if (label !== 'Cam1') return;
-    
-    let startTime = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      // 4초 주기: 0 -> 100 -> 0으로 부드럽게 왕복
-      const wave = (Math.sin((elapsed / 2000) * Math.PI) + 1) / 2; 
-      setTestProb(wave * 100);
-    }, 100); // 100ms마다 업데이트 (Thermometer 내부의 spring이 부드럽게 보간함)
-
-    return () => clearInterval(interval);
-  }, [label]);
 
   const handleTestRecord = () => {
     if (isCatching) return; // 이미 진행 중이면 중복 실행 방지
@@ -122,8 +105,8 @@ const CameraView = ({ label }: CameraViewProps) => {
         </button>
       )}
 
-      {/* 확률 표시 온도계 (Cam1 전용 테스트) */}
-      {label === 'Cam1' && <Thermometer probability={testProb} />}
+      {/* AI 파지 성공 확률 온도계 (Cam1 전용) */}
+      {label === 'Cam1' && <Thermometer probability={graspScore * 100} />}
     </div>
   );
 };

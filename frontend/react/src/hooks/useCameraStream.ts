@@ -26,6 +26,8 @@ export interface CameraStreamState {
     frameUrl: string | null;
     /** WebSocket 연결 상태. */
     connected: boolean;
+    /** AI 파지 성공 확률 (0.0 ~ 1.0). GRASP_SCORE 이벤트로 갱신. */
+    graspScore: number;
 }
 
 /**
@@ -44,6 +46,7 @@ function resolveWsUrl(): string {
 export function useCameraStream(channel: Channel): CameraStreamState {
     const [frameUrl, setFrameUrl] = useState<string | null>(null);
     const [connected, setConnected] = useState(false);
+    const [graspScore, setGraspScore] = useState(0);
 
     // ObjectURL 누수 방지용: 직전 URL 을 보관해두고 다음 프레임 도착 시 revoke
     const prevUrlRef = useRef<string | null>(null);
@@ -67,6 +70,17 @@ export function useCameraStream(channel: Channel): CameraStreamState {
             };
 
             ws.onmessage = (event) => {
+                // 텍스트 메시지: GRASP_SCORE JSON
+                if (typeof event.data === 'string') {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        if (msg.event === 'GRASP_SCORE' && typeof msg.confidence === 'number') {
+                            setGraspScore(msg.confidence);
+                        }
+                    } catch { /* ignore */ }
+                    return;
+                }
+
                 if (!(event.data instanceof ArrayBuffer)) return;
 
                 let payload: DecodedPayload;
@@ -120,5 +134,5 @@ export function useCameraStream(channel: Channel): CameraStreamState {
         };
     }, [channel]);
 
-    return { frameUrl, connected };
+    return { frameUrl, connected, graspScore };
 }

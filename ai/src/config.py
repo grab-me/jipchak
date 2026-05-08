@@ -16,5 +16,17 @@ RECORDING_DIR = os.getenv("RECORDING_DIR", "/data/recordings")
 VIDEO_FPS = int(os.getenv("VIDEO_FPS", "30"))
 VIDEO_CODEC = os.getenv("VIDEO_CODEC", "mp4v")
 
+# GR-ConvNet 체크포인트
+GRCONVNET_CHECKPOINT = os.getenv(
+    "GRCONVNET_CHECKPOINT",
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "trained-models",
+        "cornell-randsplit-rgbd-grconvnet3-drop1-ch16",
+        "epoch_30_iou_0.97",
+    ),
+)
+GRASP_DEVICE = os.getenv("GRASP_DEVICE", "cpu")
+
 # 로그
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

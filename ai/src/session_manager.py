@@ -5,6 +5,7 @@ from typing import Dict, Optional
 import numpy as np
 
 from .inference.judge import CatchJudge
+from .inference.grasp_service import GraspService
 from .network.spring_client import SpringClient
 from .recorder.video_recorder import VideoRecorder
 
@@ -13,6 +14,7 @@ from .recorder.video_recorder import VideoRecorder
 class GameSession:
     """게임 한 판의 컨텍스트"""
     session_id: str
+    first_depth_frame: Optional[np.ndarray] = None
     last_color_frame: Optional[np.ndarray] = None
     last_depth_frame: Optional[np.ndarray] = None
     frame_count: int = 0
@@ -35,10 +37,12 @@ class SessionManager:
         recorder: VideoRecorder,
         judge: CatchJudge,
         spring: SpringClient,
+        grasp_service: Optional["GraspService"] = None,
     ) -> None:
         self._recorder = recorder
         self._judge = judge
         self._spring = spring
+        self._grasp = grasp_service
         self._sessions: Dict[str, GameSession] = {}
         self._lock = asyncio.Lock()
 
@@ -85,7 +89,33 @@ class SessionManager:
             self._recorder.write(session_id, color_frame)
 
         if depth_frame is not None:
+            if session.first_depth_frame is None:
+                session.first_depth_frame = depth_frame.copy()
             session.last_depth_frame = depth_frame
+
+    async def infer_grasp(self, session_id: str) -> Optional[dict]:
+        """현재 세션의 마지막 프레임으로 파지점 추론."""
+        session = self._sessions.get(session_id)
+        if session is None or self._grasp is None:
+            return None
+        if session.last_color_frame is None:
+            return None
+
+        result = self._grasp.infer(session.last_color_frame, session.last_depth_frame)
+        if result is None:
+            return None
+
+        data = {
+            "x_mm": result.x_mm,
+            "y_mm": result.y_mm,
+            "z_mm": result.z_mm,
+            "confidence": result.confidence,
+            "center_px": list(result.center_px),
+            "width_px": result.width_px,
+            "angle_rad": result.angle_rad,
+        }
+        print(f"[SessionManager] grasp inferred: x={result.x_mm:.1f}mm y={result.y_mm:.1f}mm conf={result.confidence:.2f}")
+        return data
 
     async def stop(self, session_id: str) -> Optional[dict]:
         """녹화 종료 -> 판정 -> Spring 업로드. Spring 응답을 반환."""
@@ -104,6 +134,7 @@ class SessionManager:
         result = self._judge.judge(
             color_frame=session.last_color_frame,
             depth_frame=session.last_depth_frame,
+            first_depth_frame=session.first_depth_frame,
         )
         print(
             f"[SessionManager] session={session_id} frames={session.frame_count} "
