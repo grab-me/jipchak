@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from src.config import APP_HOST, APP_PORT
 from src.inference.judge import CatchJudge
+from src.inference.grasp_service import GraspService
 from src.network import ws_browser, ws_rpi
 from src.network.spring_client import SpringClient
 from src.recorder.video_recorder import VideoRecorder
@@ -15,11 +16,15 @@ relay_hub = RelayHub()
 recorder = VideoRecorder()
 judge = CatchJudge()
 spring = SpringClient()
-session_manager = SessionManager(recorder=recorder, judge=judge, spring=spring)
+grasp_service = GraspService()
+session_manager = SessionManager(
+    recorder=recorder, judge=judge, spring=spring, grasp_service=grasp_service,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    grasp_service.load()
     print(f"[main] FastAPI ready on {APP_HOST}:{APP_PORT}")
     try:
         yield
@@ -38,4 +43,5 @@ async def health():
     return {
         "status": "ok",
         "subscribers": relay_hub.subscriber_count,
+        "grasp_loaded": grasp_service._pipeline is not None,
     }

@@ -92,5 +92,13 @@ async def _apply_control(
         await session_manager.stop(session_id)
         return None
 
+    if event == "INFER" and session_id:
+        grasp = await session_manager.infer_grasp(session_id)
+        if grasp:
+            print(f"[ws_rpi] grasp result: {grasp}")
+        else:
+            print(f"[ws_rpi] grasp inference failed for {session_id}")
+        return current_session
+
     print(f"[ws_rpi] unknown control: {data}")
     return current_session
