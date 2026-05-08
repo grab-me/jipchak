@@ -54,8 +54,10 @@ const PlayGround = () => {
   // 하드웨어 입력(키보드) 감지 시 로직 처리
   useEffect(() => {
     const handleInteraction = (e: KeyboardEvent) => {
-      // 스페이스바 등으로 포커스된 버튼이 클릭되는 기본 동작 방지
-      e.preventDefault();
+      // 스페이스바, 엔터 등 UI 조작에 간섭할 수 있는 특정 키만 기본 동작 방지
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+      }
 
       if (records.length >= 5) {
         // 5판 종료 후 입력 시: 홈으로 이동하여 자동 시작 연출 실행

@@ -54,13 +54,13 @@ const NextStepModal = () => {
             className="relative w-full max-w-[440px] bg-crayon-bg rounded-[2.5vw] shadow-2xl p-[clamp(24px,6vw,48px)] border-[clamp(4px,0.8vw,8px)] border-crayon-line flex flex-col items-center pointer-events-auto"
           >
             <div className="text-center mb-[clamp(20px,4vw,32px)] w-full">
-              <h2 className="text-[clamp(24px,3.8vw,36px)] font-black text-crayon-line mb-[clamp(8px,1.5vw,12px)] whitespace-nowrap tracking-tighter">
+              <h2 className="text-[clamp(28px,4.5vw,40px)] font-black text-crayon-line mb-[clamp(10px,1.8vw,14px)] whitespace-nowrap tracking-tighter break-keep">
                 한 판 더 하시겠어요?
               </h2>
-              <p className="text-[clamp(14px,2vw,20px)] text-gray-700 font-bold mb-[clamp(4px,0.8vw,8px)]">
+              <p className="text-[clamp(18px,2.6vw,24px)] text-gray-700 font-bold mb-[clamp(4px,0.8vw,8px)] break-keep">
                 지금까지 <span className="text-yellow-500">{records.length}개</span>의 영상이 저장되었습니다.
               </p>
-              <p className="text-[clamp(11px,1.4vw,15px)] text-gray-400 font-medium">
+              <p className="text-[clamp(14px,1.8vw,18px)] text-gray-400 font-medium break-keep">
                 스타트 버튼을 눌러도 계속할 수 있어요!
               </p>
             </div>
@@ -68,14 +68,14 @@ const NextStepModal = () => {
             <div className="flex flex-col w-full gap-[clamp(8px,1.5vw,16px)]">
               <button
                 onClick={handleContinue}
-                className="w-full py-[clamp(10px,2vw,18px)] bg-yellow-400 text-gray-800 rounded-[1.2vw] font-black text-[clamp(18px,2.2vw,24px)] shadow-lg border-b-[clamp(3px,0.4vw,6px)] border-yellow-600 active:border-b-0 active:translate-y-[2px] transition-all"
+                className="w-full py-[clamp(12px,2.2vw,20px)] bg-yellow-400 text-gray-800 rounded-[1.2vw] font-black text-[clamp(22px,2.8vw,28px)] shadow-lg border-b-[clamp(3px,0.4vw,6px)] border-yellow-600 active:border-b-0 active:translate-y-[2px] transition-all"
               >
                 네! 더 할래요
               </button>
 
               <button
                 onClick={handleEndSession}
-                className="w-full py-[clamp(8px,1.5vw,14px)] bg-white/50 text-gray-400 rounded-[1vw] font-bold text-[clamp(14px,1.6vw,18px)] hover:bg-white/80 transition-colors border border-gray-200"
+                className="w-full py-[clamp(10px,1.8vw,16px)] bg-white/50 text-gray-400 rounded-[1vw] font-bold text-[clamp(16px,2vw,22px)] hover:bg-white/80 transition-colors border border-gray-200"
               >
                 그만하고 영상 받기
               </button>
@@ -91,7 +91,7 @@ const NextStepModal = () => {
                   transition={{ duration: 1, ease: 'linear' }}
                 />
               </div>
-              <p className="text-[clamp(9px,1.1vw,12px)] text-red-400 font-black uppercase tracking-widest">
+              <p className="text-[clamp(12px,1.5vw,15px)] text-red-400 font-black uppercase tracking-widest break-keep text-center w-full">
                 {countdown}초 후 세션이 자동 종료됩니다
               </p>
             </div>
