@@ -1,5 +1,5 @@
 pipeline {
-    agent any // Jenkins Agent 환경에서 실행
+    agent any
 
     environment {
         DOCKER_COMPOSE_DIR = 'infra'
@@ -8,34 +8,65 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // 소스 코드 가져오기
                 checkout scm
             }
         }
 
-        stage('Frontend Deploy') {
+        stage('Backend Build & Test') {
             when {
-                // 프론트엔드 폴더 내의 파일이 변경되었을 때만 실행
+                changeset "backend/**"
+            }
+            steps {
+                echo 'Building & Testing Backend...'
+                dir("backend") {
+                    sh "docker run --rm -w /app -v \$(pwd):/app eclipse-temurin:21-jdk-jammy sh -c 'chmod +x gradlew && ./gradlew build --no-daemon'"
+                }
+            }
+        }
+
+        stage('AI Build') {
+            when {
+                changeset "ai/**"
+            }
+            steps {
+                echo 'Building AI Server...'
+                dir("${DOCKER_COMPOSE_DIR}") {
+                    sh "docker compose build ai-jipchak"
+                }
+            }
+        }
+
+        stage('AI Test') {
+            when {
+                changeset "ai/**"
+            }
+            steps {
+                echo 'Testing AI Server...'
+                dir("${DOCKER_COMPOSE_DIR}") {
+                    sh "docker compose run --rm ai-jipchak python -m pytest tests/ -v"
+                }
+            }
+        }
+
+        stage('Frontend CI') {
+            when {
                 changeset "frontend/react/**"
             }
             steps {
-                echo 'Starting Frontend Deployment...'
-                dir("${DOCKER_COMPOSE_DIR}") {
-                    // 프론트엔드 서비스만 재빌드 및 컨테이너 교체
-                    sh "docker compose up -d --build frontend-jipchak"
+                echo 'Frontend typecheck & test...'
+                dir("frontend/react") {
+                    sh "docker run --rm -w /app -v \$(pwd):/app node:24-alpine sh -c 'npm ci && npm run typecheck && npm run test:ci'"
                 }
             }
         }
 
         stage('Backend Deploy') {
             when {
-                // 백엔드 폴더 내의 파일이 변경되었을 때만 실행
                 changeset "backend/**"
             }
             steps {
-                echo 'Starting Backend Deployment...'
+                echo 'Deploying Backend...'
                 dir("${DOCKER_COMPOSE_DIR}") {
-                    // 백엔드 서비스만 재빌드 및 컨테이너 교체
                     sh "docker compose up -d --build app-jipchak"
                 }
             }
@@ -46,16 +77,39 @@ pipeline {
                 changeset "ai/**"
             }
             steps {
-                echo 'Starting AI Server Deployment...'
+                echo 'Deploying AI Server...'
                 dir("${DOCKER_COMPOSE_DIR}") {
-                    sh "docker compose up -d --build ai-jipchak"
+                    sh "docker compose up -d ai-jipchak"
                 }
             }
         }
-        
+
+        stage('Frontend Deploy') {
+            when {
+                changeset "frontend/react/**"
+            }
+            steps {
+                echo 'Deploying Frontend...'
+                dir("${DOCKER_COMPOSE_DIR}") {
+                    sh "docker compose up -d --build frontend-jipchak"
+                }
+            }
+        }
+
+        stage('Infra Deploy') {
+            when {
+                changeset "infra/**"
+            }
+            steps {
+                echo 'Infra changed, rebuilding all services...'
+                dir("${DOCKER_COMPOSE_DIR}") {
+                    sh "docker compose up -d --build"
+                }
+            }
+        }
+
         stage('Cleanup') {
             steps {
-                // 사용하지 않는 빌드 이미지 정리 (디스크 용량 확보)
                 sh "docker image prune -f"
             }
         }
@@ -63,10 +117,10 @@ pipeline {
 
     post {
         success {
-            echo 'Deployment Finished Successfully!'
+            echo 'CI/CD Finished Successfully!'
         }
         failure {
-            echo 'Deployment Failed. Please check the logs.'
+            echo 'CI/CD Failed. Please check the logs.'
         }
     }
 }
