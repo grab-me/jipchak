@@ -39,7 +39,7 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
                 # 텍스트 = 제어 신호
                 if "text" in msg and msg["text"] is not None:
                     current_session = await _apply_control(
-                        msg["text"], session_manager, current_session
+                        msg["text"], session_manager, relay_hub, current_session
                     )
                     continue
 
@@ -86,6 +86,7 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
 async def _apply_control(
     text: str,
     session_manager: SessionManager,
+    relay_hub: RelayHub,
     current_session: Optional[str],
 ) -> Optional[str]:
     """텍스트 제어 메시지 파싱 후 세션 상태 갱신. 갱신된 session_id 반환."""
@@ -100,10 +101,21 @@ async def _apply_control(
 
     if event == "START" and session_id:
         await session_manager.start(session_id)
+        await relay_hub.broadcast_text(json.dumps({
+            "event": "SESSION_START",
+            "session_id": session_id,
+        }).encode())
         return session_id
 
     if event == "STOP" and session_id:
-        await session_manager.stop(session_id)
+        result = await session_manager.stop(session_id)
+        judge = session_manager.last_judge_result
+        await relay_hub.broadcast_text(json.dumps({
+            "event": "GAME_RESULT",
+            "session_id": session_id,
+            "is_caught": judge.is_caught if judge else False,
+            "confidence": judge.confidence if judge else 0.0,
+        }).encode())
         return None
 
     print(f"[ws_rpi] unknown control: {data}")

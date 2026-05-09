@@ -4,7 +4,7 @@ from typing import Dict, Optional
 
 import numpy as np
 
-from .inference.judge import CatchJudge
+from .inference.judge import CatchJudge, JudgeResult
 from .inference.grasp_service import GraspService
 from .network.spring_client import SpringClient
 from .recorder.video_recorder import VideoRecorder
@@ -45,6 +45,7 @@ class SessionManager:
         self._grasp = grasp_service
         self._sessions: Dict[str, GameSession] = {}
         self._lock = asyncio.Lock()
+        self.last_judge_result: Optional["JudgeResult"] = None
 
     async def start(self, session_id: str) -> None:
         """
@@ -136,6 +137,7 @@ class SessionManager:
             depth_frame=session.last_depth_frame,
             first_depth_frame=session.first_depth_frame,
         )
+        self.last_judge_result = result
         print(
             f"[SessionManager] session={session_id} frames={session.frame_count} "
             f"judge={result}"
