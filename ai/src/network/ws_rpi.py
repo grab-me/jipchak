@@ -65,13 +65,17 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
                     last_infer_time = now
                     grasp = await session_manager.infer_grasp(current_session)
                     if grasp:
-                        score_msg = json.dumps({
+                        score_data = {
                             "event": "GRASP_SCORE",
                             "confidence": grasp["confidence"],
                             "center_px": grasp["center_px"],
-                            "width_px": grasp["width_px"],
-                        }).encode()
-                        await relay_hub.broadcast_text(score_msg)
+                            "width_px": grasp.get("width_px", 0.0),
+                        }
+                        if "detections" in grasp:
+                            score_data["detections"] = grasp["detections"]
+                        await relay_hub.broadcast_text(
+                            json.dumps(score_data).encode()
+                        )
 
         except WebSocketDisconnect:
             pass

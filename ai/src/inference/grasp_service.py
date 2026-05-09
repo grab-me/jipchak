@@ -65,6 +65,54 @@ class GraspService:
         y_mm = (px_y - intr.cy) * depth_mm / intr.fy
         return x_mm, y_mm
 
+    def infer_cropped(
+        self, rgb: np.ndarray, depth: np.ndarray, bbox: tuple
+    ) -> Optional[GraspResult]:
+        """
+        bbox 영역만 잘라서 추론한 뒤 좌표를 원본 이미지 기준으로 변환.
+
+        Parameters
+        ----------
+        rgb   : 원본 이미지 (H, W, 3)
+        depth : 원본 depth (H, W) uint16 mm
+        bbox  : (xmin, ymin, xmax, ymax)
+        """
+        xmin, ymin, xmax, ymax = bbox
+        crop_rgb = rgb[ymin:ymax, xmin:xmax]
+        crop_depth = depth[ymin:ymax, xmin:xmax] if depth is not None else None
+
+        if crop_rgb.size == 0:
+            return None
+
+        crop_result = self.infer(crop_rgb, crop_depth)
+        if crop_result is None:
+            return None
+
+        full_px_x = crop_result.center_px[0] + xmin
+        full_px_y = crop_result.center_px[1] + ymin
+
+        depth_at_center_mm = 0.0
+        if depth is not None:
+            ix, iy = int(round(full_px_x)), int(round(full_px_y))
+            h, w = depth.shape
+            if 0 <= iy < h and 0 <= ix < w:
+                depth_at_center_mm = float(depth[iy, ix])
+
+        if depth_at_center_mm > 0:
+            x_mm, y_mm = self.pixel_to_mm(full_px_x, full_px_y, depth_at_center_mm)
+        else:
+            x_mm, y_mm = 0.0, 0.0
+
+        return GraspResult(
+            x_mm=x_mm,
+            y_mm=y_mm,
+            z_mm=depth_at_center_mm,
+            confidence=crop_result.confidence,
+            center_px=(full_px_x, full_px_y),
+            width_px=crop_result.width_px,
+            angle_rad=crop_result.angle_rad,
+        )
+
     def infer(self, rgb: np.ndarray, depth: np.ndarray) -> Optional[GraspResult]:
         """
         RGB-D 프레임으로 최적 파지점을 추론한다.
