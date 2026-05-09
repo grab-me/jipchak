@@ -22,7 +22,7 @@ pipeline {
                 echo 'Starting Frontend Deployment...'
                 dir("${DOCKER_COMPOSE_DIR}") {
                     // 프론트엔드 서비스만 재빌드 및 컨테이너 교체
-                    sh "docker-compose up -d --build frontend-jipchak"
+                    sh "docker compose up -d --build frontend-jipchak"
                 }
             }
         }
@@ -36,7 +36,7 @@ pipeline {
                 echo 'Starting Backend Deployment...'
                 dir("${DOCKER_COMPOSE_DIR}") {
                     // 백엔드 서비스만 재빌드 및 컨테이너 교체
-                    sh "docker-compose up -d --build app-jipchak"
+                    sh "docker compose up -d --build app-jipchak"
                 }
             }
         }
@@ -48,7 +48,7 @@ pipeline {
             steps {
                 echo 'Starting AI Server Deployment...'
                 dir("${DOCKER_COMPOSE_DIR}") {
-                    sh "docker-compose up -d --build ai-jipchak"
+                    sh "docker compose up -d --build ai-jipchak"
                 }
             }
         }
