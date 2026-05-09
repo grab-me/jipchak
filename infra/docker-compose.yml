@@ -1,9 +1,10 @@
-version: '3.8'
 services:
   # 1. Database (MySQL)
   db-jipchak:
     image: mysql:8.0
     container_name: db-jipchak
+    restart: on-failure
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_DATABASE: jipchak_db
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
@@ -11,7 +12,6 @@ services:
       - .env
     ports:
       - "${DB_PORT}:3306"
-    # 컨테이너 재생성에도 DB 데이터 보존
     volumes:
       - ./mysql_data:/var/lib/mysql
     healthcheck:
@@ -25,6 +25,7 @@ services:
   redis-jipchak:
     image: redis:latest
     container_name: redis-jipchak
+    restart: on-failure
 
   # 3. Jenkins (CI/CD 도구)
   jenkins:
@@ -44,6 +45,7 @@ services:
   nginx:
     image: nginx:latest
     container_name: nginx
+    restart: on-failure
     ports:
       - "${NGINX_HTTP_PORT}:80"
       - "${NGINX_HTTPS_PORT}:443"
@@ -92,12 +94,16 @@ services:
       - "${AI_PORT}:8000"
     env_file:
       - .env
-    # 임시 mp4 보존 (RECORDING_DIR=/data/recordings 매핑, 업로드 실패 디버깅용)
     volumes:
       - ./ai_recordings:/data/recordings
-    # Spring 먼저 기동 보장 — 첫 게임 결과 POST 의 race 방지
     depends_on:
       - app-jipchak
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   # 7. Frontend (React)
   frontend-jipchak:
