@@ -2,7 +2,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from src.config import APP_HOST, APP_PORT, GRCONVNET_CHECKPOINT, GRASP_DEVICE
+from src.config import (
+    APP_HOST, APP_PORT,
+    GRCONVNET_CHECKPOINT, GRASP_DEVICE,
+    DETECTION_ENABLED, DETECTION_THRESHOLD, DETECTION_TARGET_LABELS,
+)
+from src.inference.detection_service import DetectionService
 from src.inference.judge import CatchJudge
 from src.inference.grasp_service import GraspService
 from src.network import ws_browser, ws_rpi
@@ -20,14 +25,25 @@ grasp_service = GraspService(
     checkpoint_path=GRCONVNET_CHECKPOINT,
     device=GRASP_DEVICE,
 )
+detection_service = None
+if DETECTION_ENABLED:
+    detection_service = DetectionService(
+        score_threshold=DETECTION_THRESHOLD,
+        target_labels=DETECTION_TARGET_LABELS,
+        device=GRASP_DEVICE,
+    )
 session_manager = SessionManager(
-    recorder=recorder, judge=judge, spring=spring, grasp_service=grasp_service,
+    recorder=recorder, judge=judge, spring=spring,
+    grasp_service=grasp_service,
+    detection_service=detection_service,
 )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     grasp_service.load()
+    if detection_service is not None:
+        detection_service.load()
     print(f"[main] FastAPI ready on {APP_HOST}:{APP_PORT}")
     try:
         yield
@@ -47,4 +63,5 @@ async def health():
         "status": "ok",
         "subscribers": relay_hub.subscriber_count,
         "grasp_loaded": grasp_service.is_ready,
+        "detection_loaded": detection_service.is_ready if detection_service else False,
     }

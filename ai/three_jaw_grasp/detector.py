@@ -1,7 +1,15 @@
 import os
+from dataclasses import dataclass
 from typing import Tuple, List, Optional
 
 import numpy as np
+
+
+@dataclass
+class Detection:
+    bbox: Tuple[int, int, int, int]  # (xmin, ymin, xmax, ymax)
+    score: float
+    label: int
 
 
 class ObjectDetector:
@@ -9,10 +17,9 @@ class ObjectDetector:
     물체를 탐지하여 Bounding Box를 반환하는 객체 인식기 인터페이스
     """
     def detect(self, rgb, **kwargs) -> Tuple[int, int, int, int]:
-        """
-        :param rgb: 원본 이미지 (H, W, 3)
-        :return: (xmin, ymin, xmax, ymax)
-        """
+        raise NotImplementedError
+
+    def detect_all(self, rgb, **kwargs) -> List[Detection]:
         raise NotImplementedError
 
 
@@ -43,19 +50,24 @@ class SSDLiteDetector(ObjectDetector):
         self.model.eval()
         print(f"[SSDLiteDetector] loaded (device={device}, threshold={score_threshold})")
 
-    def detect(self, rgb, **kwargs) -> Tuple[int, int, int, int]:
+    def _run_model(self, rgb):
         import torch
 
-        h, w = rgb.shape[:2]
         img_tensor = torch.from_numpy(rgb.copy()).permute(2, 0, 1).float() / 255.0
         img_tensor = img_tensor.to(self.device)
 
         with torch.no_grad():
             preds = self.model([img_tensor])[0]
 
-        boxes = preds["boxes"].cpu().numpy()
-        scores = preds["scores"].cpu().numpy()
-        labels = preds["labels"].cpu().numpy()
+        return (
+            preds["boxes"].cpu().numpy(),
+            preds["scores"].cpu().numpy(),
+            preds["labels"].cpu().numpy(),
+        )
+
+    def detect(self, rgb, **kwargs) -> Tuple[int, int, int, int]:
+        h, w = rgb.shape[:2]
+        boxes, scores, labels = self._run_model(rgb)
 
         best_score = 0.0
         best_box = (0, 0, w, h)
@@ -75,6 +87,29 @@ class SSDLiteDetector(ObjectDetector):
                 )
 
         return best_box
+
+    def detect_all(self, rgb, **kwargs) -> List[Detection]:
+        h, w = rgb.shape[:2]
+        boxes, scores, labels = self._run_model(rgb)
+
+        results = []
+        for box, score, label in zip(boxes, scores, labels):
+            if score < self.score_threshold:
+                continue
+            if self.target_labels and int(label) not in self.target_labels:
+                continue
+            results.append(Detection(
+                bbox=(
+                    max(0, int(box[0])),
+                    max(0, int(box[1])),
+                    min(w, int(box[2])),
+                    min(h, int(box[3])),
+                ),
+                score=float(score),
+                label=int(label),
+            ))
+
+        return results
 
 class YoloMockDetector(ObjectDetector):
     """

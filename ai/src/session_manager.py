@@ -4,6 +4,7 @@ from typing import Dict, Optional
 
 import numpy as np
 
+from .inference.detection_service import DetectionService
 from .inference.judge import CatchJudge, JudgeResult
 from .inference.grasp_service import GraspService
 from .network.spring_client import SpringClient
@@ -38,11 +39,13 @@ class SessionManager:
         judge: CatchJudge,
         spring: SpringClient,
         grasp_service: Optional["GraspService"] = None,
+        detection_service: Optional["DetectionService"] = None,
     ) -> None:
         self._recorder = recorder
         self._judge = judge
         self._spring = spring
         self._grasp = grasp_service
+        self._detection = detection_service
         self._sessions: Dict[str, GameSession] = {}
         self._lock = asyncio.Lock()
         self.last_judge_result: Optional["JudgeResult"] = None
@@ -95,14 +98,65 @@ class SessionManager:
             session.last_depth_frame = depth_frame
 
     async def infer_grasp(self, session_id: str) -> Optional[dict]:
-        """현재 세션의 마지막 프레임으로 파지점 추론."""
+        """
+        현재 세션의 마지막 프레임으로 파지점 추론.
+
+        Detection이 활성화되어 있으면:
+            Detection → 물체별 crop → GR-ConvNet → per-object 확률
+        미활성 또는 물체 미감지 시:
+            전체 이미지 GR-ConvNet (기존 방식)
+        """
         session = self._sessions.get(session_id)
         if session is None or self._grasp is None:
             return None
         if session.last_color_frame is None:
             return None
 
-        result = self._grasp.infer(session.last_color_frame, session.last_depth_frame)
+        rgb = session.last_color_frame
+        depth = session.last_depth_frame
+
+        # Detection → per-object grasp
+        if self._detection is not None and self._detection.is_ready:
+            detected = self._detection.detect(rgb)
+            if detected:
+                per_object = []
+                for det in detected:
+                    gr = self._grasp.infer_cropped(rgb, depth, det.bbox)
+                    if gr is not None:
+                        per_object.append({
+                            "bbox": list(det.bbox),
+                            "label": det.label,
+                            "det_score": round(det.score, 3),
+                            "grasp_confidence": round(gr.confidence, 3),
+                            "grasp_center_px": [
+                                round(gr.center_px[0], 1),
+                                round(gr.center_px[1], 1),
+                            ],
+                            "x_mm": round(gr.x_mm, 1),
+                            "y_mm": round(gr.y_mm, 1),
+                            "z_mm": round(gr.z_mm, 1),
+                        })
+
+                if per_object:
+                    best = max(per_object, key=lambda d: d["grasp_confidence"])
+                    print(
+                        f"[SessionManager] grasp+det: "
+                        f"best_conf={best['grasp_confidence']:.2f} "
+                        f"objects={len(per_object)}"
+                    )
+                    return {
+                        "confidence": best["grasp_confidence"],
+                        "center_px": best["grasp_center_px"],
+                        "x_mm": best["x_mm"],
+                        "y_mm": best["y_mm"],
+                        "z_mm": best["z_mm"],
+                        "width_px": 0.0,
+                        "angle_rad": 0.0,
+                        "detections": per_object,
+                    }
+
+        # Full-image fallback
+        result = self._grasp.infer(rgb, depth)
         if result is None:
             return None
 
@@ -115,7 +169,11 @@ class SessionManager:
             "width_px": result.width_px,
             "angle_rad": result.angle_rad,
         }
-        print(f"[SessionManager] grasp inferred: x={result.x_mm:.1f}mm y={result.y_mm:.1f}mm conf={result.confidence:.2f}")
+        print(
+            f"[SessionManager] grasp inferred: "
+            f"x={result.x_mm:.1f}mm y={result.y_mm:.1f}mm "
+            f"conf={result.confidence:.2f}"
+        )
         return data
 
     async def stop(self, session_id: str) -> Optional[dict]:
