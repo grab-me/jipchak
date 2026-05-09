@@ -14,14 +14,17 @@ void ClawManager::update() {
 }
 
 void ClawManager::open() {
+    Serial.println("SERVO CLAW OPEN");
     servo.write(CLAW_ANGLE_OPEN);
 }
 
 void ClawManager::close() {
+    Serial.println("SERVO CLAW CLOSE");
     servo.write(CLAW_ANGLE_CLOSE);
 }
 
 void ClawManager::setIdle() {
+    Serial.println("SERVO CLAW IDLE");
     servo.write(CLAW_ANGLE_IDLE);
 }
 

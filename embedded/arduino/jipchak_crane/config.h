@@ -4,9 +4,9 @@
 const unsigned long BAUD_RATE = 115200;
 
 // --- Joystick Pins ---
-const int PIN_JOY_Y_UP    = A0;
-const int PIN_JOY_Y_DOWN  = A1;
-const int PIN_JOY_X_LEFT  = A2;
+const int PIN_JOY_Y_DOWN  = A0;
+const int PIN_JOY_X_LEFT  = A1;
+const int PIN_JOY_Y_UP    = A2;
 const int PIN_JOY_X_RIGHT = A3;
 
 // --- Button Pins ---
@@ -46,10 +46,10 @@ const float ACCELERATION_Y = 500.0;
 const float MAX_SPEED_Z = 1000.0;
 const float ACCELERATION_Z = 500.0;
 
-// Z-axis movement steps (from original code: 650 steps)
+// Z-axis movement steps
 const int Z_MOVE_STEPS = 650;
 
 // --- Conversion & Homing Configuration ---
-const float STEPS_PER_MM_X = 10.0f; // 임시 값
-const float STEPS_PER_MM_Y = 10.0f; // 임시 값
-const long HOMING_TRAVEL_STEPS = -100000;
+const float STEPS_PER_MM_X = 80.0f; // 1/16 스텝, GT2 20T 풀리 기준
+const float STEPS_PER_MM_Y = 80.0f; // 1/16 스텝, GT2 20T 풀리 기준
+const long HOMING_TRAVEL_STEPS = -3200; // 32cm (320mm * 10 steps/mm)

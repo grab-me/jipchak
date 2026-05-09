@@ -8,14 +8,14 @@ void CommManager::init() {
 }
 
 void CommManager::sendStatus(float currentX, float currentY, int currentState) {
-    StaticJsonDocument<128> doc;
-    doc["t"] = "s";
-    doc["x"] = currentX;
-    doc["y"] = currentY;
-    doc["st"] = currentState;
+    // StaticJsonDocument<128> doc;
+    // doc["t"] = "s";
+    // doc["x"] = currentX;
+    // doc["y"] = currentY;
+    // doc["st"] = currentState;
 
-    serializeJson(doc, Serial);
-    Serial.println();
+    // serializeJson(doc, Serial);
+    // Serial.println();
 }
 
 CommandType CommManager::receiveCommand() {
