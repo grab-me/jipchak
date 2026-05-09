@@ -40,6 +40,18 @@ pipeline {
                 }
             }
         }
+
+        stage('AI Deploy') {
+            when {
+                changeset "ai/**"
+            }
+            steps {
+                echo 'Starting AI Server Deployment...'
+                dir("${DOCKER_COMPOSE_DIR}") {
+                    sh "docker-compose up -d --build ai-jipchak"
+                }
+            }
+        }
         
         stage('Cleanup') {
             steps {
