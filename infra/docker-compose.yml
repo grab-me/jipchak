@@ -37,6 +37,13 @@ services:
       - "${JENKINS_AGENT_PORT}:50000"
     env_file:
       - .env
+    environment:
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
     volumes:
       - ./jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
