@@ -6,7 +6,7 @@ import numpy as np
 
 from .inference.detection_service import DetectionService
 from .inference.judge import CatchJudge, JudgeResult
-from .inference.three_jaw_service import ThreeJawGraspService
+from .inference.grasp_service import GraspService
 from .network.spring_client import SpringClient
 from .recorder.video_recorder import VideoRecorder
 
@@ -38,7 +38,7 @@ class SessionManager:
         recorder: VideoRecorder,
         judge: CatchJudge,
         spring: SpringClient,
-        grasp_service: Optional[ThreeJawGraspService] = None,
+        grasp_service: Optional["GraspService"] = None,
         detection_service: Optional["DetectionService"] = None,
     ) -> None:
         self._recorder = recorder
@@ -99,7 +99,12 @@ class SessionManager:
 
     async def infer_grasp(self, session_id: str) -> Optional[dict]:
         """
-        현재 세션의 마지막 프레임으로 파지점 추론 (ThreeJawGraspService 연동).
+        현재 세션의 마지막 프레임으로 파지점 추론.
+
+        Detection이 활성화되어 있으면:
+            Detection → 물체별 crop → GR-ConvNet → per-object 확률
+        미활성 또는 물체 미감지 시:
+            전체 이미지 GR-ConvNet (기존 방식)
         """
         session = self._sessions.get(session_id)
         if session is None or self._grasp is None:
@@ -110,18 +115,66 @@ class SessionManager:
         rgb = session.last_color_frame
         depth = session.last_depth_frame
 
-        # ThreeJawGraspService.infer는 CPU를 많이 쓰므로(동기 함수)
-        # 전체 스트리밍(비동기 루프)이 버벅이지 않도록 백그라운드 스레드로 넘겨서 실행합니다.
-        result = await asyncio.to_thread(self._grasp.infer, rgb, depth)
+        # Detection → per-object grasp
+        if self._detection is not None and self._detection.is_ready:
+            detected = self._detection.detect(rgb)
+            if detected:
+                per_object = []
+                for det in detected:
+                    gr = self._grasp.infer_cropped(rgb, depth, det.bbox)
+                    if gr is not None:
+                        per_object.append({
+                            "bbox": list(det.bbox),
+                            "label": det.label,
+                            "det_score": round(det.score, 3),
+                            "grasp_confidence": round(gr.confidence, 3),
+                            "grasp_center_px": [
+                                round(gr.center_px[0], 1),
+                                round(gr.center_px[1], 1),
+                            ],
+                            "x_mm": round(gr.x_mm, 1),
+                            "y_mm": round(gr.y_mm, 1),
+                            "z_mm": round(gr.z_mm, 1),
+                        })
+
+                if per_object:
+                    best = max(per_object, key=lambda d: d["grasp_confidence"])
+                    print(
+                        f"[SessionManager] grasp+det: "
+                        f"best_conf={best['grasp_confidence']:.2f} "
+                        f"objects={len(per_object)}"
+                    )
+                    return {
+                        "confidence": best["grasp_confidence"],
+                        "center_px": best["grasp_center_px"],
+                        "x_mm": best["x_mm"],
+                        "y_mm": best["y_mm"],
+                        "z_mm": best["z_mm"],
+                        "width_px": 0.0,
+                        "angle_rad": 0.0,
+                        "detections": per_object,
+                    }
+
+        # Full-image fallback
+        result = self._grasp.infer(rgb, depth)
         if result is None:
             return None
 
+        data = {
+            "x_mm": result.x_mm,
+            "y_mm": result.y_mm,
+            "z_mm": result.z_mm,
+            "confidence": result.confidence,
+            "center_px": list(result.center_px),
+            "width_px": result.width_px,
+            "angle_rad": result.angle_rad,
+        }
         print(
             f"[SessionManager] grasp inferred: "
-            f"x={result.get('center_x', 0):.1f} y={result.get('center_y', 0):.1f} "
-            f"conf={result.get('confidence', 0):.2f}"
+            f"x={result.x_mm:.1f}mm y={result.y_mm:.1f}mm "
+            f"conf={result.confidence:.2f}"
         )
-        return result
+        return data
 
     async def stop(self, session_id: str) -> Optional[dict]:
         """녹화 종료 -> 판정 -> Spring 업로드. Spring 응답을 반환."""

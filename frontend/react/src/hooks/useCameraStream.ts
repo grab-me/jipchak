@@ -28,17 +28,6 @@ export interface SessionEvent {
     confidence?: number;
 }
 
-export interface GraspPose {
-    center_x: number;
-    center_y: number;
-    angle_rad: number;
-    radius: number;
-    jaw_count: number;
-    confidence: number;
-    image_width: number;
-    image_height: number;
-}
-
 export interface CameraStreamState {
     /** 가장 최근 프레임의 blob URL. 아직 한 프레임도 안 왔으면 null. */
     frameUrl: string | null;
@@ -46,8 +35,6 @@ export interface CameraStreamState {
     connected: boolean;
     /** AI 파지 성공 확률 (0.0 ~ 1.0). GRASP_SCORE 이벤트로 갱신. */
     graspScore: number;
-    /** 집게 오버레이 정보 */
-    graspPose: GraspPose | null;
     /** 가장 최근 세션 이벤트. */
     lastSessionEvent: SessionEvent | null;
 }
@@ -69,7 +56,6 @@ export function useCameraStream(channel: Channel): CameraStreamState {
     const [frameUrl, setFrameUrl] = useState<string | null>(null);
     const [connected, setConnected] = useState(false);
     const [graspScore, setGraspScore] = useState(0);
-    const [graspPose, setGraspPose] = useState<GraspPose | null>(null);
     const [lastSessionEvent, setLastSessionEvent] = useState<SessionEvent | null>(null);
 
     // ObjectURL 누수 방지용: 직전 URL 을 보관해두고 다음 프레임 도착 시 revoke
@@ -98,12 +84,7 @@ export function useCameraStream(channel: Channel): CameraStreamState {
                 if (typeof event.data === 'string') {
                     try {
                         const msg = JSON.parse(event.data);
-                        if (msg.event === 'GRASP_POSE') {
-                            setGraspPose(msg as GraspPose);
-                            if (typeof msg.confidence === 'number') {
-                                setGraspScore(msg.confidence);
-                            }
-                        } else if (msg.event === 'GRASP_SCORE' && typeof msg.confidence === 'number') {
+                        if (msg.event === 'GRASP_SCORE' && typeof msg.confidence === 'number') {
                             setGraspScore(msg.confidence);
                         } else if (msg.event === 'SESSION_START') {
                             setLastSessionEvent({ type: 'SESSION_START', session_id: msg.session_id });
@@ -172,5 +153,5 @@ export function useCameraStream(channel: Channel): CameraStreamState {
         };
     }, [channel]);
 
-    return { frameUrl, connected, graspScore, graspPose, lastSessionEvent };
+    return { frameUrl, connected, graspScore, lastSessionEvent };
 }
