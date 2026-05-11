@@ -1,5 +1,8 @@
 from .candidate import GraspCandidate
-from .adapters import BaseGraspAdapter, GraspGroupAdapter, RectGraspAdapter, PoseArrayAdapter
+from .adapters import (
+    BaseGraspAdapter, GraspGroupAdapter, Grasp3DoFAdapter, 
+    PoseArrayAdapter, YoloBoxGraspAdapter, YoloSegGraspAdapter
+)
 from .feature_extractor import FeatureExtractor
 from .evaluator import ThreeJawEvaluator
 from .evaluator_chick import ChickEvaluator
