@@ -14,6 +14,9 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+                dir("${DOCKER_COMPOSE_DIR}") {
+                    sh "touch .env"
+                }
             }
         }
 
