@@ -35,8 +35,8 @@ const QRDisplay = () => {
 
       {/* QR 코드 영역: 세로 공간 확보를 위해 크기 대폭 축소 */}
       <div className="bg-white p-[clamp(6px,1vw,12px)] rounded-[1vw] shadow-inner border-[clamp(1.5px,0.3vw,3px)] border-crayon-line flex items-center justify-center aspect-square h-[clamp(90px,30vh,130px)]">
-        <QRCodeSVG 
-          value={displayValue} 
+        <QRCodeSVG
+          value={displayValue}
           size={undefined}
           style={{ width: '100%', height: '100%' }}
           level={"M"}
@@ -45,7 +45,7 @@ const QRDisplay = () => {
       </div>
 
       {/* 완료 버튼: 세로 높이 최소화 */}
-      <button 
+      <button
         onClick={resetSession}
         className="px-[clamp(20px,2.4vw,36px)] py-[clamp(8px,1vw,14px)] bg-gray-800 text-white rounded-[255px_15px_225px_15px/15px_225px_15px_255px] font-bold shadow-lg border-[clamp(1px,0.2vw,2px)] border-white active:scale-95 transition-transform text-[clamp(14px,1.8vw,18px)]"
       >
