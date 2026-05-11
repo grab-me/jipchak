@@ -108,9 +108,11 @@ void StateMachine::handleManualInput() {
     int yDir = input->getJoystickY();
 
     if (xDir != 0 || yDir != 0) {
-        motorManual->setSpeedX(xDir * MAX_SPEED_X);
-        motorManual->setSpeedY(yDir * MAX_SPEED_Y);
+        motorManual->setDirectionX(xDir);
+        motorManual->setDirectionY(yDir);
     } else {
+        motorManual->setDirectionX(0);
+        motorManual->setDirectionY(0);
         motor->setManualMode(false);
     }
 }

@@ -2,26 +2,38 @@
 
 MotorManual::MotorManual(MotorManager& manager) : _manager(manager) {}
 
-void MotorManual::setSpeedX(float speed) {
-    static float prevSpeedX = 0;
-    if (speed != prevSpeedX) {
-        if (speed > 0) Serial.println("MOTOR X RIGHT (Manual)");
-        else if (speed < 0) Serial.println("MOTOR X LEFT (Manual)");
-        else Serial.println("MOTOR X STOP (Manual)");
-        prevSpeedX = speed;
+void MotorManual::setDirectionX(int dir) {
+    static int prevDirX = 0;
+    if (dir != prevDirX) {
+        if (dir > 0) {
+            Serial.println("MOTOR X RIGHT (Manual)");
+            _manager.getStepperX().move(1000000);
+        } else if (dir < 0) {
+            Serial.println("MOTOR X LEFT (Manual)");
+            _manager.getStepperX().move(-1000000);
+        } else {
+            Serial.println("MOTOR X STOP (Manual)");
+            _manager.getStepperX().stop();
+        }
+        prevDirX = dir;
     }
-    _manager.setManualMode(true);
-    _manager.getStepperX().setSpeed(speed);
+    if (dir != 0) _manager.setManualMode(true);
 }
 
-void MotorManual::setSpeedY(float speed) {
-    static float prevSpeedY = 0;
-    if (speed != prevSpeedY) {
-        if (speed > 0) Serial.println("MOTOR Y UP (Manual)");
-        else if (speed < 0) Serial.println("MOTOR Y DOWN (Manual)");
-        else Serial.println("MOTOR Y STOP (Manual)");
-        prevSpeedY = speed;
+void MotorManual::setDirectionY(int dir) {
+    static int prevDirY = 0;
+    if (dir != prevDirY) {
+        if (dir > 0) {
+            Serial.println("MOTOR Y UP (Manual)");
+            _manager.getStepperY().move(1000000);
+        } else if (dir < 0) {
+            Serial.println("MOTOR Y DOWN (Manual)");
+            _manager.getStepperY().move(-1000000);
+        } else {
+            Serial.println("MOTOR Y STOP (Manual)");
+            _manager.getStepperY().stop();
+        }
+        prevDirY = dir;
     }
-    _manager.setManualMode(true);
-    _manager.getStepperY().setSpeed(speed);
+    if (dir != 0) _manager.setManualMode(true);
 }

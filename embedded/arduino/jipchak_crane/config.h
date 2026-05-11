@@ -39,12 +39,12 @@ const int CLAW_ANGLE_CLOSE = 145;
 const int CLAW_ANGLE_IDLE  = 45;
 
 // --- Stepper Motor Configuration ---
-const float MAX_SPEED_X = 1000.0;
+const float MAX_SPEED_X = 400.0;
 const float ACCELERATION_X = 500.0;
-const float MAX_SPEED_Y = 1000.0;
+const float MAX_SPEED_Y = 400.0;
 const float ACCELERATION_Y = 500.0;
-const float MAX_SPEED_Z = 1000.0;
-const float ACCELERATION_Z = 500.0;
+const float MAX_SPEED_Z = 300.0;
+const float ACCELERATION_Z = 50000.0; // Z축 등속도를 위해 가속도 무한대 설정
 
 // Z-axis movement steps
 const int Z_MOVE_STEPS = 650;

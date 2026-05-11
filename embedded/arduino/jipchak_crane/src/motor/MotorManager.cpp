@@ -47,9 +47,10 @@ void MotorManager::checkLimit(AccelStepper& stepper, int pin, bool checkNegative
     }
 
     if (prevStates[pin] == LOW) {
-        if ((checkNegative && stepper.speed() < 0) || (!checkNegative && stepper.speed() > 0)) {
+        if ((checkNegative && stepper.distanceToGo() < 0) || (!checkNegative && stepper.distanceToGo() > 0)) {
             stepper.setSpeed(0);
-            stepper.stop();
+            stepper.move(checkNegative ? 5 : -5); // 반대 방향으로 5스텝 튕겨나옴
+            
             if (action == LimitAction::STOP_AND_RESET_ORIGIN) {
                 stepper.setCurrentPosition(0);
             }
@@ -112,9 +113,10 @@ void MotorManager::update() {
             checkLimit(stepperY, PIN_ENDSTOP_Y_UP,    false, LimitAction::STOP_AND_RESET_ORIGIN);
 
             if (currentState == MOTOR_MANUAL) {
-                stepperX.runSpeed();
-                stepperY.runSpeed();
-                stepperZ.runSpeed();
+                // 수동 모드(X, Y)에서도 가감속 적용을 위해 runSpeed()가 아닌 run() 사용
+                stepperX.run();
+                stepperY.run();
+                stepperZ.runSpeed(); // 메인 코드에서 Z축은 수동 조작되지 않지만 안전을 위해 유지
             } else {
                 stepperX.run();
                 stepperY.run();
