@@ -1,6 +1,7 @@
 import asyncio
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -9,12 +10,26 @@ from ..session_manager import SessionManager
 from ..stream.relay_hub import RelayHub
 from ..stream.unpacker import FrameUnpacker
 
+_frame_executor = ThreadPoolExecutor(max_workers=1)
+
 
 def _sync_infer_grasp(session_manager: SessionManager, session_id: str):
-    """infer_grasp를 동기 컨텍스트에서 실행하기 위한 래퍼."""
     loop = asyncio.new_event_loop()
     try:
         return loop.run_until_complete(session_manager.infer_grasp(session_id))
+    finally:
+        loop.close()
+
+
+def _sync_process_frame(session_manager: SessionManager, session_id: str, payload: bytes):
+    frame = FrameUnpacker.unpack(payload)
+    if frame is None:
+        return
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(
+            session_manager.on_frame(session_id, frame.color_2d, frame.depth_3d)
+        )
     finally:
         loop.close()
 
@@ -62,15 +77,14 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
                 # ① 브라우저로 즉시 릴레이 (지연 최소화)
                 await relay_hub.broadcast(payload)
 
-                # ② 세션 활성 시 디코딩 → 녹화 + 마지막 프레임 보관
+                # ② 프레임 디코딩 + 녹화를 백그라운드 스레드에서 실행 (이벤트 루프 논블로킹)
                 if current_session is not None:
-                    frame = FrameUnpacker.unpack(payload)
-                    if frame is not None:
-                        await session_manager.on_frame(
-                            current_session, frame.color_2d, frame.depth_3d
-                        )
+                    asyncio.get_running_loop().run_in_executor(
+                        _frame_executor,
+                        _sync_process_frame, session_manager, current_session, payload,
+                    )
 
-                # ③ 주기적 파지 확률 추론 → 별도 스레드에서 실행 (이벤트 루프 블로킹 방지)
+                # ③ 주기적 파지 확률 추론 → 별도 스레드에서 실행
                 now = time.monotonic()
                 if (current_session
                         and now - last_infer_time >= infer_interval
@@ -100,7 +114,6 @@ async def _run_inference(
     relay_hub: RelayHub,
     infer_state: dict,
 ) -> None:
-    """추론을 스레드 풀에서 실행하여 메인 이벤트 루프를 블로킹하지 않는다."""
     try:
         t0 = time.monotonic()
         grasp = await asyncio.to_thread(
@@ -130,7 +143,6 @@ async def _apply_control(
     relay_hub: RelayHub,
     current_session: Optional[str],
 ) -> Optional[str]:
-    """텍스트 제어 메시지 파싱 후 세션 상태 갱신. 갱신된 session_id 반환."""
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
