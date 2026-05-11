@@ -7,8 +7,9 @@ from src.config import (
     GRCONVNET_CHECKPOINT, GRASP_DEVICE,
     DETECTION_ENABLED, DETECTION_THRESHOLD, DETECTION_TARGET_LABELS,
 )
+from src.inference.detection_service import DetectionService
 from src.inference.judge import CatchJudge
-from src.inference.three_jaw_service import ThreeJawGraspService
+from src.inference.grasp_service import GraspService
 from src.network import ws_browser, ws_rpi
 from src.network.spring_client import SpringClient
 from src.recorder.video_recorder import VideoRecorder
@@ -20,23 +21,29 @@ relay_hub = RelayHub()
 recorder = VideoRecorder()
 judge = CatchJudge()
 spring = SpringClient()
-grasp_service = ThreeJawGraspService()
-
+grasp_service = GraspService(
+    checkpoint_path=GRCONVNET_CHECKPOINT,
+    device=GRASP_DEVICE,
+)
+detection_service = None
+if DETECTION_ENABLED:
+    detection_service = DetectionService(
+        score_threshold=DETECTION_THRESHOLD,
+        target_labels=DETECTION_TARGET_LABELS,
+        device=GRASP_DEVICE,
+    )
 session_manager = SessionManager(
     recorder=recorder, judge=judge, spring=spring,
     grasp_service=grasp_service,
+    detection_service=detection_service,
 )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    import os
-    yolo_model_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "three-jaw-grasp", "dataset", "model_chick2_v2", "best2.pt"
-    )
-    grasp_service.load(yolo_model_path)
-    
+    grasp_service.load()
+    if detection_service is not None:
+        detection_service.load()
     print(f"[main] FastAPI ready on {APP_HOST}:{APP_PORT}")
     try:
         yield
@@ -55,5 +62,6 @@ async def health():
     return {
         "status": "ok",
         "subscribers": relay_hub.subscriber_count,
-        "grasp_loaded": grasp_service._pipeline is not None,
+        "grasp_loaded": grasp_service.is_ready,
+        "detection_loaded": detection_service.is_ready if detection_service else False,
     }

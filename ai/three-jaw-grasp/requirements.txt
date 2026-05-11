@@ -1,6 +1,0 @@
-numpy
-pyyaml
-torch
-torchvision
-scipy
-matplotlib

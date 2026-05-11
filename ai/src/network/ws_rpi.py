@@ -55,10 +55,8 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
                 if current_session is not None:
                     frame = FrameUnpacker.unpack(payload)
                     if frame is not None:
-                        # D435는 color_3d, 웹캠은 color_2d를 사용
-                        color_frame = frame.color_3d if frame.color_3d is not None else frame.color_2d
                         await session_manager.on_frame(
-                            current_session, color_frame, frame.depth_3d
+                            current_session, frame.color_2d, frame.depth_3d
                         )
 
                 # ③ 주기적 파지 확률 추론 → 브라우저로 전송
@@ -67,23 +65,17 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
                     last_infer_time = now
                     grasp = await session_manager.infer_grasp(current_session)
                     if grasp:
-                        # grasp는 이미 ThreeJawGraspService에서 GRASP_POSE JSON 형태로 만들어 반환됨
+                        score_data = {
+                            "event": "GRASP_SCORE",
+                            "confidence": grasp["confidence"],
+                            "center_px": grasp["center_px"],
+                            "width_px": grasp.get("width_px", 0.0),
+                        }
+                        if "detections" in grasp:
+                            score_data["detections"] = grasp["detections"]
                         await relay_hub.broadcast_text(
-                            json.dumps(grasp).encode()
+                            json.dumps(score_data).encode()
                         )
-                    else:
-                        # 감지된 객체가 없으면 빈 오버레이 전송하여 화면 지우기
-                        await relay_hub.broadcast_text(json.dumps({
-                            "event": "GRASP_POSE",
-                            "confidence": 0.0,
-                            "center_x": 0,
-                            "center_y": 0,
-                            "angle_rad": 0,
-                            "radius": 0,
-                            "jaw_count": 0,
-                            "image_width": 0,
-                            "image_height": 0
-                        }).encode())
 
         except WebSocketDisconnect:
             pass

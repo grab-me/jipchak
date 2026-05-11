@@ -93,8 +93,8 @@ const PlayGround = () => {
         className="flex-[766] bg-black rounded-[1vw] shadow-sm relative overflow-hidden"
         style={{ aspectRatio: '766 / 552' }}
       >
-        <CameraView label="Cam2" />
-        {/* 세션 지속 여부 확인 모달 (Cam2 위에 배치) */}
+        <CameraView label="Cam1" />
+        {/* 세션 지속 여부 확인 모달 (Cam1 위에 배치) */}
         <NextStepModal />
       </div>
 
@@ -106,7 +106,7 @@ const PlayGround = () => {
         </div>
 
         <div className="flex-[125] min-h-0 min-w-0 bg-black rounded-[1vw] shadow-sm relative overflow-hidden">
-          <CameraView label="Cam1" />
+          <CameraView label="Cam2" />
         </div>
       </div>
     </div>
