@@ -348,3 +348,7 @@ sketch
 
 # Claude Code 세션 메타데이터 (사용자별 로컬)
 .claude/
+
+# AI datasets and outputs
+ai/three-jaw-grasp/dataset/
+ai/three-jaw-grasp/examples/output/
