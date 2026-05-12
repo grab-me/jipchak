@@ -53,6 +53,8 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
 
         current_session: Optional[str] = None
         last_infer_time: float = 0.0
+        last_relay_time: float = 0.0
+        relay_interval: float = 0.05  # 20fps cap for browser relay
         infer_interval: float = 1.0
         infer_state = {"running": False}
 
@@ -74,8 +76,11 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
                 if not payload:
                     continue
 
-                # ① 브라우저로 즉시 릴레이 (지연 최소화)
-                await relay_hub.broadcast(payload)
+                # ① 브라우저로 릴레이 (FPS 제한 + fire-and-forget)
+                now = time.monotonic()
+                if now - last_relay_time >= relay_interval:
+                    last_relay_time = now
+                    asyncio.create_task(relay_hub.broadcast(payload))
 
                 # ② 프레임 디코딩 + 녹화를 백그라운드 스레드에서 실행 (이벤트 루프 논블로킹)
                 if current_session is not None:
@@ -85,7 +90,6 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
                     )
 
                 # ③ 주기적 파지 확률 추론 → 별도 스레드에서 실행
-                now = time.monotonic()
                 if (current_session
                         and now - last_infer_time >= infer_interval
                         and not infer_state["running"]):

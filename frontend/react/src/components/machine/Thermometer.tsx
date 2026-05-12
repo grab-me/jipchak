@@ -48,13 +48,6 @@ const Thermometer = ({ probability }: ThermometerProps) => {
           borderWidth: glassBorderWidth,
         }}
       >
-        {/* 눈금 표시 */}
-        <div className="absolute inset-y-0 left-0 w-[45%] flex flex-col justify-between py-[10%] opacity-40 z-20">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="h-[clamp(1px,0.2vw,2.5px)] bg-crayon-line w-full rounded-r-full" />
-          ))}
-        </div>
-
         {/* 기둥 내부 액체 */}
         <div
           className="absolute z-10"
