@@ -9,7 +9,8 @@ type StartButtonProps = {
 
 /**
  * StartButton
- * 홈 화면에서 플레이 시작을 위한 버튼입니다. (클릭 시 축소 -> 복원 -> 콜백 함수 실행 순으로 동작)
+ * 홈 화면에서 플레이 시작을 위한 버튼입니다.
+ * 클릭 시 플레이 페이지로 이동합니다.
  */
 const StartButton = ({ onStart, autoClick }: StartButtonProps) => {
   const animationControls = useAnimationControls();
