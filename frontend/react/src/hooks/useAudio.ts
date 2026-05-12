@@ -13,7 +13,10 @@ const updateBgmState = () => {
     bgmInstance.pause();
   } else {
     bgmInstance.volume = globalBgmVolume / 100;
-    bgmInstance.play().catch(() => {});
+    const playPromise = bgmInstance.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {});
+    }
   }
 };
 
@@ -55,9 +58,12 @@ export const useAudio = () => {
     
     // SFX가 안 나오는 중일 때만 바로 재생
     if (activeSfxCount === 0) {
-      bgmInstance.play().catch(() => {
-        console.warn('[Audio] Autoplay blocked. Interaction required.');
-      });
+      const playPromise = bgmInstance.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          console.warn('[Audio] Autoplay blocked. Interaction required.');
+        });
+      }
     }
   }, []);
 
@@ -85,10 +91,16 @@ export const useAudio = () => {
       handleSfxEnd();
     };
 
-    audio.play().catch(() => {
-      // 재생 실패 시 즉시 카운트 복구
-      handleSfxEnd();
-    });
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // 재생 실패 시 즉시 카운트 복구
+        handleSfxEnd();
+      });
+    } else {
+      // JSDOM 같은 테스트 환경에서 play()가 Promise를 반환하지 않을 때
+      // 정상 재생으로 간주하여 카운트 유지 (onended가 호출되지 않을 수 있으므로 주의가 필요할 수 있음)
+    }
 
     return audio;
   }, []);
@@ -103,7 +115,10 @@ export const useAudio = () => {
     
     handleSfxStart();
     audio.onended = () => handleSfxEnd();
-    audio.play().catch(() => handleSfxEnd());
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => handleSfxEnd());
+    }
   }, []);
 
   return {
