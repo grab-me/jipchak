@@ -7,14 +7,17 @@ import { SOUND_ASSETS } from '@/constants/soundConfig';
 
 interface CameraViewProps {
   label: string;
+  channel: '2d' | '3d';
+  isMainView?: boolean;
+  onClick?: () => void;
+  className?: string;
 }
 
-const CameraView = ({ label }: CameraViewProps) => {
+const CameraView = ({ label, channel, isMainView = false, onClick, className = '' }: CameraViewProps) => {
   const { addRecord, setCatching, setLastResult, startSession, isSessionActive } = useToolStore();
   const processedRef = useRef<string | null>(null);
   const { playSfx } = useAudio();
 
-  const channel = label === 'Cam1' ? '2d' : '3d';
   const { frameUrl, connected, graspScore, lastSessionEvent } = useCameraStream(channel);
 
   useEffect(() => {
@@ -31,8 +34,8 @@ const CameraView = ({ label }: CameraViewProps) => {
       setCatching(true);
       setLastResult(null);
 
-      // 집게 하강 효과음 재생
-      if (label === 'Cam1') {
+      // 집게 하강 효과음 재생 (메인 화면에서만 1번 재생되도록)
+      if (isMainView) {
         playSfx(SOUND_ASSETS.SFX.TRY_CATCH);
       }
     }
@@ -61,7 +64,10 @@ const CameraView = ({ label }: CameraViewProps) => {
   }, [lastSessionEvent]);
 
   return (
-    <div className="w-full h-full bg-black relative flex flex-col items-center justify-center overflow-hidden gap-[4%]">
+    <div 
+      className={`w-full h-full bg-black relative flex flex-col items-center justify-center overflow-hidden gap-[4%] ${className}`}
+      onClick={onClick}
+    >
       {frameUrl && (
         <img
           src={frameUrl}
@@ -84,7 +90,8 @@ const CameraView = ({ label }: CameraViewProps) => {
         title={connected ? 'WS connected' : 'WS disconnected'}
       />
 
-      {label === 'Cam1' && <Thermometer probability={graspScore * 100} />}
+      {/* 온도계는 메인 뷰(큰 화면)일 때만 표시 */}
+      {isMainView && <Thermometer probability={graspScore * 100} />}
     </div>
   );
 };

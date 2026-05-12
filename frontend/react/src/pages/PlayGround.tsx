@@ -6,15 +6,18 @@ import ToolArea from '@/components/machine/ToolArea';
 import NextStepModal from '@/components/machine/NextStepModal';
 import SettingsModal from '@/components/machine/SettingsModal';
 import Confetti, { ConfettiOptions } from '@/components/common/Confetti';
+import CameraTransitionOverlay from '@/components/machine/CameraTransitionOverlay';
 import { useAudioStore } from '@/store/audioStore';
 import { useAudio } from '@/hooks/useAudio';
 import { SOUND_ASSETS } from '@/constants/soundConfig';
+import { useCameraSwap } from '@/hooks/useCameraSwap';
 
 const PlayGround = () => {
   const navigate = useNavigate();
   const { isSessionActive, lastResult, setAskingNextStep, records, resetSession, setAutoStarting } = useToolStore();
   const { setSettingsOpen } = useAudioStore();
   const { playBgm, stopBgm, playSfx } = useAudio();
+  const { isSwapped, isTransitioning, handleSwap } = useCameraSwap();
 
   // BGM 재생 관리
   useEffect(() => {
@@ -94,9 +97,12 @@ const PlayGround = () => {
   if (!isSessionActive) return null; // 리다이렉트 전 찰나의 렌더링 방지
   return (
     <div 
-      className="flex w-full h-screen bg-[#dfdfdf] p-[calc(24/1024*100vw)] gap-[calc(16/1024*100vw)] overflow-hidden"
+      className="flex w-full h-screen bg-[#dfdfdf] p-[calc(24/1024*100vw)] gap-[calc(16/1024*100vw)] overflow-hidden relative"
       onContextMenu={(e) => e.preventDefault()}
     >
+      {/* 카메라 스왑 시 발생하는 딜레이를 가려주는 전환 오버레이 */}
+      <CameraTransitionOverlay isTransitioning={isTransitioning} />
+
       {/* 폭죽 버스트 매니저 (성공 화면 활성 여부 전달) */}
       <Confetti 
         bursts={confettiBursts} 
@@ -108,7 +114,11 @@ const PlayGround = () => {
         className="flex-[766] bg-black rounded-[1vw] shadow-sm relative overflow-hidden"
         style={{ aspectRatio: '766 / 552' }}
       >
-        <CameraView label="Cam1" />
+        <CameraView 
+          label={isSwapped ? "Cam2" : "Cam1"} 
+          channel={isSwapped ? "3d" : "2d"} 
+          isMainView={true} 
+        />
 
         {/* 설정 버튼 (좌상단 고정, 스와프 시에도 유지됨) */}
         <button
@@ -135,8 +145,15 @@ const PlayGround = () => {
           <ToolArea />
         </div>
 
+        {/* 보조 카메라 뷰 영역 (클릭 시 메인 뷰와 스왑) */}
         <div className="flex-[125] min-h-0 min-w-0 bg-black rounded-[1vw] shadow-sm relative overflow-hidden">
-          <CameraView label="Cam2" />
+          <CameraView 
+            label={isSwapped ? "Cam1" : "Cam2"} 
+            channel={isSwapped ? "2d" : "3d"} 
+            isMainView={false} 
+            onClick={handleSwap}
+            className="cursor-pointer active:scale-[0.98] transition-transform"
+          />
         </div>
       </div>
     </div>
