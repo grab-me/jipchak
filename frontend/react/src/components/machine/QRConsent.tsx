@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useToolStore } from '@/store/toolStore';
 import CrayonWrapper from '../common/CrayonWrapper';
+import { useAudio } from '@/hooks/useAudio';
+import { SOUND_ASSETS } from '@/constants/soundConfig';
 
 const AUTO_RESET_SECONDS = 30;
 
@@ -11,9 +13,12 @@ const AUTO_RESET_SECONDS = 30;
 const QRConsent = () => {
   const { handleQRConsent, records, resetSession } = useToolStore();
   const [countdown, setCountdown] = useState(AUTO_RESET_SECONDS);
+  const { playVoice } = useAudio();
 
-  // 자동 종료 타이머
+  // 안내 음성 재생 및 자동 종료 타이머
   useEffect(() => {
+    playVoice(SOUND_ASSETS.VOICE.QR_AGREE);
+    
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
