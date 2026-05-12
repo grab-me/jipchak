@@ -54,7 +54,7 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
         current_session: Optional[str] = None
         last_infer_time: float = 0.0
         last_relay_time: float = 0.0
-        relay_interval: float = 0.05  # 20fps cap for browser relay
+        relay_interval: float = 0.1  # 10fps cap for browser relay
         infer_interval: float = 1.0
         infer_state = {"running": False}
 
