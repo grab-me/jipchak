@@ -28,11 +28,11 @@ const SettingsModal = () => {
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-[440px] bg-crayon-bg rounded-[2.5vw] shadow-2xl p-[clamp(24px,6vw,48px)] border-[clamp(4px,0.8vw,8px)] border-crayon-line flex flex-col items-center pointer-events-auto"
+          className="relative w-full max-w-[440px] max-h-[90vh] overflow-y-auto bg-crayon-bg rounded-[2.5vw] shadow-2xl py-[clamp(16px,3vh,32px)] px-[clamp(20px,5vw,40px)] border-[clamp(4px,0.8vw,8px)] border-crayon-line flex flex-col items-center pointer-events-auto"
         >
           {/* 타이틀 및 닫기 버튼 영역 */}
-          <div className="w-full flex justify-between items-center mb-[clamp(16px,3vw,24px)] border-b-[clamp(2px,0.4vw,4px)] border-crayon-line pb-[clamp(8px,1.5vw,12px)]">
-            <h2 className="text-[clamp(22px,4vw,32px)] font-black text-crayon-line tracking-tighter select-none break-keep">
+          <div className="w-full flex justify-between items-center mb-[clamp(12px,2vh,20px)] border-b-[clamp(2px,0.4vw,4px)] border-crayon-line pb-[clamp(6px,1vh,10px)]">
+            <h2 className="text-[clamp(20px,3.5vw,28px)] font-black text-crayon-line tracking-tighter select-none break-keep">
               소리 설정
             </h2>
             <button
@@ -46,7 +46,7 @@ const SettingsModal = () => {
           </div>
 
           {/* 슬라이더 영역 */}
-          <div className="w-full flex flex-col gap-[clamp(16px,3vw,24px)] w-full">
+          <div className="w-full flex flex-col gap-[clamp(12px,2.5vh,20px)] w-full">
             <VolumeSlider
               label="배경음 (BGM)"
               value={bgmVolume}
@@ -83,44 +83,69 @@ interface VolumeSliderProps {
 
 const VolumeSlider = ({ label, value, onChange, colorClass }: VolumeSliderProps) => {
   return (
-    <div className="flex flex-col w-full gap-[clamp(6px,1vw,8px)]">
+    <div className="flex flex-col w-full gap-[clamp(8px,1.5vw,12px)]">
+      {/* 1. 라벨 & N% 수치 (더 크고 진하게) */}
       <div className="flex justify-between items-end w-full select-none">
-        <span className="text-[clamp(14px,2vw,18px)] font-bold text-gray-700 break-keep">
+        <span className="text-[clamp(16px,2.5vw,22px)] font-bold text-gray-800 break-keep">
           {label}
         </span>
-        <span className="text-[clamp(12px,1.8vw,16px)] font-black text-gray-400">
+        <span className="text-[clamp(18px,2.8vw,24px)] font-black text-gray-800 tracking-wider">
           {value}%
         </span>
       </div>
 
-      {/* 
-        터치 환경을 고려해 높이를 키우고, 크레파스 느낌의 둥근 슬라이더 적용 
-        Tailwind CSS accent-color 를 활용하여 간편하게 커스텀 색상 지정
-      */}
-      <input
-        type="range"
-        min="0"
-        max="100"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className={`w-full h-[clamp(10px,1.5vw,16px)] bg-gray-200 rounded-full appearance-none cursor-pointer shadow-inner outline-none ${colorClass}`}
-        style={{
-          WebkitAppearance: 'none',
-        }}
-      />
+      {/* 2. 슬라이더 & 음소거 토글 박스 (가로 배치) */}
+      <div className="flex items-center gap-[clamp(16px,2.5vw,24px)] w-full">
+        {/* 슬라이더 (남은 공간 차지) */}
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className={`flex-1 h-[clamp(12px,1.8vw,20px)] bg-gray-200 rounded-full appearance-none cursor-pointer shadow-inner outline-none ${colorClass}`}
+          style={{
+            WebkitAppearance: 'none',
+          }}
+        />
 
-      {/* Thumb(슬라이더 핸들)을 크고 둥글게 만들어 터치하기 쉽게 하는 CSS 주입 */}
+        {/* 음소거 체크박스 버튼 (슬라이더 우측 배치) */}
+        <button
+          onClick={() => onChange(value === 0 ? 50 : 0)}
+          aria-label="음소거 토글"
+          className="flex items-center gap-[clamp(6px,1vw,10px)] active:scale-95 transition-all outline-none group"
+        >
+          {/* 체크박스 사각형 (흑백 대비 테마) */}
+          <div className={`flex items-center justify-center w-[clamp(26px,4vw,36px)] h-[clamp(26px,4vw,36px)] border-[clamp(2.5px,0.4vw,4px)] rounded-[0.6vw] shadow-sm transition-colors ${
+            value === 0 
+              ? 'bg-gray-800 border-gray-800 text-white' 
+              : 'bg-white border-gray-400 text-transparent group-active:bg-gray-100'
+          }`}>
+            <svg className="w-[80%] h-[80%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          {/* '음소거' 텍스트 */}
+          <span className={`text-[clamp(14px,2.2vw,20px)] font-black break-keep transition-colors ${
+            value === 0 ? 'text-gray-800' : 'text-gray-500 group-active:text-gray-700'
+          }`}>
+            음소거
+          </span>
+        </button>
+      </div>
+
+      {/* Thumb(슬라이더 핸들)을 7인치 터치에 맞게 조금 더 크게 조절 */}
       <style>{`
         input[type=range]::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: clamp(20px, 3.5vw, 28px);
-          height: clamp(20px, 3.5vw, 28px);
+          width: clamp(24px, 4vw, 36px);
+          height: clamp(24px, 4vw, 36px);
           border-radius: 50%;
           background: #fff;
-          border: clamp(2px, 0.4vw, 4px) solid currentColor;
+          border: clamp(2.5px, 0.4vw, 4px) solid currentColor;
           cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
         }
       `}</style>
     </div>
