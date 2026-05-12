@@ -69,6 +69,9 @@ export function useCameraStream(channel: Channel): CameraStreamState {
 
     // ObjectURL 누수 방지용: 직전 URL 을 보관해두고 다음 프레임 도착 시 revoke
     const prevUrlRef = useRef<string | null>(null);
+    // GRASP_SCORE 이벤트가 일정 시간 안 오면 detection 화면 잔상(ghosting) 방지
+    const detectionStaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const DETECTION_STALE_MS = 1500; // 1.5초간 새 GRASP_SCORE 없으면 클리어
 
     useEffect(() => {
         const url = resolveWsUrl();
@@ -76,6 +79,16 @@ export function useCameraStream(channel: Channel): CameraStreamState {
         let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
         let backoffMs = 500;
         let cancelled = false;
+
+        const armDetectionStaleTimer = () => {
+            if (detectionStaleTimerRef.current) {
+                clearTimeout(detectionStaleTimerRef.current);
+            }
+            detectionStaleTimerRef.current = setTimeout(() => {
+                setDetections([]);
+                setGraspScore(0);
+            }, DETECTION_STALE_MS);
+        };
 
         const connect = () => {
             if (cancelled) return;
@@ -100,6 +113,8 @@ export function useCameraStream(channel: Channel): CameraStreamState {
                             } else {
                                 setDetections([]);
                             }
+                            // 새 detection 도착 → stale 타이머 재무장
+                            armDetectionStaleTimer();
                         } else if (msg.event === 'SESSION_START') {
                             setLastSessionEvent({ type: 'SESSION_START', session_id: msg.session_id });
                         } else if (msg.event === 'GAME_RESULT') {
@@ -159,6 +174,10 @@ export function useCameraStream(channel: Channel): CameraStreamState {
         return () => {
             cancelled = true;
             if (reconnectTimer) clearTimeout(reconnectTimer);
+            if (detectionStaleTimerRef.current) {
+                clearTimeout(detectionStaleTimerRef.current);
+                detectionStaleTimerRef.current = null;
+            }
             if (ws && ws.readyState <= WebSocket.OPEN) ws.close();
             if (prevUrlRef.current) {
                 URL.revokeObjectURL(prevUrlRef.current);

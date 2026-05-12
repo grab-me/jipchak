@@ -118,25 +118,90 @@ const CameraView = ({ label, channel, isMainView = false, onClick, className = '
   );
 };
 
+// ─────────────────────────────────────────
+// Overlay 드로잉 헬퍼
+// ─────────────────────────────────────────
+
+/** 노란 5각 별 (오렌지 테두리). best 중심점 강조용. */
+function drawStar(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  outerR: number, innerR: number,
+  spikes = 5,
+) {
+  const step = Math.PI / spikes;
+  let rot = -Math.PI / 2; // 위쪽에서 시작
+  ctx.beginPath();
+  ctx.moveTo(x, y - outerR);
+  for (let i = 0; i < spikes; i++) {
+    ctx.lineTo(x + Math.cos(rot) * outerR, y + Math.sin(rot) * outerR);
+    rot += step;
+    ctx.lineTo(x + Math.cos(rot) * innerR, y + Math.sin(rot) * innerR);
+    rot += step;
+  }
+  ctx.closePath();
+  ctx.fillStyle = '#FFEB3B';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 140, 0, 0.95)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+/** 원형 확률 게이지 (HSL 빨강→녹색 + glow). best 주변에 표시. */
+function drawProbabilityGauge(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  radius: number,
+  confidence: number,
+) {
+  const MAX_CONF = 0.9; // 90%를 만점으로 매핑
+  const progress = Math.min(confidence / MAX_CONF, 1);
+  const hue = progress * 120;
+
+  // 배경 링
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 8;
+  ctx.stroke();
+
+  // 진행 링 (12시 방향부터 시계방향)
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+  ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.shadowBlur = 14;
+  ctx.shadowColor = `hsl(${hue}, 100%, 55%)`;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // 중앙 하단 퍼센트
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 12px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${(confidence * 100).toFixed(0)}%`, cx, cy + radius + 18);
+  ctx.textAlign = 'left';
+}
+
 function drawDetections(ctx: CanvasRenderingContext2D, detections: DetectionItem[]) {
   const best = detections.reduce((a, b) =>
     a.grasp_confidence > b.grasp_confidence ? a : b
   );
 
+  // 1) bbox + confidence 라벨 (모든 detection)
   for (const det of detections) {
     const [xmin, ymin, xmax, ymax] = det.bbox;
     const isBest = det === best;
     const conf = det.grasp_confidence;
-    const hue = conf * 120; // 0=red, 120=green
+    const hue = conf * 120;
 
-    // bbox
     ctx.strokeStyle = isBest ? `hsl(${hue}, 100%, 50%)` : 'rgba(255, 255, 255, 0.5)';
     ctx.lineWidth = isBest ? 3 : 2;
     ctx.setLineDash(isBest ? [] : [6, 4]);
     ctx.strokeRect(xmin, ymin, xmax - xmin, ymax - ymin);
     ctx.setLineDash([]);
 
-    // confidence label
     const text = `${(conf * 100).toFixed(0)}%`;
     ctx.font = 'bold 14px Arial';
     const tw = ctx.measureText(text).width;
@@ -145,34 +210,33 @@ function drawDetections(ctx: CanvasRenderingContext2D, detections: DetectionItem
     ctx.fillStyle = 'white';
     ctx.fillText(text, xmin + 4, ymin - 5);
 
-    // grasp center point
-    if (det.grasp_center_px) {
+    // non-best는 grasp center 작은 점만
+    if (!isBest && det.grasp_center_px) {
       const [cx, cy] = det.grasp_center_px;
       ctx.beginPath();
-      ctx.arc(cx, cy, isBest ? 6 : 4, 0, Math.PI * 2);
-      ctx.fillStyle = isBest ? `hsl(${hue}, 100%, 50%)` : 'rgba(255, 255, 0, 0.6)';
+      ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 0, 0.6)';
       ctx.fill();
       ctx.strokeStyle = 'white';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
-
-      // crosshair for best
-      if (isBest) {
-        ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(cx - 12, cy);
-        ctx.lineTo(cx + 12, cy);
-        ctx.moveTo(cx, cy - 12);
-        ctx.lineTo(cx, cy + 12);
-        ctx.stroke();
-      }
     }
   }
 
-  // top-left score
+  // 2) best detection 강조: 확률 게이지 → 별 마커 (z-order)
+  if (best.grasp_center_px) {
+    const [cx, cy] = best.grasp_center_px;
+    const [xmin, ymin, xmax, ymax] = best.bbox;
+    const bboxR = Math.max(xmax - xmin, ymax - ymin) / 2;
+    const gaugeR = Math.min(bboxR + 10, 80); // bbox 크기 기반, 최대 80px
+
+    drawProbabilityGauge(ctx, cx, cy, gaugeR, best.grasp_confidence);
+    drawStar(ctx, cx, cy, 14, 7);
+  }
+
+  // 3) 좌상단 정보 패널
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  ctx.fillRect(8, 8, 160, 28);
+  ctx.fillRect(8, 8, 180, 28);
   ctx.fillStyle = 'white';
   ctx.font = 'bold 14px Arial';
   ctx.fillText(
