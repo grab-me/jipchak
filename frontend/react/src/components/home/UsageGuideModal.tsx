@@ -187,10 +187,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
 
                   {/* 텍스트 영역 */}
                   <div className="shrink-0 mt-[clamp(10px,1.4vh,16px)] px-[clamp(4px,0.6vw,8px)]">
-                    <p className="text-[clamp(13px,1.5vw,15px)] font-black text-crayon-line mb-[0.4vh]">
-                      {slides[currentIndex].step} / {slides.length} — {slides[currentIndex].title}
-                    </p>
-                    <p className="text-[clamp(12px,1.4vw,15px)] font-medium text-gray-700 break-keep leading-snug">
+                    <p className="text-[clamp(20px,2.8vw,34px)] font-black text-crayon-line mb-[0.4vh]">
                       {slides[currentIndex].description}
                     </p>
                   </div>
