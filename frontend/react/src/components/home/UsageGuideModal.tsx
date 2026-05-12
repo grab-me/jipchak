@@ -91,7 +91,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
             </div>
 
             {/* 슬라이드 영역 */}
-            <div className="relative overflow-hidden flex-1 rounded-[1.4vw]">
+            <div className="relative overflow-hidden flex-1 rounded-[1.4vw] [--guide-side-pad:clamp(42px,5.2vw,58px)] w-full">
               <AnimatePresence initial={false} custom={direction} mode="popLayout">
                 <motion.div
                   key={currentIndex}
@@ -105,7 +105,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
                   dragConstraints={{ left: 0, right: 0 }}
                   dragElastic={0.18}
                   onDragEnd={handleDragEnd}
-                  className="flex flex-col h-[clamp(320px,55vh,480px)] w-full"
+                  className="flex flex-row items-stretch h-[clamp(320px,55vh,480px)] w-full px-[var(--guide-side-pad)] gap-[clamp(10px,1.4vw,16px)]"
                 >
                   <GuideImage />
                   <GuideText description={guideSlides[currentIndex].description} />

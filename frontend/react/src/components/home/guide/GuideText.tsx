@@ -10,7 +10,7 @@ interface GuideTextProps {
  */
 const GuideText = ({ description }: GuideTextProps) => {
   return (
-    <div className="shrink-0 mt-[clamp(10px,1.4vh,16px)] px-[clamp(4px,0.6vw,8px)]">
+    <div className="flex-1 h-full px-[clamp(4px,0.6vw,8px)] flex items-center">
       <p className="text-[clamp(20px,2.8vw,34px)] font-black text-crayon-line mb-[0.4vh]">
         {description}
       </p>

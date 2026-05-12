@@ -11,7 +11,7 @@ const GuideNextButton = ({ onClick }: GuideNextButtonProps) => {
     <button
       type="button"
       onClick={onClick}
-      className="absolute right-[clamp(6px,1vw,12px)] top-1/2 -translate-y-1/2 z-10 rounded-full bg-gray-800/90 text-white font-bold active:scale-90 flex items-center justify-center w-[clamp(30px,3.8vw,44px)] h-[clamp(30px,3.8vw,44px)] text-[clamp(20px,2.8vw,34px)]"
+      className="absolute right-[calc(var(--guide-side-pad)/2)] top-1/2 translate-x-1/2 -translate-y-1/2 z-10 rounded-full bg-gray-800/90 text-white font-bold active:scale-90 flex items-center justify-center w-[clamp(30px,3.8vw,44px)] h-[clamp(30px,3.8vw,44px)] text-[clamp(20px,2.8vw,34px)]"
       aria-label="다음 슬라이드"
     >
       ›
