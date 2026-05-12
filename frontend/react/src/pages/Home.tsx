@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToolStore } from '@/store/toolStore';
-import StartButton from '@/components/common/StartButton';
+import StartButton from '@/components/home/StartButton';
+import GuideButton from '@/components/home/GuideButton';
 import CrayonWrapper from '@/components/common/CrayonWrapper';
+import UsageGuideModal from '@/components/home/UsageGuideModal';
 
 const Home = () => {
   const navigate = useNavigate();
   const { startSession, isAutoStarting, setAutoStarting } = useToolStore();
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   const handleStart = () => {
     startSession(); // 세션 시작
@@ -24,8 +28,19 @@ const Home = () => {
           <h1 className="text-[clamp(32px,6vw,80px)] font-bold font-crayon text-yellow-400 select-none">
             JIPCHAK
           </h1>
-          <StartButton onStart={handleStart} autoClick={isAutoStarting} />
+          <div className="relative flex items-center justify-center w-full">
+            <StartButton onStart={handleStart} autoClick={isAutoStarting} />
+            <GuideButton
+              onClick={() => setIsGuideOpen(true)}
+              className="absolute left-[calc(50%+14vw)] top-[calc(50%)]"
+            />
+          </div>
         </div>
+
+        <UsageGuideModal
+          isOpen={isGuideOpen}
+          onClose={() => setIsGuideOpen(false)}
+        />
       </CrayonWrapper>
     </div>
   );
