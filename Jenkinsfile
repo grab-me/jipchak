@@ -63,7 +63,7 @@ pipeline {
             steps {
                 echo 'Frontend typecheck & test...'
                 dir("frontend/react") {
-                    sh "docker run --rm -w /app -v \$(pwd):/app node:24-alpine sh -c 'npm ci && npm run typecheck && npm run test:ci'"
+                    sh "docker run --rm -w /app -v \$(pwd):/app node:24-alpine sh -c '(npm ci || npm install) && npm run typecheck && npm run test:ci'"
                 }
             }
         }
