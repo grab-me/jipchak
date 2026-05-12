@@ -163,7 +163,7 @@ class GraspService:
             x_mm=x_mm,
             y_mm=y_mm,
             z_mm=depth_at_center_mm,
-            confidence=best.score,
+            confidence=float(1.0 / (1.0 + np.exp(-best.score))),
             center_px=(px_x, px_y),
             width_px=0.0,
             angle_rad=0.0,
