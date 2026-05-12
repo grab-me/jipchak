@@ -15,6 +15,7 @@ interface ToolState {
   qrValue: string;
   
   // 세션 상태 관리
+  sessionId: string;
   isSessionActive: boolean;
   records: RecordItem[];
   qrTimer: number;
@@ -49,6 +50,7 @@ const QR_TIMEOUT_SECONDS = 30;
 export const useToolStore = create<ToolState>((set, get) => ({
   viewType: 'RECORDS',
   qrValue: '',
+  sessionId: '',
   isSessionActive: false,
   records: [],
   qrTimer: 0,
@@ -61,7 +63,9 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
   // 1. 시작하기 버튼 클릭 시 세션 시작
   startSession: () => {
+    const newSessionId = `session_${Date.now()}`;
     set({
+      sessionId: newSessionId,
       isSessionActive: true,
       records: [],
       viewType: 'RECORDS',
@@ -105,7 +109,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
         resetSession();
       } else {
         // 수락 시: QR 생성 후 화면 전환 및 30초 타이머 시작
-        const qrUrl = await sessionService.generateSessionQr();
+        const { sessionId } = get();
+        const qrUrl = await sessionService.generateSessionQr(sessionId);
         set({ 
           qrValue: qrUrl, 
           viewType: 'QR_DISPLAY',
@@ -135,6 +140,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   // 6. 세션 초기화 및 홈으로 강제 이동
   resetSession: () => {
     set({
+      sessionId: '',
       isSessionActive: false,
       records: [],
       viewType: 'RECORDS',

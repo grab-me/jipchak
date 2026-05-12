@@ -5,13 +5,17 @@ import StartButton from '@/components/home/StartButton';
 import GuideButton from '@/components/home/GuideButton';
 import CrayonWrapper from '@/components/common/CrayonWrapper';
 import UsageGuideModal from '@/components/home/UsageGuideModal';
+import { useAudio } from '@/hooks/useAudio';
+import { SOUND_ASSETS } from '@/constants/soundConfig';
 
 const Home = () => {
   const navigate = useNavigate();
   const { startSession, isAutoStarting, setAutoStarting } = useToolStore();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const { playSfx } = useAudio();
 
   const handleStart = () => {
+    playSfx(SOUND_ASSETS.SFX.BUTTON_CLICK);
     startSession(); // 세션 시작
     if (isAutoStarting) setAutoStarting(false); // 자동 시작 플래그 해제
     navigate('/play');

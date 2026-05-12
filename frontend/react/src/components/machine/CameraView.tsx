@@ -1,59 +1,51 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useToolStore } from '@/store/toolStore';
-import { useCameraStream } from '@/hooks/useCameraStream';
+import { useCameraStream, DetectionItem } from '@/hooks/useCameraStream';
 import Thermometer from './Thermometer';
+import { useAudio } from '@/hooks/useAudio';
+import { SOUND_ASSETS } from '@/constants/soundConfig';
 
 interface CameraViewProps {
   label: string;
+  channel: '2d' | '3d';
+  isMainView?: boolean;
+  onClick?: () => void;
+  className?: string;
 }
 
-const CameraView = ({ label }: CameraViewProps) => {
-  const { addRecord, setCatching, setLastResult, isCatching, records, setAskingNextStep } = useToolStore();
-  const timer1Ref = useRef<NodeJS.Timeout | null>(null);
-  const timer2Ref = useRef<NodeJS.Timeout | null>(null);
+const CameraView = ({ label, channel, isMainView = false, onClick, className = '' }: CameraViewProps) => {
+  const { addRecord, setCatching, setLastResult, startSession, isSessionActive } = useToolStore();
+  const processedRef = useRef<string | null>(null);
+  const { playSfx } = useAudio();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Cam1 = 일반 웹캠(color_2d), Cam2 = D435 RGB(color_3d).
-  // AI 서버가 송출하는 WebSocket 스트림에서 채널별로 가장 최근 프레임을 받아 표시.
-  const channel = label === 'Cam1' ? '2d' : '3d';
-  const { frameUrl, connected } = useCameraStream(channel);
+  const { frameUrl, connected, graspScore, detections, lastSessionEvent } = useCameraStream(channel);
 
-  // 언마운트 시 타이머 정리
   useEffect(() => {
-    return () => {
-      if (timer1Ref.current) clearTimeout(timer1Ref.current);
-      if (timer2Ref.current) clearTimeout(timer2Ref.current);
-    };
-  }, []);
+    if (!lastSessionEvent) return;
 
-  const [testProb, setTestProb] = useState(0);
+    const eventKey = `${lastSessionEvent.type}_${lastSessionEvent.session_id}`;
+    if (processedRef.current === eventKey) return;
+    processedRef.current = eventKey;
 
-  // 테스트용 연속 확률 생성 로직 (사인파 형태)
-  useEffect(() => {
-    if (label !== 'Cam1') return;
-    
-    let startTime = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      // 4초 주기: 0 -> 100 -> 0으로 부드럽게 왕복
-      const wave = (Math.sin((elapsed / 2000) * Math.PI) + 1) / 2; 
-      setTestProb(wave * 100);
-    }, 100); // 100ms마다 업데이트 (Thermometer 내부의 spring이 부드럽게 보간함)
+    if (lastSessionEvent.type === 'SESSION_START') {
+      if (!isSessionActive) {
+        startSession();
+      }
+      setCatching(true);
+      setLastResult(null);
 
-    return () => clearInterval(interval);
-  }, [label]);
+      // 집게 하강 효과음 재생 (메인 화면에서만 1번 재생되도록)
+      if (isMainView) {
+        playSfx(SOUND_ASSETS.SFX.TRY_CATCH);
+      }
+    }
 
-  const handleTestRecord = () => {
-    if (isCatching) return; // 이미 진행 중이면 중복 실행 방지
-
-    // 1. 뽑기 애니메이션 시작
-    setCatching(true);
-    setLastResult(null);
-
-    // 2. 5초 후 결과 산출
-    timer1Ref.current = setTimeout(() => {
+    if (lastSessionEvent.type === 'GAME_RESULT') {
       setCatching(false);
-      
-      const isWin = records.length % 2 === 0;
+      const isWin = lastSessionEvent.is_caught ?? false;
+      setLastResult(isWin ? 'win' : 'lose');
+
       const now = new Date();
       const yy = now.getFullYear().toString().slice(-2);
       const mm = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -61,50 +53,58 @@ const CameraView = ({ label }: CameraViewProps) => {
       const hh = now.getHours().toString().padStart(2, '0');
       const min = now.getMinutes().toString().padStart(2, '0');
       const ss = now.getSeconds().toString().padStart(2, '0');
-      const formattedDate = `${yy}${mm}${dd}_${hh}${min}${ss}`;
-      
-      setLastResult(isWin ? 'win' : 'lose');
 
-      // 기록 추가 (isSuccess 필드 명시적 전달, 파일명 형식: yymmdd_hhmmss.mp4)
       addRecord({
         id: Date.now().toString(),
-        filename: `${formattedDate}.mp4`,
+        filename: `${yy}${mm}${dd}_${hh}${min}${ss}.mp4`,
         isSuccess: isWin,
       });
 
-      // 3. 3초 후 결과 화면 닫기
-      timer2Ref.current = setTimeout(() => {
-        setLastResult(null);
-        
-        // 5판을 다 채우지 않았다면 다음 동작 확인 모달 표시
-        if (records.length < 4) {
-          setAskingNextStep(true);
-        }
-      }, 3000);
-    }, 5000);
-  };
+      setTimeout(() => setLastResult(null), 3000);
+    }
+  }, [lastSessionEvent]);
+
+  useEffect(() => {
+    if (!frameUrl || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      if (canvas.width !== img.width || canvas.height !== img.height) {
+        canvas.width = img.width;
+        canvas.height = img.height;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      if (channel === '3d' && detections.length > 0) {
+        drawDetections(ctx, detections);
+      }
+    };
+    img.src = frameUrl;
+  }, [frameUrl, detections, channel]);
 
   return (
-    <div className="w-full h-full bg-black relative flex flex-col items-center justify-center overflow-hidden gap-[4%]">
-      {/* 라이브 영상 layer: 프레임이 도착했을 때만 렌더링.
-          object-cover 로 컨테이너에 꽉 채우되 비율은 유지. */}
+    <div 
+      className={`w-full h-full bg-black relative flex flex-col items-center justify-center overflow-hidden gap-[4%] ${className}`}
+      onClick={onClick}
+    >
       {frameUrl && (
-        <img
-          src={frameUrl}
-          alt={`${label} live`}
+        <canvas
+          ref={canvasRef}
           className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
-          draggable={false}
         />
       )}
 
-      {/* 영상이 아직 안 왔을 때만 라벨을 보여주는 placeholder */}
       {!frameUrl && (
         <span className="text-white/20 font-bold text-[clamp(24px,5vw,64px)] select-none uppercase tracking-widest">
           {label}
         </span>
       )}
 
-      {/* 연결 상태 인디케이터 (우상단 작은 점). 운영 디버그 용. */}
       <span
         className={`absolute top-2 right-2 w-2 h-2 rounded-full z-overlay ${
           connected ? 'bg-green-400' : 'bg-red-500'
@@ -112,20 +112,73 @@ const CameraView = ({ label }: CameraViewProps) => {
         title={connected ? 'WS connected' : 'WS disconnected'}
       />
 
-      {/* 임시 로직 테스트 버튼 (Cam1에만 표시) */}
-      {label === 'Cam1' && (
-        <button
-          onClick={handleTestRecord}
-          className="px-4 py-2 bg-red-600/80 text-white rounded-lg font-bold text-[clamp(12px,1vw,16px)] shadow-lg active:scale-95 transition-all z-overlay absolute cursor-pointer break-keep text-center"
-        >
-          로직 테스트<br/>(기록 추가)
-        </button>
-      )}
-
-      {/* 확률 표시 온도계 (Cam1 전용 테스트) */}
-      {label === 'Cam1' && <Thermometer probability={testProb} />}
+      {/* 온도계는 메인 뷰(큰 화면)일 때만 표시 */}
+      {isMainView && <Thermometer probability={graspScore * 100} />}
     </div>
   );
 };
+
+function drawDetections(ctx: CanvasRenderingContext2D, detections: DetectionItem[]) {
+  const best = detections.reduce((a, b) =>
+    a.grasp_confidence > b.grasp_confidence ? a : b
+  );
+
+  for (const det of detections) {
+    const [xmin, ymin, xmax, ymax] = det.bbox;
+    const isBest = det === best;
+    const conf = det.grasp_confidence;
+    const hue = conf * 120; // 0=red, 120=green
+
+    // bbox
+    ctx.strokeStyle = isBest ? `hsl(${hue}, 100%, 50%)` : 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = isBest ? 3 : 2;
+    ctx.setLineDash(isBest ? [] : [6, 4]);
+    ctx.strokeRect(xmin, ymin, xmax - xmin, ymax - ymin);
+    ctx.setLineDash([]);
+
+    // confidence label
+    const text = `${(conf * 100).toFixed(0)}%`;
+    ctx.font = 'bold 14px Arial';
+    const tw = ctx.measureText(text).width;
+    ctx.fillStyle = isBest ? `hsl(${hue}, 100%, 30%)` : 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(xmin, ymin - 20, tw + 8, 20);
+    ctx.fillStyle = 'white';
+    ctx.fillText(text, xmin + 4, ymin - 5);
+
+    // grasp center point
+    if (det.grasp_center_px) {
+      const [cx, cy] = det.grasp_center_px;
+      ctx.beginPath();
+      ctx.arc(cx, cy, isBest ? 6 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = isBest ? `hsl(${hue}, 100%, 50%)` : 'rgba(255, 255, 0, 0.6)';
+      ctx.fill();
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // crosshair for best
+      if (isBest) {
+        ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx - 12, cy);
+        ctx.lineTo(cx + 12, cy);
+        ctx.moveTo(cx, cy - 12);
+        ctx.lineTo(cx, cy + 12);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // top-left score
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillRect(8, 8, 160, 28);
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 14px Arial';
+  ctx.fillText(
+    `Best: ${(best.grasp_confidence * 100).toFixed(1)}%  (${detections.length} obj)`,
+    14, 27
+  );
+}
 
 export default CameraView;

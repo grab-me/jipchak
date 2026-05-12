@@ -1,16 +1,19 @@
-version: '3.8'
 services:
   # 1. Database (MySQL)
   db-jipchak:
     image: mysql:8.0
     container_name: db-jipchak
+    restart: on-failure
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_DATABASE: jipchak_db
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     env_file:
       - .env
     ports:
-      - "3306:3306"
+      - "${DB_PORT}:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}" ]
       interval: 10s
@@ -22,6 +25,7 @@ services:
   redis-jipchak:
     image: redis:latest
     container_name: redis-jipchak
+    restart: on-failure
 
   # 3. Jenkins (CI/CD 도구)
   jenkins:
@@ -29,10 +33,17 @@ services:
     container_name: jenkins
     user: root
     ports:
-      - "8080:8080"
-      - "50000:50000"
+      - "${JENKINS_PORT}:8080"
+      - "${JENKINS_AGENT_PORT}:50000"
     env_file:
       - .env
+    environment:
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
     volumes:
       - ./jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
@@ -41,15 +52,15 @@ services:
   nginx:
     image: nginx:latest
     container_name: nginx
+    restart: on-failure
     ports:
-      - "80:80"
-      - "443:443"
+      - "${NGINX_HTTP_PORT}:80"
+      - "${NGINX_HTTPS_PORT}:443"
     env_file:
       - .env
     volumes:
-      - ../nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/conf.d:/etc/nginx/conf.d
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ../frontend/react/dist:/usr/share/nginx/html:ro
     depends_on:
       - app-jipchak
 
@@ -66,10 +77,49 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
+    ports:
+      - "${BACKEND_PORT}:8080" # Spring Boot 내부 기본 포트 8080을 외부 8108로 매핑
     env_file:
       - .env
+    # 영상 영속화 (JIPCHAK_VIDEO_BASE_DIR=/data/videos 매핑, QR 다운로드용)
+    volumes:
+      - ${HOST_VIDEO_DIR}:/data/videos
     depends_on:
       db-jipchak:
         condition: service_healthy
       redis-jipchak:
         condition: service_started
+
+  # 6. AI Server
+  ai-jipchak:
+    build:
+      context: ../ai
+      dockerfile: Dockerfile
+    container_name: ai-jipchak
+    restart: on-failure
+    ports:
+      - "${AI_PORT}:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./ai_recordings:/data/recordings
+    depends_on:
+      - app-jipchak
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # 7. Frontend (React)
+  frontend-jipchak:
+    build:
+      context: ../frontend/react
+      dockerfile: Dockerfile
+    container_name: frontend-jipchak
+    restart: on-failure
+    ports:
+      - "${FRONTEND_PORT}:80"
+    env_file:
+      - .env
