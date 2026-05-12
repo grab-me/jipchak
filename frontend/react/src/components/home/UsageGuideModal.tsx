@@ -154,9 +154,9 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
               <button
                 type="button"
                 onClick={handleModalClose}
-                className="rounded-full bg-gray-800 px-[clamp(12px,1.5vw,18px)] py-[clamp(7px,0.9vw,11px)] text-[clamp(13px,1.4vw,16px)] font-bold text-white active:scale-95"
+                className="rounded-full bg-gray-800 px-[clamp(9px,1.2vw,14px)] text-[clamp(20px,2.8vw,34px)] font-bold text-white active:scale-95"
               >
-                닫기
+                X
               </button>
             </div>
 
@@ -198,7 +198,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
               <button
                 type="button"
                 onClick={() => goTo(currentIndex - 1)}
-                className="absolute left-[clamp(6px,1vw,12px)] top-1/2 -translate-y-1/2 z-10 rounded-full bg-gray-800/90 text-white font-bold active:scale-90 flex items-center justify-center w-[clamp(30px,3.8vw,44px)] h-[clamp(30px,3.8vw,44px)] text-[clamp(14px,1.8vw,20px)]"
+                className="absolute left-[clamp(6px,1vw,12px)] top-1/2 -translate-y-1/2 z-10 rounded-full bg-gray-800/90 text-white font-bold active:scale-90 flex items-center justify-center w-[clamp(30px,3.8vw,44px)] h-[clamp(30px,3.8vw,44px)] text-[clamp(20px,2.8vw,34px)]"
                 aria-label="이전 슬라이드"
               >
                 ‹
@@ -207,7 +207,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
               <button
                 type="button"
                 onClick={() => goTo(currentIndex + 1)}
-                className="absolute right-[clamp(6px,1vw,12px)] top-1/2 -translate-y-1/2 z-10 rounded-full bg-gray-800/90 text-white font-bold active:scale-90 flex items-center justify-center w-[clamp(30px,3.8vw,44px)] h-[clamp(30px,3.8vw,44px)] text-[clamp(14px,1.8vw,20px)]"
+                className="absolute right-[clamp(6px,1vw,12px)] top-1/2 -translate-y-1/2 z-10 rounded-full bg-gray-800/90 text-white font-bold active:scale-90 flex items-center justify-center w-[clamp(30px,3.8vw,44px)] h-[clamp(30px,3.8vw,44px)] text-[clamp(20px,2.8vw,34px)]"
                 aria-label="다음 슬라이드"
               >
                 ›
