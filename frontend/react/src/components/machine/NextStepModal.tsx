@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToolStore } from '@/store/toolStore';
+import { useAudio } from '@/hooks/useAudio';
+import { SOUND_ASSETS } from '@/constants/soundConfig';
 
 const AUTO_RESET_SECONDS = 30;
 
@@ -11,6 +13,7 @@ const AUTO_RESET_SECONDS = 30;
 const NextStepModal = () => {
   const { isAskingNextStep, setAskingNextStep, handleQRConsent, records, resetSession } = useToolStore();
   const [countdown, setCountdown] = useState(AUTO_RESET_SECONDS);
+  const { playSfx } = useAudio();
 
   useEffect(() => {
     if (!isAskingNextStep) {
@@ -38,6 +41,7 @@ const NextStepModal = () => {
   };
 
   const handleContinue = () => {
+    playSfx(SOUND_ASSETS.SFX.BUTTON_CLICK);
     setAskingNextStep(false);
   };
 
