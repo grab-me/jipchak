@@ -28,14 +28,22 @@ export interface SessionEvent {
     confidence?: number;
 }
 
+export interface DetectionItem {
+    bbox: number[];           // [xmin, ymin, xmax, ymax]
+    label: number;
+    det_score: number;
+    grasp_confidence: number;
+    grasp_center_px: number[]; // [x, y]
+    x_mm: number;
+    y_mm: number;
+    z_mm: number;
+}
+
 export interface CameraStreamState {
-    /** 가장 최근 프레임의 blob URL. 아직 한 프레임도 안 왔으면 null. */
     frameUrl: string | null;
-    /** WebSocket 연결 상태. */
     connected: boolean;
-    /** AI 파지 성공 확률 (0.0 ~ 1.0). GRASP_SCORE 이벤트로 갱신. */
     graspScore: number;
-    /** 가장 최근 세션 이벤트. */
+    detections: DetectionItem[];
     lastSessionEvent: SessionEvent | null;
 }
 
@@ -56,6 +64,7 @@ export function useCameraStream(channel: Channel): CameraStreamState {
     const [frameUrl, setFrameUrl] = useState<string | null>(null);
     const [connected, setConnected] = useState(false);
     const [graspScore, setGraspScore] = useState(0);
+    const [detections, setDetections] = useState<DetectionItem[]>([]);
     const [lastSessionEvent, setLastSessionEvent] = useState<SessionEvent | null>(null);
 
     // ObjectURL 누수 방지용: 직전 URL 을 보관해두고 다음 프레임 도착 시 revoke
@@ -86,6 +95,11 @@ export function useCameraStream(channel: Channel): CameraStreamState {
                         const msg = JSON.parse(event.data);
                         if (msg.event === 'GRASP_SCORE' && typeof msg.confidence === 'number') {
                             setGraspScore(msg.confidence);
+                            if (Array.isArray(msg.detections)) {
+                                setDetections(msg.detections);
+                            } else {
+                                setDetections([]);
+                            }
                         } else if (msg.event === 'SESSION_START') {
                             setLastSessionEvent({ type: 'SESSION_START', session_id: msg.session_id });
                         } else if (msg.event === 'GAME_RESULT') {
@@ -153,5 +167,5 @@ export function useCameraStream(channel: Channel): CameraStreamState {
         };
     }, [channel]);
 
-    return { frameUrl, connected, graspScore, lastSessionEvent };
+    return { frameUrl, connected, graspScore, detections, lastSessionEvent };
 }
