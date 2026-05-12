@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useToolStore } from '@/store/toolStore';
 import { useCameraStream } from '@/hooks/useCameraStream';
 import Thermometer from './Thermometer';
+import { useAudio } from '@/hooks/useAudio';
+import { SOUND_ASSETS } from '@/constants/soundConfig';
 
 interface CameraViewProps {
   label: string;
@@ -10,6 +12,7 @@ interface CameraViewProps {
 const CameraView = ({ label }: CameraViewProps) => {
   const { addRecord, setCatching, setLastResult, startSession, isSessionActive } = useToolStore();
   const processedRef = useRef<string | null>(null);
+  const { playSfx } = useAudio();
 
   const channel = label === 'Cam1' ? '2d' : '3d';
   const { frameUrl, connected, graspScore, lastSessionEvent } = useCameraStream(channel);
@@ -27,6 +30,11 @@ const CameraView = ({ label }: CameraViewProps) => {
       }
       setCatching(true);
       setLastResult(null);
+
+      // 집게 하강 효과음 재생
+      if (label === 'Cam1') {
+        playSfx(SOUND_ASSETS.SFX.TRY_CATCH);
+      }
     }
 
     if (lastSessionEvent.type === 'GAME_RESULT') {
