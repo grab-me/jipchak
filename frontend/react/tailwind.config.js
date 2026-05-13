@@ -15,6 +15,7 @@ export default {
       },
       fontFamily: {
         crayon: ['HakgyoansimDoldam', 'sans-serif'],
+        pretendard: ['Pretendard', 'sans-serif'],
       },
       colors: {
         brand: {

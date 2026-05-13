@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import { Menu, LogOut, MonitorSmartphone } from 'lucide-react'; // 햄버거, 기기변경, 종료 아이콘
 
 // --- MOCK DATA ---
 const MOCK_KPI = {
@@ -36,6 +37,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview'|'logs'>('overview');
   const [sortOption, setSortOption] = useState<SortOption>('latest');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // 모바일 서랍 제어
 
   // 이상치 정렬 로직
   const sortedOutliers = useMemo(() => {
@@ -46,161 +48,198 @@ const AdminDashboard = () => {
     if (sortOption === 'low_conf') {
       return list.sort((a, b) => a.confidence - b.confidence);
     }
-    // latest (id 역순으로 임시 처리)
     return list.sort((a, b) => b.id - a.id);
   }, [sortOption]);
 
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
   return (
     <div 
-      className="flex flex-col w-full h-screen bg-[#111827] text-gray-100 overflow-hidden font-crayon"
+      className="flex flex-col md:flex-row w-full h-screen bg-[#fdfbf7] text-slate-800 overflow-hidden font-pretendard"
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Top Navigation Bar */}
-      <div className="flex items-center justify-between px-[clamp(16px,2vw,32px)] py-[clamp(8px,1.5vh,24px)] bg-[#1f2937] border-b border-gray-800 shadow-sm">
-        <h1 className="text-[clamp(20px,2.5vw,36px)] font-bold text-white tracking-wider flex items-center gap-[1vw]">
-          JIPCHAK <span className="text-brand text-[clamp(14px,1.5vw,20px)] font-normal">Admin</span>
-        </h1>
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          onClick={toggleSidebar} 
+        />
+      )}
+
+      {/* Sidebar (Desktop 고정, Mobile 서랍) */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 shadow-xl flex flex-col transform transition-transform duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex flex-col">
+            JIPCHAK <span className="text-blue-600 text-sm font-semibold mt-1">Admin Portal</span>
+          </h1>
+          {/* 모바일 닫기 버튼 */}
+          <button className="md:hidden p-2 text-gray-500 active:scale-95" onClick={toggleSidebar}>
+            <Menu size={24} />
+          </button>
+        </div>
         
-        <div className="flex gap-[clamp(8px,1vw,16px)]">
+        <div className="flex flex-col gap-2 p-4 flex-1">
           <button 
-            onClick={() => setActiveTab('overview')}
-            className={`px-[clamp(16px,2vw,32px)] py-[clamp(8px,1vh,16px)] rounded-lg text-[clamp(16px,1.5vw,24px)] font-bold transition-colors active:scale-95 ${
-              activeTab === 'overview' ? 'bg-[#3b82f6] text-white shadow-lg' : 'bg-gray-800 text-gray-400'
+            onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }}
+            className={`text-left px-4 py-3 rounded-lg font-bold text-lg transition-colors active:scale-95 ${
+              activeTab === 'overview' ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100' : 'text-slate-500 bg-transparent'
             }`}
           >
-            통계 뷰
+            📊 통계 뷰
           </button>
           <button 
-            onClick={() => setActiveTab('logs')}
-            className={`px-[clamp(16px,2vw,32px)] py-[clamp(8px,1vh,16px)] rounded-lg text-[clamp(16px,1.5vw,24px)] font-bold transition-colors active:scale-95 ${
-              activeTab === 'logs' ? 'bg-[#3b82f6] text-white shadow-lg' : 'bg-gray-800 text-gray-400'
+            onClick={() => { setActiveTab('logs'); setIsSidebarOpen(false); }}
+            className={`text-left px-4 py-3 rounded-lg font-bold text-lg transition-colors active:scale-95 ${
+              activeTab === 'logs' ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100' : 'text-slate-500 bg-transparent'
             }`}
           >
-            이상치 로그
-          </button>
-          <button 
-            onClick={() => navigate('/')}
-            className="px-[clamp(16px,2vw,32px)] py-[clamp(8px,1vh,16px)] rounded-lg text-[clamp(16px,1.5vw,24px)] font-bold bg-red-500/20 text-red-400 active:scale-95 transition-transform"
-          >
-            종료
+            📋 이상치 로그
           </button>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 w-full h-full p-[clamp(16px,2vw,32px)] overflow-y-auto">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden w-full relative">
         
-        {activeTab === 'overview' && (
-          <div className="flex flex-col h-full gap-[clamp(16px,2vw,32px)]">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-3 gap-[clamp(16px,2vw,32px)] min-h-[15vh]">
-              <div className="bg-[#1f2937] rounded-[1vw] p-[clamp(16px,2vw,32px)] flex flex-col justify-center shadow-lg border border-gray-800">
-                <span className="text-gray-400 text-[clamp(14px,1.5vw,20px)] mb-[1vh]">총 시행 횟수</span>
-                <span className="text-white text-[clamp(28px,3vw,48px)] font-bold">{MOCK_KPI.totalPlays.toLocaleString()}회</span>
-              </div>
-              <div className="bg-[#1f2937] rounded-[1vw] p-[clamp(16px,2vw,32px)] flex flex-col justify-center shadow-lg border border-gray-800">
-                <span className="text-gray-400 text-[clamp(14px,1.5vw,20px)] mb-[1vh]">종합 성공률</span>
-                <span className="text-green-400 text-[clamp(28px,3vw,48px)] font-bold">{MOCK_KPI.winRate}%</span>
-              </div>
-              <div className="bg-[#1f2937] rounded-[1vw] p-[clamp(16px,2vw,32px)] flex flex-col justify-center shadow-lg border border-blue-900/50 relative overflow-hidden">
-                <span className="text-gray-400 text-[clamp(14px,1.5vw,20px)] mb-[1vh] z-10">AI 예측 적중률</span>
-                <span className="text-blue-400 text-[clamp(28px,3vw,48px)] font-bold z-10">{MOCK_KPI.aiAccuracy}%</span>
-                <div className="absolute right-[-10%] top-[-10%] w-[50%] h-[150%] bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Stacked Bar Chart */}
-            <div className="flex-1 bg-[#1f2937] rounded-[1vw] p-[clamp(16px,2vw,32px)] flex flex-col shadow-lg border border-gray-800">
-              <h2 className="text-white text-[clamp(20px,2vw,32px)] font-bold mb-[2vh]">
-                AI 신뢰도 분석 <span className="text-gray-400 text-[clamp(14px,1.2vw,20px)] font-normal ml-[1vw]">(구간별 성공/실패 분포)</span>
-              </h2>
-              <div className="flex-1 w-full min-h-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={MOCK_BAR_DATA} margin={{ top: 20, right: 30, left: 0, bottom: 5 }} barSize={60}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-                    <XAxis dataKey="range" stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 'clamp(12px, 1.2vw, 16px)' }} />
-                    <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 'clamp(12px, 1.2vw, 16px)' }} />
-                    <Tooltip 
-                      cursor={{ fill: '#374151', opacity: 0.4 }}
-                      contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '8px' }}
-                      itemStyle={{ color: '#fff', fontSize: 'clamp(14px, 1.5vw, 20px)' }}
-                    />
-                    <Legend wrapperStyle={{ paddingTop: '2vh', fontSize: 'clamp(14px, 1.5vw, 20px)' }} />
-                    <Bar dataKey="success" name="성공 (Success)" stackId="a" fill="#22c55e" radius={[0, 0, 4, 4]} />
-                    <Bar dataKey="fail" name="실패 (Fail)" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+        {/* Top Header */}
+        <div className="flex items-center justify-between md:justify-end px-4 py-3 bg-white border-b border-gray-200 shadow-sm z-30">
+          {/* 모바일 햄버거 버튼 */}
+          <button className="md:hidden p-2 text-slate-600 active:scale-95" onClick={toggleSidebar}>
+            <Menu size={28} />
+          </button>
+          
+          <div className="flex gap-2 sm:gap-4 items-center">
+            <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm sm:text-base font-semibold bg-gray-100 text-slate-700 active:scale-95 transition-transform border border-gray-200">
+              <MonitorSmartphone size={18} />
+              <span className="hidden sm:inline">기기 선택</span>
+              <span className="inline sm:hidden">기기</span>
+            </button>
+            <button 
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm sm:text-base font-bold bg-red-50 text-red-600 active:scale-95 transition-transform border border-red-100"
+            >
+              <LogOut size={18} />
+              종료
+            </button>
           </div>
-        )}
+        </div>
 
-        {activeTab === 'logs' && (
-          <div className="flex flex-col h-full bg-[#1f2937] rounded-[1vw] p-[clamp(16px,2vw,32px)] shadow-lg border border-gray-800">
-            <div className="flex justify-between items-center mb-[3vh]">
-              <h2 className="text-white text-[clamp(20px,2vw,32px)] font-bold">
-                이상치 (Edge Cases) 영상 로그
-              </h2>
-              <select 
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value as SortOption)}
-                className="bg-[#111827] text-white border border-gray-600 rounded-lg px-[clamp(12px,1vw,16px)] py-[clamp(8px,1vh,12px)] text-[clamp(14px,1.5vw,20px)] outline-none"
-              >
-                <option value="latest">최신순</option>
-                <option value="high_conf">AI 예측 확률 높은순 (오판 의심)</option>
-                <option value="low_conf">AI 예측 확률 낮은순 (요행 의심)</option>
-              </select>
-            </div>
+        {/* Scrollable Content Area */}
+        <div className="flex-1 w-full h-full p-4 md:p-8 overflow-y-auto custom-scrollbar">
+          
+          {activeTab === 'overview' && (
+            <div className="flex flex-col h-full gap-4 md:gap-8 max-w-7xl mx-auto">
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
+                <div className="bg-white rounded-2xl p-6 flex flex-col justify-center shadow-md border border-gray-100">
+                  <span className="text-slate-500 text-sm md:text-base font-medium mb-2">총 시행 횟수</span>
+                  <span className="text-slate-900 text-3xl md:text-5xl font-black">{MOCK_KPI.totalPlays.toLocaleString()}회</span>
+                </div>
+                <div className="bg-white rounded-2xl p-6 flex flex-col justify-center shadow-md border border-gray-100">
+                  <span className="text-slate-500 text-sm md:text-base font-medium mb-2">종합 성공률</span>
+                  <span className="text-green-600 text-3xl md:text-5xl font-black">{MOCK_KPI.winRate}%</span>
+                </div>
+                <div className="bg-white rounded-2xl p-6 flex flex-col justify-center shadow-md border border-blue-100 relative overflow-hidden">
+                  <span className="text-slate-500 text-sm md:text-base font-medium mb-2 z-10">AI 예측 적중률</span>
+                  <span className="text-blue-600 text-3xl md:text-5xl font-black z-10">{MOCK_KPI.aiAccuracy}%</span>
+                  <div className="absolute right-[-10%] top-[-10%] w-[50%] h-[150%] bg-blue-50 rounded-full blur-2xl pointer-events-none" />
+                </div>
+              </div>
 
-            <div className="flex-1 overflow-y-auto pr-[1vw]">
-              <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-[#1f2937] z-10 shadow-sm">
-                  <tr className="border-b border-gray-600 text-gray-400 text-[clamp(14px,1.5vw,20px)]">
-                    <th className="p-[1.5vh] font-normal">시간</th>
-                    <th className="p-[1.5vh] font-normal">AI 예측 확률</th>
-                    <th className="p-[1.5vh] font-normal">실제 결과</th>
-                    <th className="p-[1.5vh] font-normal">분석 태그</th>
-                    <th className="p-[1.5vh] font-normal text-right">영상 보기</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedOutliers.map((item) => {
-                    // 극단적 이상치 하이라이트 (95% 이상 실패 OR 10% 이하 성공)
-                    const isExtreme = (item.confidence >= 95 && !item.isSuccess) || (item.confidence <= 10 && item.isSuccess);
-                    
-                    return (
-                      <tr key={item.id} className={`border-b border-gray-800 transition-colors ${isExtreme ? 'bg-red-900/20' : 'bg-transparent'}`}>
-                        <td className="p-[1.5vh] text-gray-300 text-[clamp(14px,1.5vw,20px)]">{item.timestamp}</td>
-                        <td className="p-[1.5vh]">
-                          <span className={`text-[clamp(16px,1.8vw,24px)] font-bold ${item.confidence > 50 ? 'text-green-400' : 'text-red-400'}`}>
-                            {item.confidence.toFixed(1)}%
-                          </span>
-                        </td>
-                        <td className="p-[1.5vh]">
-                          <span className={`px-[clamp(8px,1vw,16px)] py-[clamp(4px,0.5vh,8px)] rounded-lg font-bold text-[clamp(12px,1.2vw,16px)] ${
-                            item.isSuccess ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                          }`}>
-                            {item.isSuccess ? '성공' : '실패'}
-                          </span>
-                        </td>
-                        <td className="p-[1.5vh]">
-                          <span className={`font-bold text-[clamp(14px,1.5vw,20px)] ${isExtreme ? 'text-red-400 animate-pulse' : 'text-gray-300'}`}>
-                            {item.tag}
-                          </span>
-                        </td>
-                        <td className="p-[1.5vh] text-right">
-                          <button className="bg-blue-500/20 text-blue-400 px-[clamp(12px,1vw,20px)] py-[clamp(6px,1vh,12px)] rounded-lg font-bold text-[clamp(14px,1.5vw,20px)] active:scale-95 transition-transform border border-blue-500/30">
-                            ▶ Replay
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              {/* Stacked Bar Chart */}
+              <div className="flex-1 min-h-[400px] bg-white rounded-2xl p-4 md:p-8 flex flex-col shadow-md border border-gray-100">
+                <h2 className="text-slate-900 text-xl md:text-2xl font-bold mb-4">
+                  AI 신뢰도 분석 <span className="text-slate-400 text-sm md:text-base font-medium ml-2">(구간별 성공/실패 분포)</span>
+                </h2>
+                <div className="flex-1 w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={MOCK_BAR_DATA} margin={{ top: 20, right: 30, left: 0, bottom: 5 }} maxBarSize={80}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                      <XAxis dataKey="range" stroke="#6b7280" tick={{ fill: '#6b7280', fontWeight: 500 }} />
+                      <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontWeight: 500 }} />
+                      <Tooltip 
+                        cursor={{ fill: '#f3f4f6' }}
+                        contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
+                      />
+                      <Legend wrapperStyle={{ paddingTop: '20px', fontWeight: 600, color: '#475569' }} />
+                      <Bar dataKey="success" name="성공 (Success)" stackId="a" fill="#10b981" radius={[0, 0, 6, 6]} />
+                      <Bar dataKey="fail" name="실패 (Fail)" stackId="a" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {activeTab === 'logs' && (
+            <div className="flex flex-col h-full bg-white rounded-2xl p-4 md:p-8 shadow-md border border-gray-100 max-w-7xl mx-auto min-h-[500px]">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h2 className="text-slate-900 text-xl md:text-2xl font-bold">
+                  이상치 (Edge Cases) 영상 로그
+                </h2>
+                <select 
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as SortOption)}
+                  className="bg-white text-slate-700 border border-gray-300 rounded-lg px-3 py-2 text-sm md:text-base font-medium outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
+                >
+                  <option value="latest">최신순</option>
+                  <option value="high_conf">AI 예측 확률 높은순 (오판 의심)</option>
+                  <option value="low_conf">AI 예측 확률 낮은순 (요행 의심)</option>
+                </select>
+              </div>
+
+              <div className="flex-1 overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[700px]">
+                  <thead className="bg-gray-50 border-y border-gray-200">
+                    <tr className="text-slate-500 text-sm md:text-base">
+                      <th className="p-4 font-semibold">시간</th>
+                      <th className="p-4 font-semibold">AI 예측 확률</th>
+                      <th className="p-4 font-semibold">실제 결과</th>
+                      <th className="p-4 font-semibold">분석 태그</th>
+                      <th className="p-4 font-semibold text-right">영상 보기</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedOutliers.map((item) => {
+                      // 극단적 이상치 하이라이트 (95% 이상 실패 OR 10% 이하 성공)
+                      const isExtreme = (item.confidence >= 95 && !item.isSuccess) || (item.confidence <= 10 && item.isSuccess);
+                      
+                      return (
+                        <tr key={item.id} className={`border-b border-gray-100 transition-colors ${isExtreme ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                          <td className="p-4 text-slate-600 text-sm md:text-base font-medium">{item.timestamp}</td>
+                          <td className="p-4">
+                            <span className={`text-base md:text-xl font-bold ${item.confidence > 50 ? 'text-green-600' : 'text-red-600'}`}>
+                              {item.confidence.toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <span className={`px-3 py-1.5 rounded-md font-bold text-xs md:text-sm ${
+                              item.isSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                            }`}>
+                              {item.isSuccess ? '성공' : '실패'}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <span className={`font-bold text-sm md:text-base flex items-center gap-2 ${isExtreme ? 'text-red-600' : 'text-slate-700'}`}>
+                              {isExtreme && <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75 -ml-4"></span>}
+                              {item.tag}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right">
+                            <button className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold text-sm md:text-base active:scale-95 transition-transform border border-blue-200 hover:bg-blue-100">
+                              ▶ Replay
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
