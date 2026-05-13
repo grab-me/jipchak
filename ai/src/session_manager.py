@@ -71,9 +71,19 @@ class SessionManager:
     async def on_frame(
         self,
         session_id: Optional[str],
-        color_frame: Optional[np.ndarray],
-        depth_frame: Optional[np.ndarray],
+        color_frame_record: Optional[np.ndarray],
+        depth_frame: Optional[np.ndarray] = None,
+        color_frame_infer: Optional[np.ndarray] = None,
     ) -> None:
+        """
+        프레임 수신 처리.
+
+        Parameters
+        ----------
+        color_frame_record : 녹화용 영상 (웹캠/color_2d). VideoRecorder에 기록되어 QR 영상으로 사용됨.
+        color_frame_infer  : 추론용 영상 (D435 RGB/color_3d). 미지정 시 record 프레임과 동일하게 처리.
+        depth_frame        : D435 depth (집게 판정/grasp 점수 계산용).
+        """
         if not session_id:
             return  # 세션 없는 프레임은 릴레이 전용으로만 처리됨
 
@@ -81,19 +91,27 @@ class SessionManager:
         if session is None:
             return
 
-        # 첫 컬러 프레임이 도착했을 때 녹화 시작 (실제 해상도를 알아야 하므로)
-        if not session.started and color_frame is not None:
+        # 추론용 프레임이 없으면 녹화 프레임으로 폴백
+        if color_frame_infer is None:
+            color_frame_infer = color_frame_record
+
+        # 첫 녹화 프레임이 도착했을 때 녹화 시작 (실제 해상도를 알아야 하므로)
+        if not session.started and color_frame_record is not None:
             try:
-                self._recorder.start_session(session_id, color_frame.shape)
+                self._recorder.start_session(session_id, color_frame_record.shape)
                 session.started = True
             except Exception as e:
                 print(f"[SessionManager] recorder start failed: {e}")
                 return
 
-        if color_frame is not None:
-            session.last_color_frame = color_frame
+        # 녹화: 웹캠 영상
+        if color_frame_record is not None:
+            self._recorder.write(session_id, color_frame_record)
             session.frame_count += 1
-            self._recorder.write(session_id, color_frame)
+
+        # 추론용 저장: D435 RGB (YOLO/GR-ConvNet 모두 이 프레임 사용)
+        if color_frame_infer is not None:
+            session.last_color_frame = color_frame_infer
 
         if depth_frame is not None:
             if session.first_depth_frame is None:
