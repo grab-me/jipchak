@@ -1,12 +1,7 @@
-import sys
 import os
 import numpy as np
 
-# three-jaw-grasp 패키지를 인식하기 위해 sys.path 추가
-_THREE_JAW_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../three-jaw-grasp"))
-if _THREE_JAW_ROOT not in sys.path:
-    sys.path.insert(0, _THREE_JAW_ROOT)
-
+# ai/three_jaw_grasp 패키지 사용 (ai/three-jaw-grasp 디렉토리는 docs/examples만)
 from three_jaw_grasp import GraspPipeline
 from three_jaw_grasp.adapters import YoloSegGraspAdapter
 from three_jaw_grasp.evaluator_chick import ChickEvaluator
