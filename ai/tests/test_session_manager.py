@@ -50,7 +50,7 @@ class FixedJudge(CatchJudge):
         super().__init__()
         self._fixed = is_caught
 
-    def judge(self, color_frame=None, depth_frame=None) -> JudgeResult:
+    def judge(self, color_frame=None, depth_frame=None, first_depth_frame=None) -> JudgeResult:
         return JudgeResult(is_caught=self._fixed, confidence=1.0, method="fixed")
 
 
