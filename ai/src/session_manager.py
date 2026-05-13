@@ -7,6 +7,7 @@ import numpy as np
 from .inference.detection_service import DetectionService
 from .inference.judge import CatchJudge, JudgeResult
 from .inference.grasp_service import GraspService
+from .inference.three_jaw_service import ThreeJawGraspService
 from .network.spring_client import SpringClient
 from .recorder.video_recorder import VideoRecorder
 
@@ -40,12 +41,14 @@ class SessionManager:
         spring: SpringClient,
         grasp_service: Optional["GraspService"] = None,
         detection_service: Optional["DetectionService"] = None,
+        three_jaw_service: Optional["ThreeJawGraspService"] = None,
     ) -> None:
         self._recorder = recorder
         self._judge = judge
         self._spring = spring
         self._grasp = grasp_service
         self._detection = detection_service
+        self._three_jaw = three_jaw_service
         self._sessions: Dict[str, GameSession] = {}
         self._lock = asyncio.Lock()
         self.last_judge_result: Optional["JudgeResult"] = None
@@ -68,9 +71,19 @@ class SessionManager:
     async def on_frame(
         self,
         session_id: Optional[str],
-        color_frame: Optional[np.ndarray],
-        depth_frame: Optional[np.ndarray],
+        color_frame_record: Optional[np.ndarray],
+        depth_frame: Optional[np.ndarray] = None,
+        color_frame_infer: Optional[np.ndarray] = None,
     ) -> None:
+        """
+        프레임 수신 처리.
+
+        Parameters
+        ----------
+        color_frame_record : 녹화용 영상 (웹캠/color_2d). VideoRecorder에 기록되어 QR 영상으로 사용됨.
+        color_frame_infer  : 추론용 영상 (D435 RGB/color_3d). 미지정 시 record 프레임과 동일하게 처리.
+        depth_frame        : D435 depth (집게 판정/grasp 점수 계산용).
+        """
         if not session_id:
             return  # 세션 없는 프레임은 릴레이 전용으로만 처리됨
 
@@ -78,19 +91,27 @@ class SessionManager:
         if session is None:
             return
 
-        # 첫 컬러 프레임이 도착했을 때 녹화 시작 (실제 해상도를 알아야 하므로)
-        if not session.started and color_frame is not None:
+        # 추론용 프레임이 없으면 녹화 프레임으로 폴백
+        if color_frame_infer is None:
+            color_frame_infer = color_frame_record
+
+        # 첫 녹화 프레임이 도착했을 때 녹화 시작 (실제 해상도를 알아야 하므로)
+        if not session.started and color_frame_record is not None:
             try:
-                self._recorder.start_session(session_id, color_frame.shape)
+                self._recorder.start_session(session_id, color_frame_record.shape)
                 session.started = True
             except Exception as e:
                 print(f"[SessionManager] recorder start failed: {e}")
                 return
 
-        if color_frame is not None:
-            session.last_color_frame = color_frame
+        # 녹화: 웹캠 영상
+        if color_frame_record is not None:
+            self._recorder.write(session_id, color_frame_record)
             session.frame_count += 1
-            self._recorder.write(session_id, color_frame)
+
+        # 추론용 저장: D435 RGB (YOLO/GR-ConvNet 모두 이 프레임 사용)
+        if color_frame_infer is not None:
+            session.last_color_frame = color_frame_infer
 
         if depth_frame is not None:
             if session.first_depth_frame is None:
@@ -101,13 +122,15 @@ class SessionManager:
         """
         현재 세션의 마지막 프레임으로 파지점 추론.
 
-        Detection이 활성화되어 있으면:
-            Detection → 물체별 crop → GR-ConvNet → per-object 확률
-        미활성 또는 물체 미감지 시:
-            전체 이미지 GR-ConvNet (기존 방식)
+        우선순위:
+            1. ThreeJawGraspService (YOLOv8-seg + ChickEvaluator)
+               → GRASP_POSE dict 반환 (event 키 포함)
+            2. Detection(SSDLite) + GR-ConvNet per-object
+               → GRASP_SCORE 호환 dict 반환 (detections 키 포함)
+            3. Full-image GR-ConvNet fallback
         """
         session = self._sessions.get(session_id)
-        if session is None or self._grasp is None:
+        if session is None:
             return None
         if session.last_color_frame is None:
             return None
@@ -115,7 +138,21 @@ class SessionManager:
         rgb = session.last_color_frame
         depth = session.last_depth_frame
 
-        # Detection → per-object grasp
+        # 1. YOLOv8-seg ThreeJawGrasp (1순위)
+        if self._three_jaw is not None:
+            pose = self._three_jaw.infer(rgb, depth)
+            if pose is not None:
+                print(
+                    f"[SessionManager] three_jaw: "
+                    f"conf={pose['confidence']:.2f} "
+                    f"center=({pose['center_x']:.0f},{pose['center_y']:.0f})"
+                )
+                return pose
+
+        if self._grasp is None:
+            return None
+
+        # 2. Detection(SSDLite) → per-object grasp
         if self._detection is not None and self._detection.is_ready:
             detected = self._detection.detect(rgb)
             if detected:
