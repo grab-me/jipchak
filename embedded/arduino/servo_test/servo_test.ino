@@ -5,26 +5,30 @@ const int PIN_SERVO = 13;
 
 void setup() {
   Serial.begin(115200);
-  myServo.attach(PIN_SERVO);
   
-  // 1500 입력 시 360도 무한회전 서보라면 '정지'합니다.
-  myServo.writeMicroseconds(1500);
-  Serial.println("360 Servo Test Ready.");
-  Serial.println("Enter a pulse width between 500 and 2500:");
-  Serial.println("- If Continuous (무한회전): 1500=Stop, 1000=Left, 2000=Right");
-  Serial.println("- If Absolute (절대각도 360): 500=0deg, 1500=180deg, 2500=360deg");
+  // attach 하기 전에 미리 0도로 세팅하여 90도로 튀는 기본 동작 방지
+  myServo.write(0);
+  myServo.attach(PIN_SERVO);
+
+  Serial.println("=== Claw Angle Test (180 Degree Servo) ===");
+  Serial.println("Waiting for manual input...");
+  Serial.println("Enter an angle (0 ~ 180) to test your claw.");
+  Serial.println("Example: Type '145' and press Enter to see the closed state.");
 }
 
 void loop() {
   if (Serial.available() > 0) {
-    int pulse = Serial.parseInt();
-    
-    if (pulse >= 500 && pulse <= 2500) {
-      Serial.print("Sending Pulse: ");
-      Serial.println(pulse);
-      myServo.writeMicroseconds(pulse);
+    int angle = Serial.parseInt();
+
+    if (angle >= 0 && angle <= 180) {
+      Serial.print("Moving to Angle: ");
+      Serial.println(angle);
+      
+      myServo.write(angle);
+    } else if (angle != 0) {
+      Serial.println("Please enter a valid angle (0~180).");
     }
-    
+
     while(Serial.available() > 0) {
       char t = Serial.read();
     }

@@ -89,11 +89,14 @@ void loop() {
 
   // X축 리미트 스위치 충돌 감지 (충돌 시 즉시 정지 후 반대 방향으로 5스텝 부드럽게 이동)
   if (digitalRead(PIN_ENDSTOP_X_LEFT) == LOW && stepperX.distanceToGo() < 0) {
-    stepperX.setSpeed(0); stepperX.move(5);
-    Serial.println("X LEFT LIMIT TRIGGERED! Bouncing back...");
+    stepperX.setCurrentPosition(0); // 0점(원점)으로 리셋하며 가속도 타이머도 초기화
+    stepperX.moveTo(5); // 0점에서부터 5스텝 튕겨나옴
+    Serial.println("X LEFT LIMIT TRIGGERED! Origin Reset to 0. Bouncing back...");
   }
   if (digitalRead(PIN_ENDSTOP_X_RIGHT) == LOW && stepperX.distanceToGo() > 0) {
-    stepperX.setSpeed(0); stepperX.move(-5);
+    long curX = stepperX.currentPosition();
+    stepperX.setCurrentPosition(curX);
+    stepperX.moveTo(curX - 5);
     Serial.println("X RIGHT LIMIT TRIGGERED! Bouncing back...");
   }
   stepperX.run();
@@ -108,11 +111,14 @@ void loop() {
 
   // Y축 리미트 스위치 충돌 감지
   if (digitalRead(PIN_ENDSTOP_Y_DOWN) == LOW && stepperY.distanceToGo() < 0) {
-    stepperY.setSpeed(0); stepperY.move(5);
-    Serial.println("Y DOWN LIMIT TRIGGERED! Bouncing back...");
+    stepperY.setCurrentPosition(0); // 0점(원점)으로 리셋하며 가속도 타이머도 초기화
+    stepperY.moveTo(5); // 0점에서부터 5스텝 튕겨나옴
+    Serial.println("Y DOWN LIMIT TRIGGERED! Origin Reset to 0. Bouncing back...");
   }
   if (digitalRead(PIN_ENDSTOP_Y_UP) == LOW && stepperY.distanceToGo() > 0) {
-    stepperY.setSpeed(0); stepperY.move(-5);
+    long curY = stepperY.currentPosition();
+    stepperY.setCurrentPosition(curY);
+    stepperY.moveTo(curY - 5);
     Serial.println("Y UP LIMIT TRIGGERED! Bouncing back...");
   }
   stepperY.run();
