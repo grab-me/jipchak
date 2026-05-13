@@ -27,8 +27,14 @@ def _sync_process_frame(session_manager: SessionManager, session_id: str, payloa
         return
     loop = asyncio.new_event_loop()
     try:
+        # 녹화는 웹캠(color_2d), 추론은 D435(color_3d), depth는 그대로
         loop.run_until_complete(
-            session_manager.on_frame(session_id, frame.color_2d, frame.depth_3d)
+            session_manager.on_frame(
+                session_id,
+                color_frame_record=frame.color_2d,
+                color_frame_infer=frame.color_3d,
+                depth_frame=frame.depth_3d,
+            )
         )
     finally:
         loop.close()
