@@ -84,14 +84,23 @@ class ThreeJawGraspService:
 
     def infer(self, color_bgr: np.ndarray, depth_mm: np.ndarray) -> dict | None:
         if self._pipeline is None:
+            print("[ThreeJawGraspService] _pipeline is None (load 실패?)")
             return None
-            
+
+        if color_bgr is None:
+            print("[ThreeJawGraspService] color_bgr is None (D435 RGB 미수신)")
+            return None
+
         try:
             # depth를 미터 단위로 변환
             depth_m = None
             if depth_mm is not None:
                 depth_m = depth_mm.astype('float32') / 1000.0
-                
+
+            print(
+                f"[ThreeJawGraspService] infer start: "
+                f"rgb_shape={color_bgr.shape} depth={'O' if depth_m is not None else 'X'}"
+            )
             best = self._pipeline.predict_best(color_bgr, depth_m)
             
             # 해상도 업데이트 (들어오는 영상 기준)
@@ -118,8 +127,17 @@ class ThreeJawGraspService:
             # 최종 점수 = 병아리 파지 품질 점수(목 조준 포함) * 조준 가중치
             final_confidence = float(total_quality_score * centering_weight)
 
+            print(
+                f"[ThreeJawGraspService] candidate: "
+                f"center=({best.center_x:.0f},{best.center_y:.0f}) "
+                f"width={best.width:.1f} angle={best.angle:.2f} "
+                f"quality={total_quality_score:.3f} centering={centering_weight:.3f} "
+                f"final={final_confidence:.3f}"
+            )
+
             # 최종 필터링: 점수가 아주 낮지 않으면 표시 (0.15)
             if final_confidence < 0.15:
+                print(f"[ThreeJawGraspService] filtered: final={final_confidence:.3f} < 0.15")
                 return None
 
             return {
@@ -135,6 +153,7 @@ class ThreeJawGraspService:
             }
         except ValueError as ve:
             # "탐지된 파지 후보가 없습니다." 등의 에러
+            print(f"[ThreeJawGraspService] no candidates: {ve}")
             return None
         except Exception as e:
             print(f"[ThreeJawGraspService] infer error: {e}")
