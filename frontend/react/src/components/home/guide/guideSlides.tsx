@@ -44,6 +44,7 @@ export const guideSlides: GuideSlide[] = [
     description: (
       <>
         서브 카메라의 실시간 영상을 확인할 수 있습니다.
+        서브 카메라 화면을 클릭 시 메인 카메라와 서브 카메라의 영상이 서로 바뀌어 보여집니다.
       </>
     ),
   },
