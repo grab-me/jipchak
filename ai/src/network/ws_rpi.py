@@ -126,15 +126,19 @@ async def _run_inference(
         elapsed = (time.monotonic() - t0) * 1000
         if grasp:
             print(f"[ws_rpi] inference {elapsed:.0f}ms conf={grasp['confidence']:.3f}")
-            score_data = {
-                "event": "GRASP_SCORE",
-                "confidence": grasp["confidence"],
-                "center_px": grasp["center_px"],
-                "width_px": grasp.get("width_px", 0.0),
-            }
-            if "detections" in grasp:
-                score_data["detections"] = grasp["detections"]
-            await relay_hub.broadcast_text(json.dumps(score_data).encode())
+            # ThreeJawGraspService는 이미 GRASP_POSE 형식으로 반환
+            if grasp.get("event") == "GRASP_POSE":
+                await relay_hub.broadcast_text(json.dumps(grasp).encode())
+            else:
+                score_data = {
+                    "event": "GRASP_SCORE",
+                    "confidence": grasp["confidence"],
+                    "center_px": grasp["center_px"],
+                    "width_px": grasp.get("width_px", 0.0),
+                }
+                if "detections" in grasp:
+                    score_data["detections"] = grasp["detections"]
+                await relay_hub.broadcast_text(json.dumps(score_data).encode())
     except Exception as e:
         print(f"[ws_rpi] inference error: {e}")
     finally:

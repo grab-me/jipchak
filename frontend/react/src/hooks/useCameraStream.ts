@@ -39,11 +39,23 @@ export interface DetectionItem {
     z_mm: number;
 }
 
+export interface GraspPose {
+    center_x: number;
+    center_y: number;
+    angle_rad: number;
+    radius: number;
+    jaw_count: number;
+    confidence: number;
+    image_width: number;
+    image_height: number;
+}
+
 export interface CameraStreamState {
     frameUrl: string | null;
     connected: boolean;
     graspScore: number;
     detections: DetectionItem[];
+    graspPose: GraspPose | null;
     lastSessionEvent: SessionEvent | null;
 }
 
@@ -65,6 +77,7 @@ export function useCameraStream(channel: Channel): CameraStreamState {
     const [connected, setConnected] = useState(false);
     const [graspScore, setGraspScore] = useState(0);
     const [detections, setDetections] = useState<DetectionItem[]>([]);
+    const [graspPose, setGraspPose] = useState<GraspPose | null>(null);
     const [lastSessionEvent, setLastSessionEvent] = useState<SessionEvent | null>(null);
 
     // ObjectURL 누수 방지용: 직전 URL 을 보관해두고 다음 프레임 도착 시 revoke
@@ -86,6 +99,7 @@ export function useCameraStream(channel: Channel): CameraStreamState {
             }
             detectionStaleTimerRef.current = setTimeout(() => {
                 setDetections([]);
+                setGraspPose(null);
                 setGraspScore(0);
             }, DETECTION_STALE_MS);
         };
@@ -106,14 +120,29 @@ export function useCameraStream(channel: Channel): CameraStreamState {
                 if (typeof event.data === 'string') {
                     try {
                         const msg = JSON.parse(event.data);
-                        if (msg.event === 'GRASP_SCORE' && typeof msg.confidence === 'number') {
+                        if (msg.event === 'GRASP_POSE' && typeof msg.confidence === 'number') {
+                            // YOLOv8-seg + ThreeJawGrasp 결과 (3-jaw 그리퍼 오버레이용)
+                            setGraspScore(msg.confidence);
+                            setGraspPose({
+                                center_x: msg.center_x,
+                                center_y: msg.center_y,
+                                angle_rad: msg.angle_rad,
+                                radius: msg.radius,
+                                jaw_count: msg.jaw_count,
+                                confidence: msg.confidence,
+                                image_width: msg.image_width,
+                                image_height: msg.image_height,
+                            });
+                            setDetections([]); // 다른 경로 결과는 비움
+                            armDetectionStaleTimer();
+                        } else if (msg.event === 'GRASP_SCORE' && typeof msg.confidence === 'number') {
                             setGraspScore(msg.confidence);
                             if (Array.isArray(msg.detections)) {
                                 setDetections(msg.detections);
                             } else {
                                 setDetections([]);
                             }
-                            // 새 detection 도착 → stale 타이머 재무장
+                            setGraspPose(null); // 다른 경로 결과는 비움
                             armDetectionStaleTimer();
                         } else if (msg.event === 'SESSION_START') {
                             setLastSessionEvent({ type: 'SESSION_START', session_id: msg.session_id });
@@ -186,5 +215,5 @@ export function useCameraStream(channel: Channel): CameraStreamState {
         };
     }, [channel]);
 
-    return { frameUrl, connected, graspScore, detections, lastSessionEvent };
+    return { frameUrl, connected, graspScore, detections, graspPose, lastSessionEvent };
 }

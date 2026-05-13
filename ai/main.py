@@ -6,10 +6,12 @@ from src.config import (
     APP_HOST, APP_PORT,
     GRCONVNET_CHECKPOINT, GRASP_DEVICE,
     DETECTION_ENABLED, DETECTION_THRESHOLD, DETECTION_TARGET_LABELS,
+    THREE_JAW_ENABLED, THREE_JAW_MODEL_PATH,
 )
 from src.inference.detection_service import DetectionService
 from src.inference.judge import CatchJudge
 from src.inference.grasp_service import GraspService
+from src.inference.three_jaw_service import ThreeJawGraspService
 from src.network import ws_browser, ws_rpi
 from src.network.spring_client import SpringClient
 from src.recorder.video_recorder import VideoRecorder
@@ -32,10 +34,14 @@ if DETECTION_ENABLED:
         target_labels=DETECTION_TARGET_LABELS,
         device=GRASP_DEVICE,
     )
+three_jaw_service = None
+if THREE_JAW_ENABLED:
+    three_jaw_service = ThreeJawGraspService()
 session_manager = SessionManager(
     recorder=recorder, judge=judge, spring=spring,
     grasp_service=grasp_service,
     detection_service=detection_service,
+    three_jaw_service=three_jaw_service,
 )
 
 
@@ -44,6 +50,8 @@ async def lifespan(app: FastAPI):
     grasp_service.load()
     if detection_service is not None:
         detection_service.load()
+    if three_jaw_service is not None:
+        three_jaw_service.load(THREE_JAW_MODEL_PATH)
     print(f"[main] FastAPI ready on {APP_HOST}:{APP_PORT}")
     try:
         yield
@@ -64,4 +72,7 @@ async def health():
         "subscribers": relay_hub.subscriber_count,
         "grasp_loaded": grasp_service.is_ready,
         "detection_loaded": detection_service.is_ready if detection_service else False,
+        "three_jaw_loaded": (
+            three_jaw_service is not None and three_jaw_service._pipeline is not None
+        ),
     }

@@ -7,6 +7,7 @@ import numpy as np
 from .inference.detection_service import DetectionService
 from .inference.judge import CatchJudge, JudgeResult
 from .inference.grasp_service import GraspService
+from .inference.three_jaw_service import ThreeJawGraspService
 from .network.spring_client import SpringClient
 from .recorder.video_recorder import VideoRecorder
 
@@ -40,12 +41,14 @@ class SessionManager:
         spring: SpringClient,
         grasp_service: Optional["GraspService"] = None,
         detection_service: Optional["DetectionService"] = None,
+        three_jaw_service: Optional["ThreeJawGraspService"] = None,
     ) -> None:
         self._recorder = recorder
         self._judge = judge
         self._spring = spring
         self._grasp = grasp_service
         self._detection = detection_service
+        self._three_jaw = three_jaw_service
         self._sessions: Dict[str, GameSession] = {}
         self._lock = asyncio.Lock()
         self.last_judge_result: Optional["JudgeResult"] = None
@@ -101,13 +104,15 @@ class SessionManager:
         """
         현재 세션의 마지막 프레임으로 파지점 추론.
 
-        Detection이 활성화되어 있으면:
-            Detection → 물체별 crop → GR-ConvNet → per-object 확률
-        미활성 또는 물체 미감지 시:
-            전체 이미지 GR-ConvNet (기존 방식)
+        우선순위:
+            1. ThreeJawGraspService (YOLOv8-seg + ChickEvaluator)
+               → GRASP_POSE dict 반환 (event 키 포함)
+            2. Detection(SSDLite) + GR-ConvNet per-object
+               → GRASP_SCORE 호환 dict 반환 (detections 키 포함)
+            3. Full-image GR-ConvNet fallback
         """
         session = self._sessions.get(session_id)
-        if session is None or self._grasp is None:
+        if session is None:
             return None
         if session.last_color_frame is None:
             return None
@@ -115,7 +120,21 @@ class SessionManager:
         rgb = session.last_color_frame
         depth = session.last_depth_frame
 
-        # Detection → per-object grasp
+        # 1. YOLOv8-seg ThreeJawGrasp (1순위)
+        if self._three_jaw is not None:
+            pose = self._three_jaw.infer(rgb, depth)
+            if pose is not None:
+                print(
+                    f"[SessionManager] three_jaw: "
+                    f"conf={pose['confidence']:.2f} "
+                    f"center=({pose['center_x']:.0f},{pose['center_y']:.0f})"
+                )
+                return pose
+
+        if self._grasp is None:
+            return None
+
+        # 2. Detection(SSDLite) → per-object grasp
         if self._detection is not None and self._detection.is_ready:
             detected = self._detection.detect(rgb)
             if detected:
