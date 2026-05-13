@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import Home from './pages/Home';
 import PlayGround from './pages/PlayGround';
+import AdminDashboard from './pages/AdminDashboard';
 
 import MobileLanding from './pages/mobile/MobileLanding';
 
@@ -22,6 +23,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/play" element={<PlayGround />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/m/:sessionId" element={<MobileLanding />} />
       </Routes>
     </HashRouter>
