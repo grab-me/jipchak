@@ -114,10 +114,10 @@ const PlayGround = () => {
         className="flex-[766] bg-black rounded-[1vw] shadow-sm relative overflow-hidden"
         style={{ aspectRatio: '766 / 552' }}
       >
-        <CameraView 
-          label={isSwapped ? "Cam2" : "Cam1"} 
-          channel={isSwapped ? "3d" : "2d"} 
-          isMainView={true} 
+        <CameraView
+          label={isSwapped ? "Cam2" : "Cam1"}
+          channel={isSwapped ? "2d" : "3d"}
+          isMainView={true}
         />
 
         {/* 설정 버튼 (좌상단 고정, 스와프 시에도 유지됨) */}
@@ -147,10 +147,10 @@ const PlayGround = () => {
 
         {/* 보조 카메라 뷰 영역 (클릭 시 메인 뷰와 스왑) */}
         <div className="flex-[125] min-h-0 min-w-0 bg-black rounded-[1vw] shadow-sm relative overflow-hidden">
-          <CameraView 
-            label={isSwapped ? "Cam1" : "Cam2"} 
-            channel={isSwapped ? "2d" : "3d"} 
-            isMainView={false} 
+          <CameraView
+            label={isSwapped ? "Cam1" : "Cam2"}
+            channel={isSwapped ? "3d" : "2d"}
+            isMainView={false}
             onClick={handleSwap}
             className="cursor-pointer active:scale-[0.98] transition-transform"
           />
