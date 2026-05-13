@@ -73,6 +73,7 @@ def train_normalized(
     batch_size: int = 32,
     val_split: float = 0.2,
     seed: int = 0,
+    patience: int = 15,
 ) -> None:
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -102,6 +103,7 @@ def train_normalized(
     print(f"[train_normalized] samples train={n_train} val={n_val}")
     print(f"[train_normalized] feature mean[:5]={mean[:5].round(3)}")
     print(f"[train_normalized] feature std[:5] ={std[:5].round(3)}")
+    print(f"[train_normalized] early-stopping patience={patience} epochs")
 
     train_ds = NormalizedGraspDataset(train_samples, mean, std)
     val_ds = NormalizedGraspDataset(val_samples, mean, std)
@@ -112,7 +114,12 @@ def train_normalized(
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
+    best_val_loss = float("inf")
     best_val_acc = 0.0
+    best_epoch = -1
+    best_state: dict | None = None
+    epochs_since_improve = 0
+
     for epoch in range(epochs):
         model.train()
         train_loss = 0.0
@@ -125,36 +132,61 @@ def train_normalized(
             train_loss += loss.item()
 
         model.eval()
-        val_loss, correct, total = 0.0, 0, 0
+        val_loss_sum, correct, total = 0.0, 0, 0
         with torch.no_grad():
             for x, y in val_loader:
                 out = model(x)
-                val_loss += criterion(out, y).item()
+                val_loss_sum += criterion(out, y).item()
                 pred = (out > 0.5).float()
                 total += y.size(0)
                 correct += (pred == y).sum().item()
+        val_loss = val_loss_sum / max(len(val_loader), 1)
         val_acc = 100.0 * correct / total if total > 0 else 0.0
-        best_val_acc = max(best_val_acc, val_acc)
 
-        if epoch == 0 or (epoch + 1) % 5 == 0:
+        # best-by-val-loss 기준 (loss 가 acc 보다 부드러운 신호)
+        if val_loss < best_val_loss - 1e-4:
+            best_val_loss = val_loss
+            best_val_acc = val_acc
+            best_epoch = epoch + 1
+            best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
+            epochs_since_improve = 0
+            mark = " *"
+        else:
+            epochs_since_improve += 1
+            mark = ""
+
+        if epoch == 0 or (epoch + 1) % 5 == 0 or mark:
             print(
                 f"Epoch {epoch + 1:>3}/{epochs} | "
                 f"Train Loss: {train_loss / max(len(train_loader), 1):.4f} | "
-                f"Val Loss: {val_loss / max(len(val_loader), 1):.4f} | "
-                f"Val Acc: {val_acc:.2f}%"
+                f"Val Loss: {val_loss:.4f} | "
+                f"Val Acc: {val_acc:.2f}%{mark}"
             )
+
+        if epochs_since_improve >= patience:
+            print(f"[train_normalized] early stop (no val_loss improvement for {patience} epochs)")
+            break
+
+    if best_state is None:
+        raise SystemExit("모델이 한 epoch 도 못 돌았음")
 
     save_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
-            "state_dict": model.state_dict(),
+            "state_dict": best_state,
             "feature_dim": FeatureExtractor.FEATURE_DIM,
             "norm_mean": mean.tolist(),
             "norm_std": std.tolist(),
+            "best_epoch": best_epoch,
+            "best_val_loss": float(best_val_loss),
+            "best_val_acc": float(best_val_acc),
         },
         save_path,
     )
-    print(f"\n학습 완료 (best val acc={best_val_acc:.2f}%) → {save_path}")
+    print(
+        f"\n학습 완료. best epoch={best_epoch} "
+        f"val_loss={best_val_loss:.4f} val_acc={best_val_acc:.2f}% → {save_path}"
+    )
 
 
 def main(args: argparse.Namespace) -> None:
@@ -165,6 +197,7 @@ def main(args: argparse.Namespace) -> None:
         lr=args.lr,
         batch_size=args.batch_size,
         seed=args.seed,
+        patience=args.patience,
     )
 
 
@@ -178,8 +211,9 @@ if __name__ == "__main__":
         "--out", type=str,
         default="ai/experiments/probability_v1/models/evaluator_normalized.pth",
     )
-    parser.add_argument("--epochs", type=int, default=80)
+    parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--patience", type=int, default=15)
     main(parser.parse_args())

@@ -75,8 +75,11 @@ def _sample_one(rng: np.random.Generator) -> tuple[list[float], int]:
     top_term = float(np.exp(-((relative_grasp_y - 0.30) ** 2) / (2 * 0.15 ** 2)))
     raw_p = 0.45 * width_term + 0.30 * invalid_term + 0.25 * top_term
     raw_p = float(np.clip(raw_p, 0.0, 1.0))
-    # 10% 노이즈
-    success = int(rng.random() < (0.1 + 0.85 * raw_p))
+    # 결정적 라벨 + 5% 라벨 플립 노이즈 (학습 가능성 검증용 강한 신호)
+    label = 1 if raw_p > 0.5 else 0
+    if rng.random() < 0.05:
+        label = 1 - label
+    success = label
 
     return features, success
 
