@@ -35,5 +35,17 @@ DETECTION_TARGET_LABELS = [
     int(x) for x in os.getenv("DETECTION_TARGET_LABELS", "88").split(",") if x.strip()
 ]
 
+# YOLOv8-seg + ThreeJawGrasp 파이프라인 (병아리/오리인형 전용 학습 모델)
+THREE_JAW_ENABLED = os.getenv("THREE_JAW_ENABLED", "true").lower() == "true"
+THREE_JAW_MODEL_PATH = os.getenv(
+    "THREE_JAW_MODEL_PATH",
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "trained-models",
+        "yolov8-seg",
+        "heart_chick_seg_best.pt",
+    ),
+)
+
 # 로그
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

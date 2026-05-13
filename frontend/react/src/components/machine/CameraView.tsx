@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useToolStore } from '@/store/toolStore';
-import { useCameraStream, DetectionItem } from '@/hooks/useCameraStream';
+import { useCameraStream, DetectionItem, GraspPose } from '@/hooks/useCameraStream';
 import Thermometer from './Thermometer';
 import { useAudio } from '@/hooks/useAudio';
 import { SOUND_ASSETS } from '@/constants/soundConfig';
@@ -19,7 +19,7 @@ const CameraView = ({ label, channel, isMainView = false, onClick, className = '
   const { playSfx } = useAudio();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const { frameUrl, connected, graspScore, detections, lastSessionEvent } = useCameraStream(channel);
+  const { frameUrl, connected, graspScore, detections, graspPose, lastSessionEvent } = useCameraStream(channel);
 
   useEffect(() => {
     if (!lastSessionEvent) return;
@@ -80,12 +80,17 @@ const CameraView = ({ label, channel, isMainView = false, onClick, className = '
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      if (channel === '3d' && detections.length > 0) {
-        drawDetections(ctx, detections);
+      if (channel === '3d') {
+        // GraspPose 우선 (YOLOv8-seg + ChickEvaluator)
+        if (graspPose && graspPose.confidence > 0) {
+          drawGraspPose(ctx, graspPose, canvas.width, canvas.height);
+        } else if (detections.length > 0) {
+          drawDetections(ctx, detections);
+        }
       }
     };
     img.src = frameUrl;
-  }, [frameUrl, detections, channel]);
+  }, [frameUrl, detections, graspPose, channel]);
 
   return (
     <div 
@@ -182,6 +187,72 @@ function drawProbabilityGauge(
   ctx.textAlign = 'center';
   ctx.fillText(`${(confidence * 100).toFixed(0)}%`, cx, cy + radius + 18);
   ctx.textAlign = 'left';
+}
+
+/**
+ * YOLOv8-seg + ChickEvaluator 결과로 회전된 3-jaw 그리퍼를 그린다.
+ * - dashed 외곽선 원 + RGB 3-jaw 라인 + 별 마커 + 원형 게이지
+ */
+function drawGraspPose(
+  ctx: CanvasRenderingContext2D,
+  pose: GraspPose,
+  canvasW: number,
+  canvasH: number,
+) {
+  // 추론한 원본 이미지 해상도와 캔버스 해상도가 다를 수 있어 스케일 보정
+  const sx = pose.image_width > 0 ? canvasW / pose.image_width : 1;
+  const sy = pose.image_height > 0 ? canvasH / pose.image_height : 1;
+  const cx = pose.center_x * sx;
+  const cy = pose.center_y * sy;
+  const r = pose.radius * ((sx + sy) / 2);
+  const baseAngle = pose.angle_rad - Math.PI / 2;
+
+  // 1) 외곽 점선 원 (그리퍼 작동 반경 시각화)
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 235, 59, 0.7)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 2) N개 jaw (각 jaw는 다른 색)
+  const jawColors = ['#FF4444', '#44FF44', '#4488FF', '#FFB347', '#66B2FF', '#DDA0DD'];
+  const jaws = Math.max(2, pose.jaw_count);
+  for (let i = 0; i < jaws; i++) {
+    const a = baseAngle + i * (2 * Math.PI / jaws);
+    const jx = cx + r * Math.cos(a);
+    const jy = cy + r * Math.sin(a);
+    const color = jawColors[i % jawColors.length];
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(jx, jy);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // jaw tip 점
+    ctx.beginPath();
+    ctx.arc(jx, jy, 6, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  // 3) 원형 확률 게이지 (jaw 바깥 링)
+  drawProbabilityGauge(ctx, cx, cy, r + 20, pose.confidence);
+
+  // 4) 중심 별 마커 (z-order 최상위)
+  drawStar(ctx, cx, cy, 14, 7);
+
+  // 5) 좌상단 AI Score 패널
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillRect(8, 8, 160, 28);
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 14px Arial';
+  ctx.textAlign = 'left';
+  ctx.fillText(`AI Score: ${(pose.confidence * 100).toFixed(1)}%`, 14, 27);
 }
 
 function drawDetections(ctx: CanvasRenderingContext2D, detections: DetectionItem[]) {
