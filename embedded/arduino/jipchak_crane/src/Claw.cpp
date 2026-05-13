@@ -2,6 +2,7 @@
 #include "../config.h"
 
 void ClawManager::init() {
+    servo.write(CLAW_ANGLE_IDLE); // 0도로 미리 타겟을 세팅하여 튀는 현상 방지
     servo.attach(PIN_SERVO);
     setIdle();
     isWaiting = false;

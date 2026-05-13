@@ -33,7 +33,7 @@ void MotorManager::init() {
 void MotorManager::checkLimit(AccelStepper& stepper, int pin, bool checkNegative, LimitAction action) {
     static int prevStates[20] = {HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH};
     static unsigned long lastTriggerTimes[20] = {0};
-    
+
     int current = digitalRead(pin);
     if (current != prevStates[pin]) {
         if (millis() - lastTriggerTimes[pin] > 50) {
@@ -48,11 +48,14 @@ void MotorManager::checkLimit(AccelStepper& stepper, int pin, bool checkNegative
 
     if (prevStates[pin] == LOW) {
         if ((checkNegative && stepper.distanceToGo() < 0) || (!checkNegative && stepper.distanceToGo() > 0)) {
-            stepper.setSpeed(0);
-            stepper.move(checkNegative ? 5 : -5); // 반대 방향으로 5스텝 튕겨나옴
-            
+            // 1. AccelStepper의 내부 가속도/속도 수학 계산을 완벽하게 초기화(급정지)
             if (action == LimitAction::STOP_AND_RESET_ORIGIN) {
-                stepper.setCurrentPosition(0);
+                stepper.setCurrentPosition(0); // 현재 위치를 0으로 리셋하며 가감속 상태도 초기화
+                stepper.moveTo(checkNegative ? 5 : -5); // 그 0점에서부터 5스텝 튕겨나옴
+            } else {
+                long currentPos = stepper.currentPosition();
+                stepper.setCurrentPosition(currentPos); // 위치는 그대로 두고 가감속 상태만 초기화
+                stepper.moveTo(currentPos + (checkNegative ? 5 : -5)); // 현재 위치에서 5스텝 튕겨나옴
             }
         }
     }
@@ -70,7 +73,7 @@ void MotorManager::setManualMode(bool isManual) {
         stepperX.setSpeed(0);
         stepperY.setSpeed(0);
         stepperZ.setSpeed(0);
-        
+
         // 조이스틱 조작(수동 모드)이 끝났을 때, 현재 멈춘 위치를 새로운 목표점(Target)으로 덮어씌움
         // (안 그러면 run()이 이전에 기억하던 0점이나 옛날 목표지점으로 스스로 돌아가려고 함)
         stepperX.moveTo(stepperX.currentPosition());
@@ -90,7 +93,7 @@ void MotorManager::update() {
                 stepperX.stop();
                 stepperX.setCurrentPosition(0);
                 currentState = MOTOR_HOMING_Y;
-                stepperY.moveTo(-HOMING_TRAVEL_STEPS); // Y축은 상단(Y+)으로 호밍
+                stepperY.moveTo(-HOMING_TRAVEL_STEPS);
             }
             break;
 
@@ -113,10 +116,9 @@ void MotorManager::update() {
             checkLimit(stepperY, PIN_ENDSTOP_Y_UP,    false, LimitAction::STOP_AND_RESET_ORIGIN);
 
             if (currentState == MOTOR_MANUAL) {
-                // 수동 모드(X, Y)에서도 가감속 적용을 위해 runSpeed()가 아닌 run() 사용
                 stepperX.run();
                 stepperY.run();
-                stepperZ.runSpeed(); // 메인 코드에서 Z축은 수동 조작되지 않지만 안전을 위해 유지
+                stepperZ.runSpeed();
             } else {
                 stepperX.run();
                 stepperY.run();

@@ -9,10 +9,12 @@
 enum SystemState {
     IDLE = 1,
     AUTO_SEQ_MOVE,
+    AUTO_SEQ_OPEN,
     AUTO_SEQ_DOWN,
     AUTO_SEQ_GRAB,
     AUTO_SEQ_UP,
     AUTO_SEQ_RETURN,
+    SEQ_OPEN,
     SEQ_DOWN,
     SEQ_GRAB,
     SEQ_UP,

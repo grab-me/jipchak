@@ -34,9 +34,9 @@ const int PIN_ENDSTOP_Y_DOWN  = 12;
 // --- Servo Motor Pins & Angles ---
 const int PIN_SERVO = 13;
 
-const int CLAW_ANGLE_OPEN  = 90;
-const int CLAW_ANGLE_CLOSE = 145;
-const int CLAW_ANGLE_IDLE  = 45;
+const int CLAW_ANGLE_OPEN  = 135;
+const int CLAW_ANGLE_CLOSE = 0;
+const int CLAW_ANGLE_IDLE  = 0;
 
 // --- Stepper Motor Configuration ---
 const float MAX_SPEED_X = 400.0;
@@ -50,6 +50,9 @@ const float ACCELERATION_Z = 50000.0; // Z축 등속도를 위해 가속도 무�
 const int Z_MOVE_STEPS = 650;
 
 // --- Conversion & Homing Configuration ---
-const float STEPS_PER_MM_X = 80.0f; // 1/16 스텝, GT2 20T 풀리 기준
-const float STEPS_PER_MM_Y = 80.0f; // 1/16 스텝, GT2 20T 풀리 기준
-const long HOMING_TRAVEL_STEPS = -3200; // 32cm (320mm * 10 steps/mm)
+const float STEPS_PER_MM_X = 80.0f;
+const float STEPS_PER_MM_Y = 80.0f;
+
+// --- Homing Travel Steps Configuration ---
+const long HOMING_TRAVEL_STEPS_X = -3200;
+const long HOMING_TRAVEL_STEPS_Y = 3200;

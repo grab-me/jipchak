@@ -5,7 +5,7 @@
 #include "src/motor/MotorManual.h"
 #include "src/Claw.h"
 #include "src/Input.h"
-#include "src/StateMachine.h"
+#include "src/StateMachineTest.h"
 
 // Create global objects
 CommManager comm;
@@ -15,8 +15,8 @@ MotorManual motorManual(motor);
 ClawManager claw;
 InputManager input;
 
-// Create StateMachine object
-StateMachine fsm(&comm, &motor, &motorAuto, &motorManual, &claw, &input);
+// Create StateMachineTest object (Temporary Test Logic)
+StateMachineTest fsm(&comm, &motor, &motorAuto, &motorManual, &claw, &input);
 
 // Initialize communication
 // Initialize all hardware modules inside the state machine
