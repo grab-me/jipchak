@@ -50,10 +50,12 @@ class YoloV8SegWrapper:
                 total_area = h * w
 
                 for i in range(len(masks)):
-                    # 1. 클래스 체크: 0번(병아리)만
-                    if int(classes[i]) != 0:
-                        print(f"[YoloV8Seg] dropped: cls={int(classes[i])} != 0 (conf={confs[i]:.2f})")
-                        continue
+                    # 1. 클래스 체크: 0번(병아리)만 (주석 처리하여 모든 클래스를 임시로 허용)
+                    # 새로 학습한 모델의 클래스 ID가 0이 아닐 수 있습니다.
+                    # if int(classes[i]) != 0:
+                    #     print(f"[YoloV8Seg] dropped: cls={int(classes[i])} != 0 (conf={confs[i]:.2f})")
+                    #     continue
+                    print(f"[YoloV8Seg] accepted: cls={int(classes[i])} (conf={confs[i]:.2f})") # 어떤 클래스가 잡히는지 확인용 로그
 
                     # 2. 크기 체크: 화면의 60% 이상 차지 시 제외 (너무 가까운 경우 등)
                     box = boxes[i]
@@ -130,8 +132,18 @@ class ThreeJawGraspService:
             # --- 조준 정확도 점수(Centering Score) 계산 ---
             # 카메라 중심(화면 중앙) 좌표
             cam_x, cam_y = w / 2, h / 2
-            # 병아리 중심과 카메라 중심 사이의 거리
-            dist = np.sqrt((best.center_x - cam_x)**2 + (best.center_y - cam_y)**2)
+            
+            # 카메라와 집게 간의 물리적 오프셋 보정 (mm -> 픽셀 변환)
+            # 현장 환경에 따라 1mm당 픽셀(PX_PER_MM) 비율 조절 필요 (기본 1.0)
+            PX_PER_MM = 1.0 
+            
+            # 집게 중심 좌표 (카메라 기준: 오른쪽 +15mm, 앞으로(위쪽) 50mm)
+            # 2D 영상 좌표계에서 '앞으로'는 화면 위쪽이므로 Y축 감소 방향(-)
+            gripper_x = cam_x + (15 * PX_PER_MM)
+            gripper_y = cam_y - (50 * PX_PER_MM)
+            
+            # 병아리 중심과 '실제 집게 중심' 사이의 거리
+            dist = np.sqrt((best.center_x - gripper_x)**2 + (best.center_y - gripper_y)**2)
             
             # 인형의 크기(best.width)를 기준으로 거리에 따른 감점 요인 계산 (범위 0.8로 완화)
             sigma = best.width * 0.8 
@@ -142,21 +154,22 @@ class ThreeJawGraspService:
 
             print(
                 f"[ThreeJawGraspService] candidate: "
-                f"center=({best.center_x:.0f},{best.center_y:.0f}) "
+                f"doll=({best.center_x:.0f},{best.center_y:.0f}) gripper=({gripper_x:.0f},{gripper_y:.0f}) "
                 f"width={best.width:.1f} angle={best.angle:.2f} "
                 f"quality={total_quality_score:.3f} centering={centering_weight:.3f} "
                 f"final={final_confidence:.3f}"
             )
 
-            # 최종 필터링: 점수가 아주 낮지 않으면 표시 (0.15)
-            if final_confidence < 0.15:
-                print(f"[ThreeJawGraspService] filtered: final={final_confidence:.3f} < 0.15")
+            # 최종 필터링: 디버깅을 위해 임계값을 0.01로 낮춤
+            DEBUG_THRESHOLD = 0.01
+            if final_confidence < DEBUG_THRESHOLD:
+                print(f"[ThreeJawGraspService] filtered: final={final_confidence:.3f} < {DEBUG_THRESHOLD}")
                 return None
 
             return {
                 "event": "GRASP_POSE",
-                "center_x": float(best.center_x),
-                "center_y": float(best.center_y),
+                "center_x": float(gripper_x),
+                "center_y": float(gripper_y),
                 "angle_rad": float(best.angle),
                 "radius": float(best.width * 1.5),  #(인형 크기에 맞춰 배율 1.5로 상향)
                 "jaw_count": 3,
