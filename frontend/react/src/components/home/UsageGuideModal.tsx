@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import GuideCloseButton from '@/components/home/guide/GuideCloseButton';
 import GuideImage from '@/components/home/guide/GuideImage';
 import GuideIndicators from '@/components/home/guide/GuideIndicators';
@@ -17,6 +17,7 @@ interface UsageGuideModalProps {
  * UsageGuideModal
  * 사용 가이드를 위한 모달입니다.
  * 슬라이드를 좌우 스와이프로 넘겨 내용을 확인할 수 있습니다.
+ * 슬라이드는 3초 후 자동으로 넘어갑니다.
  */
 const slideVariants = {
   enter: (direction: number) => ({
@@ -34,6 +35,7 @@ const slideVariants = {
 };
 
 const SWIPE_THRESHOLD = 50;
+const AUTO_ADVANCE_DELAY = 3000;
 
 const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -50,15 +52,30 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
     setCurrentIndex(wrapped);
   };
 
+  // 드래그 후 스와이프 감지
   const handleDragEnd = (_: unknown, info: { offset: { x: number } }) => {
     if (info.offset.x < -SWIPE_THRESHOLD) goTo(currentIndex + 1);
     else if (info.offset.x > SWIPE_THRESHOLD) goTo(currentIndex - 1);
   };
 
+  // 모달 닫기 시 인덱스 초기화
   const handleModalClose = () => {
     setCurrentIndex(0);
     onClose();
   };
+
+  // 슬라이드 자동 전환
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      goTo(currentIndex + 1);
+    }, AUTO_ADVANCE_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [currentIndex, isOpen]);
 
   return (
     <AnimatePresence>
