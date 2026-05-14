@@ -32,17 +32,43 @@ class ChickEvaluator(ThreeJawEvaluator):
         self.config["gripper"]["max_width"] = 80.0
         self.config["gripper"]["ideal_width"] = 55.0
 
-        w = self.config["evaluation"]["rule_weights"]
-        w.clear()
-        w["width"] = 0.22
-        w["score"] = 0.10
-        w["height"] = 0.08
-        w["top_bias"] = 0.15
-        w["neck_capture"] = 0.20
-        w["support"] = 0.15
-        w["clearance"] = 0.10
+        # 타입별 가중치 설정
+        self.WEIGHTS = {
+            # 병아리: 목이 있는 둥근 형태로, 목과 너비, 지지력을 균형있게 평가
+            "round":    {"width": 0.25, "score": 0.10, "height": 0.10, "top_bias": 0.10, "neck_capture": 0.20, "support": 0.15, "clearance": 0.10},
+            # 너구리: 상단 파지(top_bias)가 가장 중요, 목 점수는 약간만
+            "long":     {"width": 0.20, "score": 0.10, "height": 0.07, "top_bias": 0.30, "neck_capture": 0.10, "support": 0.13, "clearance": 0.10},
+            # 공룡: 기존과 유사, 목과 상단 파지 균형
+            "standard": {"width": 0.22, "score": 0.10, "height": 0.08, "top_bias": 0.15, "neck_capture": 0.20, "support": 0.15, "clearance": 0.10},
+        }
 
-    def _top_bias(self, g: GraspCandidate) -> float:
+    def _get_doll_type(self, g: GraspCandidate) -> str:   
+        """마스크 모양을 분석하여 인형 타입을 반환합니다."""
+        if getattr(g, "mask", None) is None:
+            return "standard"
+
+        ys, xs = np.where(g.mask > 0)
+        if len(ys) == 0:
+            return "standard"
+
+        y_min, y_max = np.min(ys), np.max(ys)
+        x_min, x_max = np.min(xs), np.max(xs)
+        h = float(y_max - y_min)
+        w = float(x_max - x_min)
+        aspect = h / (w + 1e-6)
+
+        # 마스크 열별 너비 표준편차 -> 목 존재 여부 판단
+        col_widths = np.sum(g.mask, axis=0)
+        width_variance = np.std(col_widths[col_widths > 0]) if np.any(col_widths > 0) else 0
+
+        if aspect < 1.1 and width_variance < 15:
+            return "round"     # 병아리
+        elif aspect > 1.5:
+            return "long"      # 너구리
+        else:
+            return "standard"  # 공룡
+
+    def _top_bias(self, g: GraspCandidate, doll_type: str) -> float:
         if getattr(g, "mask", None) is None:
             return 0.5
         ys, _ = np.where(g.mask > 0)
@@ -52,9 +78,12 @@ class ChickEvaluator(ThreeJawEvaluator):
         h = y_max - y_min
         if h <= 0:
             return 0.5
-        rel_y = (g.center_y - y_min) / h
-        # Favor upper-middle area (common for hook/neck capture).
-        return float(np.exp(-0.5 * ((rel_y - 0.30) / 0.22) ** 2))
+        rel_y = (g.center_y - y_min) / (h + 1e-6)
+
+        if doll_type == "long": # 너구리는 상위 40% 지점 강력 선호
+            return float(np.exp(-0.5 * ((rel_y - 0.30) / 0.15) ** 2)) if rel_y <= 0.45 else 0.0
+        else: # 병아리, 공룡은 상위 30% 부근 선호
+            return float(np.exp(-0.5 * ((rel_y - 0.30) / 0.22) ** 2))
 
     def _neck_capture_fitness(self, g: GraspCandidate) -> float:
         if getattr(g, "mask", None) is None:
@@ -162,26 +191,31 @@ class ChickEvaluator(ThreeJawEvaluator):
     def _calculate_rule_score(
         self, g: GraspCandidate, depth: Optional[np.ndarray]
     ) -> float:
-        w = self.config["evaluation"]["rule_weights"]
+        doll_type = self._get_doll_type(g)
+        w = self.WEIGHTS[doll_type]
+
         score = (
             w.get("width", 0.0) * self._width_fitness(g)
             + w.get("score", 0.0) * self._original_score(g)
             + w.get("height", 0.0) * self._height_fitness(g)
-            + w.get("top_bias", 0.0) * self._top_bias(g)
+            + w.get("top_bias", 0.0) * self._top_bias(g, doll_type)
             + w.get("neck_capture", 0.0) * self._neck_capture_fitness(g)
             + w.get("support", 0.0) * self._support_fitness(g)
             + w.get("clearance", 0.0) * self._clearance_fitness(g, depth)
         )
         # Keep score as ranking signal, not absolute probability.
+        g.raw['doll_type'] = doll_type # 디버깅을 위해 타입 정보 저장
         return float(_clip(score, 0.0, 0.98))
 
     def score_detail(self, g: GraspCandidate, depth: Optional[np.ndarray] = None) -> dict:
-        w = self.config["evaluation"]["rule_weights"]
+        doll_type = self._get_doll_type(g)
+        w = self.WEIGHTS[doll_type]
+        g.raw['doll_type'] = doll_type
 
         rw = self._width_fitness(g)
         rs = self._original_score(g)
         rh = self._height_fitness(g)
-        rt = self._top_bias(g)
+        rt = self._top_bias(g, doll_type)
         rn = self._neck_capture_fitness(g)
         ru = self._support_fitness(g)
         rc = self._clearance_fitness(g, depth)
@@ -198,6 +232,7 @@ class ChickEvaluator(ThreeJawEvaluator):
 
         total = float(_clip(total, 0.0, 0.98))
         return {
+            "doll_type": doll_type,
             "width": {"raw": rw, "weighted": w.get("width", 0.0) * rw},
             "score": {"raw": rs, "weighted": w.get("score", 0.0) * rs},
             "height": {"raw": rh, "weighted": w.get("height", 0.0) * rh},
