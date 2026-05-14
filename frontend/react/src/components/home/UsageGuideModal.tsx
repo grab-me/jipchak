@@ -40,6 +40,7 @@ const AUTO_ADVANCE_DELAY = 5000;
 const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
 
   const goTo = (nextIndex: number) => {
     const wrapped = (nextIndex + guideSlides.length) % guideSlides.length;
@@ -53,7 +54,13 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
   };
 
   // 드래그 후 스와이프 감지
+  const handleDragStart = () => {
+    setIsDragging(true);
+  };
+
+  // 드래그 종료 시 스와이프 방향에 따라 슬라이드 전환
   const handleDragEnd = (_: unknown, info: { offset: { x: number } }) => {
+    setIsDragging(false);
     if (info.offset.x < -SWIPE_THRESHOLD) goTo(currentIndex + 1);
     else if (info.offset.x > SWIPE_THRESHOLD) goTo(currentIndex - 1);
   };
@@ -66,7 +73,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
 
   // 슬라이드 자동 전환
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || isDragging) {
       return undefined;
     }
 
@@ -75,7 +82,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
     }, AUTO_ADVANCE_DELAY);
 
     return () => clearTimeout(timer);
-  }, [currentIndex, isOpen]);
+  }, [currentIndex, isOpen, isDragging]);
 
   return (
     <AnimatePresence>
@@ -121,6 +128,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
                   drag="x"
                   dragConstraints={{ left: 0, right: 0 }}
                   dragElastic={0.18}
+                  onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                   className="flex flex-row items-stretch h-[clamp(320px,55vh,480px)] w-full px-[var(--guide-side-pad)] gap-[clamp(10px,1.4vw,16px)]"
                 >
