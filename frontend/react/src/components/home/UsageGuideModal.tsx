@@ -115,7 +115,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
             </div>
 
             {/* 슬라이드 영역 */}
-            <div className="overflow-hidden flex-1 rounded-[1.4vw] [--guide-side-pad:clamp(42px,5.2vw,58px)] w-full">
+            <div className="overflow-hidden flex-1 rounded-[1.4vw] [--guide-side-pad:clamp(42px,5.2vw,58px)] w-full max-w-full" style={{ contain: 'layout style paint' }}>
               <AnimatePresence initial={false} custom={direction} mode="popLayout">
                 <motion.div
                   key={currentIndex}
