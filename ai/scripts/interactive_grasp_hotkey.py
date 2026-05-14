@@ -147,7 +147,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="파지 데이터 수집 상호작용 스크립트")
     parser.add_argument("--model-type", type=str, default="yolo_seg", help="사용할 파지 모델 타입 (Factory 등록 이름)")
-    parser.add_argument("--weights", type=str, default="models/yolov8s-seg.pt", help="파지 모델 가중치 파일 경로")
+    parser.add_argument("--weights", type=str, default="trained_models/best_v3.pt", help="파지 모델 가중치 파일 경로")
     parser.add_argument("--config", type=str, default="config/gripper_spec.yaml", help="집게 사양 설정 파일 경로")
     parser.add_argument("--log-file", type=str, default="grasp_log.jsonl", help="성공/실패 로그를 저장할 파일")
     

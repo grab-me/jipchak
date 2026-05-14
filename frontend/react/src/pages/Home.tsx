@@ -32,11 +32,10 @@ const Home = () => {
           <h1 className="text-[clamp(32px,6vw,80px)] font-bold font-crayon text-yellow-400 select-none">
             JIPCHAK
           </h1>
-          <div className="relative flex items-center justify-center w-full">
+          <div className="flex flex-col items-center justify-center w-full gap-[2.2vh]">
             <StartButton onStart={handleStart} autoClick={isAutoStarting} />
             <GuideButton
               onClick={() => setIsGuideOpen(true)}
-              className="absolute left-[calc(50%+14vw)] top-[calc(50%)]"
             />
           </div>
         </div>
