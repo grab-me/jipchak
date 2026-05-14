@@ -11,7 +11,7 @@ const GuidePrevButton = ({ onClick }: GuidePrevButtonProps) => {
     <button
       type="button"
       onClick={onClick}
-      className="absolute left-[calc(clamp(16px,2.2vw,28px)/2)] top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 rounded-full bg-gray-800/90 text-white font-bold active:scale-90 flex items-center justify-center w-[clamp(30px,3.8vw,44px)] h-[clamp(30px,3.8vw,44px)] text-[clamp(20px,2.8vw,34px)]"
+      className="absolute left-[calc(clamp(16px,2.2vw,28px)+clamp(16px,2.2vw,28px)/2)] top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 rounded-full bg-gray-800/90 text-white font-bold active:scale-90 flex items-center justify-center w-[clamp(30px,3.8vw,44px)] h-[clamp(30px,3.8vw,44px)] text-[clamp(20px,2.8vw,34px)]"
       aria-label="이전 슬라이드"
     >
       ‹
