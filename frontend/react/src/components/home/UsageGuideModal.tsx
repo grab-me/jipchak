@@ -85,7 +85,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
             {/* 헤더 */}
             <div className="flex items-center justify-between shrink-0 mb-[clamp(10px,1.4vh,16px)]">
               <h2 className="font-crayon text-[clamp(22px,3vw,38px)] font-black text-crayon-line leading-tight">
-                집착 사용 가이드
+                집착 사용 가이드 - {currentIndex + 1} / {guideSlides.length}
               </h2>
               <GuideCloseButton onClick={handleModalClose} />
             </div>
