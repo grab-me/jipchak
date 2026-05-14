@@ -38,12 +38,12 @@ def _rule_proxy_score(features: np.ndarray) -> np.ndarray:
     이 스크립트는 features 만 다루므로, ChickEvaluator 가중치 흐름을 흉내내는
     proxy score 를 features 에서 직접 계산한다.
 
-    feature index 매핑 (generate_synthetic.py 기준):
-        [0] width, [11] sensor_invalid_ratio, [16] relative_grasp_y
+    feature index 매핑 (generate_synthetic.py 기준, FEATURE_DIM=11):
+        [0] width, [7] sensor_invalid_ratio, [10] relative_grasp_y
     """
     width = features[:, 0]
-    invalid_ratio = features[:, 11]
-    rel_y = features[:, 16]
+    invalid_ratio = features[:, 7]
+    rel_y = features[:, 10]
 
     width_term = np.exp(-((width - 55.0) ** 2) / (2 * 15.0 ** 2))
     invalid_term = 1.0 - invalid_ratio
