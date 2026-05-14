@@ -107,6 +107,65 @@ def platt_scaling_apply(scores: np.ndarray, a: float, b: float) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-(a * scores + b)))
 
 
+def isotonic_regression_fit(
+    scores: np.ndarray, labels: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Isotonic regression: Pool Adjacent Violators (PAV) 알고리즘.
+
+    score 로 정렬한 뒤 단조 증가 step function 을 학습한다.
+    Platt 와 달리 파라메트릭 가정 없음 → cliff/계단형 분포에도 대응.
+
+    Returns
+    -------
+    sorted_scores : np.ndarray
+        정렬된 unique score 값 (boundary)
+    fitted_probs : np.ndarray
+        각 score 구간의 평균 라벨 (단조 증가 보장)
+    """
+    order = np.argsort(scores)
+    s = scores[order]
+    y = labels[order].astype(np.float64)
+
+    # PAV: 인접 위반 발견 시 평균으로 풀(pool)
+    blocks = [[v] for v in y]
+    sums = [float(v) for v in y]
+    sizes = [1 for _ in y]
+
+    i = 0
+    while i < len(sums) - 1:
+        if sums[i] / sizes[i] > sums[i + 1] / sizes[i + 1]:
+            # 위반 → 풀
+            sums[i] += sums[i + 1]
+            sizes[i] += sizes[i + 1]
+            del sums[i + 1]
+            del sizes[i + 1]
+            del blocks[i + 1]
+            blocks[i].extend(blocks[i + 1] if i + 1 < len(blocks) else [])
+            # 이전 블록과 다시 비교 (위반 전파)
+            if i > 0:
+                i -= 1
+        else:
+            i += 1
+
+    # 각 블록 평균을 원본 위치에 펼침
+    fitted = np.empty_like(y)
+    pos = 0
+    for s_sum, s_size in zip(sums, sizes):
+        avg = s_sum / s_size
+        fitted[pos:pos + s_size] = avg
+        pos += s_size
+
+    return s, fitted
+
+
+def isotonic_apply(
+    new_scores: np.ndarray, sorted_scores: np.ndarray, fitted_probs: np.ndarray
+) -> np.ndarray:
+    """학습된 isotonic 매핑을 새 score 에 적용 (가장 가까운 학습 포인트 보간)."""
+    return np.interp(new_scores, sorted_scores, fitted_probs)
+
+
 def _print_reliability(rows: list[dict], header: str) -> None:
     print(f"\n--- {header} (reliability diagram) ---")
     print(f"  {'bin':<14} {'n':>5} {'pred':>8} {'actual':>8} {'gap':>8}")
@@ -136,20 +195,25 @@ def main(args: argparse.Namespace) -> None:
     # 2) Platt scaling 학습 (전체 데이터에 fit — 실제론 train/val split 필요)
     a, b = platt_scaling_fit(raw_scores, labels.astype(np.float32))
     print(f"\n[analyze] Platt scaling fit: a={a:.4f}, b={b:.4f}")
-    scaled = platt_scaling_apply(raw_scores, a, b)
-    ece_scaled, rows_scaled = expected_calibration_error(scaled, labels, args.bins)
-    _print_reliability(rows_scaled, "Platt-scaled score")
-    print(f"  ECE (Platt-scaled) = {ece_scaled:.4f}")
+    platt = platt_scaling_apply(raw_scores, a, b)
+    ece_platt, rows_platt = expected_calibration_error(platt, labels, args.bins)
+    _print_reliability(rows_platt, "Platt-scaled score")
+    print(f"  ECE (Platt-scaled) = {ece_platt:.4f}")
 
-    # 3) 요약
+    # 3) Isotonic regression (비파라메트릭, cliff 효과에 강함)
+    sorted_s, fitted_p = isotonic_regression_fit(raw_scores, labels.astype(np.float64))
+    iso = isotonic_apply(raw_scores, sorted_s, fitted_p)
+    ece_iso, rows_iso = expected_calibration_error(iso, labels, args.bins)
+    _print_reliability(rows_iso, "Isotonic-mapped score")
+    print(f"  ECE (Isotonic) = {ece_iso:.4f}")
+
+    # 4) 요약
     print("\n=== summary ===")
-    print(f"  ECE raw    = {ece_raw:.4f}")
-    print(f"  ECE Platt  = {ece_scaled:.4f}")
-    delta = ece_raw - ece_scaled
-    if delta > 0:
-        print(f"  Platt 보정으로 ECE 가 {delta:.4f} 감소 → 보정 효과 있음")
-    else:
-        print(f"  Platt 보정 효과 미미 또는 부정 (실제 데이터 충분치 않을 수 있음)")
+    print(f"  ECE raw       = {ece_raw:.4f}")
+    print(f"  ECE Platt     = {ece_platt:.4f}  (Δ vs raw: {ece_raw - ece_platt:+.4f})")
+    print(f"  ECE Isotonic  = {ece_iso:.4f}  (Δ vs raw: {ece_raw - ece_iso:+.4f})")
+    best = min([("raw", ece_raw), ("Platt", ece_platt), ("Isotonic", ece_iso)], key=lambda kv: kv[1])
+    print(f"  → 최저 ECE: {best[0]} ({best[1]:.4f})")
 
 
 if __name__ == "__main__":
