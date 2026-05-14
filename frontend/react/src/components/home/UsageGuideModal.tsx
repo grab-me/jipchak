@@ -99,7 +99,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
             role="dialog"
             aria-modal="true"
             aria-label="사용 가이드"
-            className="flex flex-col w-full max-w-[min(88vw,860px)] max-h-[90vh] rounded-[2vw] border-[clamp(3px,0.5vw,6px)] border-crayon-line bg-crayon-bg p-[clamp(16px,2.2vw,28px)] shadow-2xl"
+            className="relative flex flex-col w-full max-w-[min(88vw,860px)] max-h-[90vh] rounded-[2vw] border-[clamp(3px,0.5vw,6px)] border-crayon-line bg-crayon-bg p-[clamp(16px,2.2vw,28px)] shadow-2xl"
             initial={{ scale: 0.96, opacity: 0, y: 16 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.98, opacity: 0, y: 12 }}
@@ -115,7 +115,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
             </div>
 
             {/* 슬라이드 영역 */}
-            <div className="relative overflow-hidden flex-1 rounded-[1.4vw] [--guide-side-pad:clamp(42px,5.2vw,58px)] w-full">
+            <div className="overflow-hidden flex-1 rounded-[1.4vw] [--guide-side-pad:clamp(42px,5.2vw,58px)] w-full">
               <AnimatePresence initial={false} custom={direction} mode="popLayout">
                 <motion.div
                   key={currentIndex}
@@ -139,10 +139,11 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
                   />
                 </motion.div>
               </AnimatePresence>
-
-              <GuidePrevButton onClick={() => goTo(currentIndex - 1)} />
-              <GuideNextButton onClick={() => goTo(currentIndex + 1)} />
             </div>
+
+            {/* 버튼 (overflow 영향 없음) */}
+            <GuidePrevButton onClick={() => goTo(currentIndex - 1)} />
+            <GuideNextButton onClick={() => goTo(currentIndex + 1)} />
 
             <GuideIndicators count={guideSlides.length} currentIndex={currentIndex} onSelect={goTo} />
           </motion.section>
