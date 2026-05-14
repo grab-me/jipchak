@@ -21,7 +21,7 @@ const GuideText = ({ title, description }: GuideTextProps) => {
 
       {/* 가이드 내용 */}
       <div className="w-full flex-1 flex items-center">
-        <p className="w-full text-[clamp(20px,2.8vw,34px)] font-black text-crayon-line mb-[0.4vh] text-center">
+        <p className="w-full text-[clamp(20px,2.8vw,34px)] font-black text-crayon-line mb-[0.4vh] text-center break-keep text-balance">
           {description}
         </p>
       </div>

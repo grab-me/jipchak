@@ -116,7 +116,7 @@ export const guideSlides: GuideSlide[] = [
         <br></br>
         녹화 영상이 <span className="font-black text-yellow-600">나의 기록</span>에 누적되어 보여집니다.
         <br></br>
-        영상은 <span className="font-black text-red-500">4개</span>까지 저장됩니다.        
+        영상은 <span className="font-black text-red-500">5개</span>까지 저장됩니다.        
       </>
     ),
   },
