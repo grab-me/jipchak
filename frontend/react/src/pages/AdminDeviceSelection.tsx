@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Cpu, Star, Search } from 'lucide-react';
 
@@ -23,6 +23,14 @@ const AdminDeviceSelection = () => {
   
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 어드민 권한 체크 (URL 직접 접근 차단)
+  useEffect(() => {
+    if (sessionStorage.getItem('isAdmin') !== 'true') {
+      alert('비정상적인 접근입니다. 관리자 비밀번호를 입력해주세요.');
+      navigate('/');
+    }
+  }, [navigate]);
 
   const handleRegister = (prefix: string, suffix: string, memo: string) => {
     setError('');

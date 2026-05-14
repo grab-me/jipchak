@@ -24,6 +24,7 @@ const Home = () => {
   const handleAdminAccess = () => {
     const pwd = prompt('관리자 비밀번호를 입력하세요:');
     if (pwd === 'ssafy123') {
+      sessionStorage.setItem('isAdmin', 'true');
       navigate('/admin');
     } else if (pwd !== null) {
       alert('비밀번호가 일치하지 않습니다.');

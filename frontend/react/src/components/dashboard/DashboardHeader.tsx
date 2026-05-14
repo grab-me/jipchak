@@ -58,7 +58,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ deviceId, toggleSideb
           <span className="inline sm:hidden">기기</span>
         </button>
         <button 
-          onClick={() => navigate('/')}
+          onClick={() => {
+            sessionStorage.removeItem('isAdmin');
+            navigate('/');
+          }}
           className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm sm:text-base font-bold bg-red-50 text-red-600 active:scale-95 transition-transform border border-red-100"
         >
           <LogOut size={18} />
