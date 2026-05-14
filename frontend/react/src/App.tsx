@@ -4,6 +4,8 @@ import Home from './pages/Home';
 import PlayGround from './pages/PlayGround';
 import AdminDashboard from './pages/AdminDashboard';
 
+import AdminDeviceSelection from './pages/AdminDeviceSelection';
+
 import MobileLanding from './pages/mobile/MobileLanding';
 
 const App = () => {
@@ -23,7 +25,8 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/play" element={<PlayGround />} />
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin" element={<AdminDeviceSelection />} />
+        <Route path="/admin/dashboard/:deviceId" element={<AdminDashboard />} />
         <Route path="/m/:sessionId" element={<MobileLanding />} />
       </Routes>
     </HashRouter>
