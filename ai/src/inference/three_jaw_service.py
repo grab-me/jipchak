@@ -24,36 +24,49 @@ class YoloV8SegWrapper:
     def predict(self, rgb, depth=None, **kwargs):
         if not self.valid:
             return []
-            
-        # 1. YOLO 인식 (객체 탐지) - 조금 더 잘 찾도록 0.3으로 조정
-        results = self.model.predict(rgb, conf=0.3, verbose=False)
+
+        # 진단 모드: conf 임계값을 0.05로 낮춰서 raw 검출이 뭐든 잡히는지 확인
+        results = self.model.predict(rgb, conf=0.05, verbose=False)
         output = []
         for r in results:
+            # 진단: r.boxes 정보 전체 출력 (mask 유무 무관)
+            if r.boxes is not None and len(r.boxes) > 0:
+                cls_arr = r.boxes.cls.cpu().numpy()
+                conf_arr = r.boxes.conf.cpu().numpy()
+                raw_summary = [
+                    f"cls={int(c)}:conf={cf:.2f}" for c, cf in zip(cls_arr, conf_arr)
+                ]
+                print(f"[YoloV8Seg] raw detections (n={len(cls_arr)}): {raw_summary}")
+            else:
+                print("[YoloV8Seg] raw detections: 0")
+
             if r.masks is not None:
                 masks = r.masks.data.cpu().numpy()
                 boxes = r.boxes.xyxy.cpu().numpy()
                 classes = r.boxes.cls.cpu().numpy()
                 confs = r.boxes.conf.cpu().numpy()
-                
+
                 h, w = rgb.shape[:2]
                 total_area = h * w
-                
+
                 for i in range(len(masks)):
                     # 1. 클래스 체크: 0번(병아리)만
                     if int(classes[i]) != 0:
+                        print(f"[YoloV8Seg] dropped: cls={int(classes[i])} != 0 (conf={confs[i]:.2f})")
                         continue
 
                     # 2. 크기 체크: 화면의 60% 이상 차지 시 제외 (너무 가까운 경우 등)
                     box = boxes[i]
                     bw, bh = box[2] - box[0], box[3] - box[1]
                     if (bw * bh) > (total_area * 0.6):
+                        print(f"[YoloV8Seg] dropped: too large ({bw*bh/total_area*100:.0f}%)")
                         continue
 
                     m = masks[i]
                     if m.shape[0] != h or m.shape[1] != w:
                         import cv2
                         m = cv2.resize(m, (w, h), interpolation=cv2.INTER_NEAREST)
-                    
+
                     output.append({
                         'mask': m,
                         'box': boxes[i].tolist(),
