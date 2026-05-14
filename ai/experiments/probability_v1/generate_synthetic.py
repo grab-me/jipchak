@@ -4,24 +4,18 @@
 trainer.py 에 들어가는 jsonl 포맷:
     {"features": [19개 float], "success": 0|1, "candidate": {...}, "metadata": {...}}
 
-FEATURE_DIM=19 구성 (FeatureExtractor 기준):
+FEATURE_DIM=11 구성 (FeatureExtractor 기준, 중복/약신호 6개 드롭 후):
     [0]  width
     [1]  original_score
     [2]  center_z
     [3]  sin(angle)
     [4]  cos(angle)
-    [5]  depth_mean
-    [6]  depth_min
-    [7]  depth_max
-    [8]  depth_median
-    [9]  depth_p25
-    [10] depth_p75
-    [11] sensor_invalid_ratio
-    [12] depth_roughness
-    [13] aspect_ratio
-    [14] width_variance
-    [15] relative_grasp_x
-    [16] relative_grasp_y
+    [5]  depth_median
+    [6]  depth_roughness
+    [7]  sensor_invalid_ratio
+    [8]  aspect_ratio
+    [9]  width_variance
+    [10] relative_grasp_y
 """
 
 import argparse
@@ -31,7 +25,7 @@ from pathlib import Path
 import numpy as np
 
 
-N_FEATURES = 17  # FeatureExtractor.FEATURE_DIM 과 일치 (기본 5 + 깊이 8 + 모양 4)
+N_FEATURES = 11  # FeatureExtractor.FEATURE_DIM 과 일치
 
 
 def _sample_one(rng: np.random.Generator) -> tuple[list[float], int]:
@@ -46,25 +40,18 @@ def _sample_one(rng: np.random.Generator) -> tuple[list[float], int]:
     angle = rng.uniform(-np.pi, np.pi)
     sin_a, cos_a = float(np.sin(angle)), float(np.cos(angle))
 
-    depth_mean = rng.uniform(0.3, 0.8)
-    depth_min = depth_mean - rng.uniform(0.0, 0.1)
-    depth_max = depth_mean + rng.uniform(0.0, 0.1)
-    depth_median = depth_mean + rng.normal(0, 0.01)
-    depth_p25 = depth_mean - rng.uniform(0.0, 0.05)
-    depth_p75 = depth_mean + rng.uniform(0.0, 0.05)
-    sensor_invalid_ratio = rng.beta(2, 18)        # 보통 작은 값
+    depth_median = rng.uniform(0.3, 0.8)
     depth_roughness = rng.gamma(2.0, 0.005)        # 표면 굴곡
+    sensor_invalid_ratio = rng.beta(2, 18)        # 보통 작은 값
 
     aspect_ratio = rng.lognormal(0.0, 0.3)         # 약 1 근처
     width_variance = rng.uniform(0.05, 0.6)
-    relative_grasp_x = rng.uniform(0.3, 0.7)
     relative_grasp_y = rng.uniform(0.1, 0.6)
 
     features = [
         width, original_score, center_z, sin_a, cos_a,
-        depth_mean, depth_min, depth_max, depth_median,
-        depth_p25, depth_p75, sensor_invalid_ratio, depth_roughness,
-        aspect_ratio, width_variance, relative_grasp_x, relative_grasp_y,
+        depth_median, depth_roughness, sensor_invalid_ratio,
+        aspect_ratio, width_variance, relative_grasp_y,
     ]
 
     # 성공 라벨: 이상 width(55) 가까울수록, sensor_invalid 적을수록, 위쪽 파지일수록 +
