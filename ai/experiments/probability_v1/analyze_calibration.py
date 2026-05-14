@@ -192,27 +192,42 @@ def main(args: argparse.Namespace) -> None:
     _print_reliability(rows_raw, "raw rule score")
     print(f"  ECE (raw rule score) = {ece_raw:.4f}")
 
-    # 2) Platt scaling 학습 (전체 데이터에 fit — 실제론 train/val split 필요)
-    a, b = platt_scaling_fit(raw_scores, labels.astype(np.float32))
-    print(f"\n[analyze] Platt scaling fit: a={a:.4f}, b={b:.4f}")
-    platt = platt_scaling_apply(raw_scores, a, b)
-    ece_platt, rows_platt = expected_calibration_error(platt, labels, args.bins)
-    _print_reliability(rows_platt, "Platt-scaled score")
-    print(f"  ECE (Platt-scaled) = {ece_platt:.4f}")
+    # 정직한 평가를 위해 calibration fit / ECE eval 분리 (70/30 split)
+    rng = np.random.default_rng(0)
+    perm = rng.permutation(len(labels))
+    n_fit = int(0.7 * len(labels))
+    fit_idx, eval_idx = perm[:n_fit], perm[n_fit:]
+    fit_scores, fit_labels = raw_scores[fit_idx], labels[fit_idx]
+    eval_scores, eval_labels = raw_scores[eval_idx], labels[eval_idx]
+    print(f"\n[analyze] calibration fit={n_fit} / eval={len(eval_idx)} (no leak)")
 
-    # 3) Isotonic regression (비파라메트릭, cliff 효과에 강함)
-    sorted_s, fitted_p = isotonic_regression_fit(raw_scores, labels.astype(np.float64))
-    iso = isotonic_apply(raw_scores, sorted_s, fitted_p)
-    ece_iso, rows_iso = expected_calibration_error(iso, labels, args.bins)
-    _print_reliability(rows_iso, "Isotonic-mapped score")
-    print(f"  ECE (Isotonic) = {ece_iso:.4f}")
+    # 0-1) raw 도 동일 eval set 에서 다시 계산 (Platt/Isotonic 과 공정 비교)
+    ece_raw_eval, _ = expected_calibration_error(eval_scores, eval_labels, args.bins)
+
+    # 2) Platt scaling: fit 으로 학습, eval 에서 평가
+    a, b = platt_scaling_fit(fit_scores, fit_labels.astype(np.float32))
+    print(f"[analyze] Platt scaling fit: a={a:.4f}, b={b:.4f}")
+    platt_eval = platt_scaling_apply(eval_scores, a, b)
+    ece_platt, rows_platt = expected_calibration_error(platt_eval, eval_labels, args.bins)
+    _print_reliability(rows_platt, "Platt-scaled (eval split)")
+    print(f"  ECE (Platt-scaled, eval) = {ece_platt:.4f}")
+
+    # 3) Isotonic regression: fit 으로 학습, eval 에서 평가
+    sorted_s, fitted_p = isotonic_regression_fit(fit_scores, fit_labels.astype(np.float64))
+    iso_eval = isotonic_apply(eval_scores, sorted_s, fitted_p)
+    ece_iso, rows_iso = expected_calibration_error(iso_eval, eval_labels, args.bins)
+    _print_reliability(rows_iso, "Isotonic-mapped (eval split)")
+    print(f"  ECE (Isotonic, eval) = {ece_iso:.4f}")
 
     # 4) 요약
-    print("\n=== summary ===")
-    print(f"  ECE raw       = {ece_raw:.4f}")
-    print(f"  ECE Platt     = {ece_platt:.4f}  (Δ vs raw: {ece_raw - ece_platt:+.4f})")
-    print(f"  ECE Isotonic  = {ece_iso:.4f}  (Δ vs raw: {ece_raw - ece_iso:+.4f})")
-    best = min([("raw", ece_raw), ("Platt", ece_platt), ("Isotonic", ece_iso)], key=lambda kv: kv[1])
+    print("\n=== summary (모두 동일 eval split 600개에서 측정) ===")
+    print(f"  ECE raw       = {ece_raw_eval:.4f}")
+    print(f"  ECE Platt     = {ece_platt:.4f}  (Δ vs raw: {ece_raw_eval - ece_platt:+.4f})")
+    print(f"  ECE Isotonic  = {ece_iso:.4f}  (Δ vs raw: {ece_raw_eval - ece_iso:+.4f})")
+    best = min(
+        [("raw", ece_raw_eval), ("Platt", ece_platt), ("Isotonic", ece_iso)],
+        key=lambda kv: kv[1],
+    )
     print(f"  → 최저 ECE: {best[0]} ({best[1]:.4f})")
 
 
