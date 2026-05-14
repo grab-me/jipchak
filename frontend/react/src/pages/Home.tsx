@@ -21,13 +21,30 @@ const Home = () => {
     navigate('/play');
   };
 
+  const handleAdminAccess = () => {
+    const pwd = prompt('관리자 비밀번호를 입력하세요:');
+    if (pwd === 'ssafy123') {
+      navigate('/admin');
+    } else if (pwd !== null) {
+      alert('비밀번호가 일치하지 않습니다.');
+    }
+  };
+
   return (
     // 모서리 제거
     <div 
-      className="w-full h-screen [&>div]:!rounded-none"
+      className="w-full h-screen [&>div]:!rounded-none relative"
       onContextMenu={(e) => e.preventDefault()}
     >
       <CrayonWrapper showCharacter={false}>
+        {/* 관리자 접근 버튼 */}
+        <button
+          onClick={handleAdminAccess}
+          className="absolute top-[3%] right-[3%] z-header px-[1.5vw] py-[0.8vw] bg-red-600/90 text-white font-bold text-[clamp(12px,1.2vw,16px)] rounded-[0.5vw] active:scale-95 transition-transform shadow-sm"
+        >
+          Admin
+        </button>
+
         <div className="flex flex-col items-center justify-center w-full h-screen gap-[4vw]">
           <h1 className="text-[clamp(32px,6vw,80px)] font-bold font-crayon text-yellow-400 select-none">
             JIPCHAK
