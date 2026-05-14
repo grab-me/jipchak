@@ -41,10 +41,36 @@ class ThreeJawEvaluator:
         self.config = self._load_config(config_path)
         self.model = None
         self.jaw_count = max(2, int(jaw_count))
+        # 학습 시 사용한 feature 정규화 통계 (없으면 정규화 안 함)
+        self._norm_mean: Optional[np.ndarray] = None
+        self._norm_std: Optional[np.ndarray] = None
 
         if model_path:
-            self.model = GraspScoreMLP(self.extractor.FEATURE_DIM)
-            self.model.load_state_dict(torch.load(model_path, map_location="cpu"))
+            ckpt = torch.load(model_path, map_location="cpu")
+            # 새 포맷(dict with state_dict + norm stats) vs 구포맷(state_dict only) 모두 지원
+            if isinstance(ckpt, dict) and "state_dict" in ckpt:
+                self.model = GraspScoreMLP(self.extractor.FEATURE_DIM)
+                self.model.load_state_dict(ckpt["state_dict"])
+                if "norm_mean" in ckpt and "norm_std" in ckpt:
+                    self._norm_mean = np.asarray(ckpt["norm_mean"], dtype=np.float32)
+                    self._norm_std = np.asarray(ckpt["norm_std"], dtype=np.float32)
+                    print(
+                        f"[ThreeJawEvaluator] loaded model + normalization stats "
+                        f"(dim={self.extractor.FEATURE_DIM})"
+                    )
+                else:
+                    print(
+                        "[ThreeJawEvaluator] WARNING: model loaded without normalization stats — "
+                        "추론 점수가 학습 시와 일치하지 않을 수 있음"
+                    )
+            else:
+                # 구포맷: raw state_dict
+                self.model = GraspScoreMLP(self.extractor.FEATURE_DIM)
+                self.model.load_state_dict(ckpt)
+                print(
+                    "[ThreeJawEvaluator] loaded legacy model (no norm stats) — "
+                    "trainer.py 로 재학습 권장"
+                )
             self.model.eval()
 
     def select_best(
@@ -163,8 +189,11 @@ class ThreeJawEvaluator:
         self, candidates: List[GraspCandidate], depth: Optional[np.ndarray]
     ) -> np.ndarray:
         features = self.extractor.extract_batch(candidates, depth)
+        # 학습 시 적용한 정규화를 동일하게 적용 (없으면 raw 사용 — 단 학습/추론 불일치 위험)
+        if self._norm_mean is not None and self._norm_std is not None:
+            features = (features - self._norm_mean) / self._norm_std
         with torch.no_grad():
-            tensor = torch.from_numpy(features)
+            tensor = torch.from_numpy(features.astype(np.float32))
             scores = self.model(tensor).squeeze().numpy()
 
         mask_multipliers = np.array([self._mask_fitness(c) for c in candidates])
