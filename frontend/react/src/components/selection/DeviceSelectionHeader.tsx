@@ -11,7 +11,10 @@ const DeviceSelectionHeader: React.FC = () => {
         JIPCHAK <span className="text-blue-600 text-lg font-bold">Admin Portal</span>
       </h1>
       <button 
-        onClick={() => navigate('/')}
+        onClick={() => {
+          sessionStorage.removeItem('isAdmin');
+          navigate('/');
+        }}
         className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-red-50 text-red-600 active:scale-95 transition-transform border border-red-100"
       >
         <LogOut size={18} />
