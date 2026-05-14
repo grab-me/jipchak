@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Plus, Search, AlertCircle, StickyNote } from 'lucide-react';
 
 interface DeviceRegistrationFormProps {
@@ -21,6 +21,13 @@ const DeviceRegistrationForm: React.FC<DeviceRegistrationFormProps> = ({
   newDeviceMemo, setNewDeviceMemo
 }) => {
   const suffixInputRef = useRef<HTMLInputElement>(null);
+
+  // 모달을 통해 값이 채워졌을 때도 포커스가 자동으로 넘어가도록 useEffect 추가
+  useEffect(() => {
+    if (newDevicePrefix.length === 5 && suffixInputRef.current) {
+      suffixInputRef.current.focus();
+    }
+  }, [newDevicePrefix]);
 
   const handlePrefixChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);

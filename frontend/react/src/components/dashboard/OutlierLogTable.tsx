@@ -24,7 +24,7 @@ const OutlierLogTable: React.FC<OutlierLogTableProps> = ({ currentData }) => {
             const isExtreme = (item.confidence >= 80 && !item.isSuccess) || (item.confidence <= 20 && item.isSuccess);
             
             return (
-              <tr key={item.id} className={`border-b border-gray-100 transition-colors ${isExtreme ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+              <tr key={item.id} className={`border-b border-gray-100 transition-colors ${isExtreme ? 'bg-red-50' : 'hover:bg-gray-50 active:bg-gray-50'}`}>
                 <td className="p-3 text-slate-400 text-sm font-bold">#{item.id}</td>
                 <td className="p-3 text-slate-600 text-sm font-medium">{item.timestamp}</td>
                 <td className="p-3">
@@ -45,7 +45,7 @@ const OutlierLogTable: React.FC<OutlierLogTableProps> = ({ currentData }) => {
                   </span>
                 </td>
                 <td className="p-3 text-center">
-                  <button className="bg-blue-50 text-blue-600 p-2 rounded-lg active:scale-95 transition-transform border border-blue-200 hover:bg-blue-100 inline-flex items-center justify-center">
+                  <button className="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 active:bg-blue-100 active:scale-95 transition-transform border border-blue-200 inline-flex items-center justify-center">
                     <ImageIcon size={18} />
                   </button>
                 </td>

@@ -195,13 +195,13 @@ const AdminDashboard = () => {
       {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          className="fixed inset-0 bg-black/50 z-overlay md:hidden" 
           onClick={toggleSidebar} 
         />
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 shadow-xl flex flex-col transform transition-transform duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed inset-y-0 left-0 z-modal w-64 bg-white border-r border-gray-200 shadow-xl flex flex-col transform transition-transform duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex flex-col">
             JIPCHAK <span className="text-blue-600 text-sm font-semibold mt-1">Admin Portal</span>
@@ -238,7 +238,7 @@ const AdminDashboard = () => {
         <DashboardHeader deviceId={deviceId} toggleSidebar={toggleSidebar} />
 
         {/* Scrollable Area */}
-        <div className="flex-1 w-full h-full p-4 md:p-8 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 w-full h-full p-4 md:p-8 overflow-y-auto overflow-x-hidden custom-scrollbar">
           
           {activeTab === 'overview' && (
             <div className="flex flex-col h-full gap-4 md:gap-8 max-w-7xl mx-auto">
@@ -246,15 +246,15 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
                 <div className="bg-white rounded-2xl p-6 flex flex-col justify-center shadow-md border border-gray-100">
                   <span className="text-slate-500 text-sm md:text-base font-medium mb-2">총 시행 횟수</span>
-                  <span className="text-slate-900 text-3xl md:text-5xl font-black">{MOCK_KPI.totalPlays.toLocaleString()}회</span>
+                  <span className="text-slate-900 text-2xl md:text-4xl font-black">{MOCK_KPI.totalPlays.toLocaleString()}회</span>
                 </div>
                 <div className="bg-white rounded-2xl p-6 flex flex-col justify-center shadow-md border border-gray-100">
                   <span className="text-slate-500 text-sm md:text-base font-medium mb-2">종합 성공률</span>
-                  <span className="text-green-600 text-3xl md:text-5xl font-black">{MOCK_KPI.winRate}%</span>
+                  <span className="text-green-600 text-2xl md:text-4xl font-black">{MOCK_KPI.winRate}%</span>
                 </div>
                 <div className="bg-white rounded-2xl p-6 flex flex-col justify-center shadow-md border border-gray-100 relative overflow-hidden">
-                  <span className="text-slate-500 text-sm md:text-base font-medium mb-2 z-10">AI 예측 적중률</span>
-                  <span className="text-blue-600 text-3xl md:text-5xl font-black z-10">{MOCK_KPI.aiAccuracy}%</span>
+                  <span className="text-slate-500 text-sm md:text-base font-medium mb-2 z-header">AI 예측 적중률</span>
+                  <span className="text-blue-600 text-2xl md:text-4xl font-black z-header">{MOCK_KPI.aiAccuracy}%</span>
                 </div>
               </div>
 
@@ -286,7 +286,7 @@ const AdminDashboard = () => {
                   ※ 차트의 막대(색상 부분)나 산점도의 점을 클릭하면 해당 데이터의 로그 목록으로 바로 이동합니다.
                 </p>
 
-                <div className="flex-1 w-full h-full cursor-pointer">
+                <div className="flex-1 w-full h-full cursor-pointer overflow-hidden">
                   {chartType === 'bar' ? (
                     <ProbabilityChart data={MOCK_BAR_DATA} onBarClick={handleBarClick} />
                   ) : (

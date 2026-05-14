@@ -96,9 +96,15 @@ const AdminDeviceSelection = () => {
   return (
     <div 
       className="flex flex-col w-full min-h-screen bg-[#fdfbf7] text-slate-800 font-pretendard"
-      onContextMenu={(e) => e.preventDefault()}
     >
-      <RegionCodeModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <RegionCodeModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSelectCode={(code) => {
+          setNewDevicePrefix(code);
+          setError('');
+        }}
+      />
 
       <DeviceSelectionHeader />
 
