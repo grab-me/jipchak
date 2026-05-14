@@ -47,7 +47,7 @@ class ChickEvaluator(ThreeJawEvaluator):
         if getattr(g, "mask", None) is None:
             return "standard"
 
-        ys, _ = np.where(g.mask > 0)
+        ys, xs = np.where(g.mask > 0)
         if len(ys) == 0:
             return "standard"
 
