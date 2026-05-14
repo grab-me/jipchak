@@ -1,0 +1,162 @@
+"""
+Probability calibration 분석.
+
+가설: ChickEvaluator의 룰 점수는 (0~0.98 범위) ranking 신호일 뿐
+      실제 성공 확률이 아니다. 분석에서 묻는 것:
+        - "룰 점수 = 0.7 인 후보들의 실제 성공률은 70%인가?"
+        - 아니라면 sigmoid / Platt / isotonic 으로 보정 가능한가?
+
+실제 데이터 수집 전 합성 데이터로 분석 파이프라인 검증.
+실제 데이터가 들어오면 동일 스크립트 그대로 사용 가능.
+
+산출물:
+    - ECE (Expected Calibration Error) 출력
+    - Reliability diagram 데이터 (bin별 평균 예측, 실제 성공률) 콘솔 출력
+    - Platt-scaling 된 점수와 원점수의 ECE 비교
+"""
+
+import argparse
+import json
+from pathlib import Path
+
+import numpy as np
+
+
+def _load_jsonl(path: Path) -> tuple[np.ndarray, np.ndarray]:
+    features_list, labels = [], []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            log = json.loads(line)
+            features_list.append(log["features"])
+            labels.append(log["success"])
+    return np.array(features_list, dtype=np.float32), np.array(labels, dtype=np.int64)
+
+
+def _rule_proxy_score(features: np.ndarray) -> np.ndarray:
+    """
+    실제 ChickEvaluator를 호출하려면 GraspCandidate 객체가 필요 (mask 등).
+    이 스크립트는 features 만 다루므로, ChickEvaluator 가중치 흐름을 흉내내는
+    proxy score 를 features 에서 직접 계산한다.
+
+    feature index 매핑 (generate_synthetic.py 기준):
+        [0] width, [11] sensor_invalid_ratio, [16] relative_grasp_y
+    """
+    width = features[:, 0]
+    invalid_ratio = features[:, 11]
+    rel_y = features[:, 16]
+
+    width_term = np.exp(-((width - 55.0) ** 2) / (2 * 15.0 ** 2))
+    invalid_term = 1.0 - invalid_ratio
+    top_term = np.exp(-((rel_y - 0.30) ** 2) / (2 * 0.15 ** 2))
+    score = 0.45 * width_term + 0.30 * invalid_term + 0.25 * top_term
+    return np.clip(score, 0.0, 0.98)
+
+
+def expected_calibration_error(
+    probs: np.ndarray, labels: np.ndarray, n_bins: int = 10
+) -> tuple[float, list[dict]]:
+    """
+    ECE 계산.
+
+    각 확률 구간(bin)에서 평균 예측확률과 실제 성공률의 차이를 가중합한다.
+    0 에 가까울수록 잘 보정된 것.
+    """
+    bins = np.linspace(0.0, 1.0, n_bins + 1)
+    ece = 0.0
+    rows = []
+    n = len(labels)
+    for i in range(n_bins):
+        lo, hi = bins[i], bins[i + 1]
+        in_bin = (probs >= lo) & (probs < hi if i < n_bins - 1 else probs <= hi)
+        count = int(in_bin.sum())
+        if count == 0:
+            rows.append({"bin": f"[{lo:.1f},{hi:.1f}]", "n": 0, "pred": 0.0, "actual": 0.0, "gap": 0.0})
+            continue
+        mean_pred = float(probs[in_bin].mean())
+        actual = float(labels[in_bin].mean())
+        gap = abs(mean_pred - actual)
+        ece += (count / n) * gap
+        rows.append({"bin": f"[{lo:.1f},{hi:.1f}]", "n": count, "pred": mean_pred, "actual": actual, "gap": gap})
+    return float(ece), rows
+
+
+def platt_scaling_fit(
+    scores: np.ndarray, labels: np.ndarray, max_iter: int = 500, lr: float = 0.1
+) -> tuple[float, float]:
+    """
+    Platt scaling: 1-D logistic regression. P = sigmoid(a*score + b)
+    BCE loss 를 수동 gradient descent 로 최소화.
+    """
+    a, b = 1.0, 0.0
+    n = len(scores)
+    for _ in range(max_iter):
+        z = a * scores + b
+        p = 1.0 / (1.0 + np.exp(-z))
+        # gradient (BCE)
+        err = p - labels
+        grad_a = float((err * scores).mean())
+        grad_b = float(err.mean())
+        a -= lr * grad_a
+        b -= lr * grad_b
+        if abs(grad_a) < 1e-6 and abs(grad_b) < 1e-6:
+            break
+    return float(a), float(b)
+
+
+def platt_scaling_apply(scores: np.ndarray, a: float, b: float) -> np.ndarray:
+    return 1.0 / (1.0 + np.exp(-(a * scores + b)))
+
+
+def _print_reliability(rows: list[dict], header: str) -> None:
+    print(f"\n--- {header} (reliability diagram) ---")
+    print(f"  {'bin':<14} {'n':>5} {'pred':>8} {'actual':>8} {'gap':>8}")
+    for r in rows:
+        print(
+            f"  {r['bin']:<14} {r['n']:>5} {r['pred']:>8.3f} "
+            f"{r['actual']:>8.3f} {r['gap']:>8.3f}"
+        )
+
+
+def main(args: argparse.Namespace) -> None:
+    data_path = Path(args.data)
+    if not data_path.exists():
+        raise SystemExit(f"데이터 없음: {data_path}\nfirst run generate_synthetic.py")
+
+    features, labels = _load_jsonl(data_path)
+    print(f"[analyze] loaded {len(labels)} samples ({labels.sum()} success, {len(labels) - labels.sum()} fail)")
+
+    # 1) 룰 점수 proxy (현재 production 시스템과 동일한 흐름의 점수)
+    raw_scores = _rule_proxy_score(features)
+    print(f"[analyze] raw score min={raw_scores.min():.3f} max={raw_scores.max():.3f} mean={raw_scores.mean():.3f}")
+
+    ece_raw, rows_raw = expected_calibration_error(raw_scores, labels, args.bins)
+    _print_reliability(rows_raw, "raw rule score")
+    print(f"  ECE (raw rule score) = {ece_raw:.4f}")
+
+    # 2) Platt scaling 학습 (전체 데이터에 fit — 실제론 train/val split 필요)
+    a, b = platt_scaling_fit(raw_scores, labels.astype(np.float32))
+    print(f"\n[analyze] Platt scaling fit: a={a:.4f}, b={b:.4f}")
+    scaled = platt_scaling_apply(raw_scores, a, b)
+    ece_scaled, rows_scaled = expected_calibration_error(scaled, labels, args.bins)
+    _print_reliability(rows_scaled, "Platt-scaled score")
+    print(f"  ECE (Platt-scaled) = {ece_scaled:.4f}")
+
+    # 3) 요약
+    print("\n=== summary ===")
+    print(f"  ECE raw    = {ece_raw:.4f}")
+    print(f"  ECE Platt  = {ece_scaled:.4f}")
+    delta = ece_raw - ece_scaled
+    if delta > 0:
+        print(f"  Platt 보정으로 ECE 가 {delta:.4f} 감소 → 보정 효과 있음")
+    else:
+        print(f"  Platt 보정 효과 미미 또는 부정 (실제 데이터 충분치 않을 수 있음)")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Probability calibration 분석")
+    parser.add_argument(
+        "--data", type=str,
+        default="ai/experiments/probability_v1/data/synthetic_log.jsonl",
+    )
+    parser.add_argument("--bins", type=int, default=10, help="reliability bin 개수")
+    main(parser.parse_args())

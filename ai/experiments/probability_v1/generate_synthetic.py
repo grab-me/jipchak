@@ -31,7 +31,7 @@ from pathlib import Path
 import numpy as np
 
 
-N_FEATURES = 17  # 위 주석 기준. FeatureExtractor.FEATURE_DIM=19 면 패딩.
+N_FEATURES = 17  # FeatureExtractor.FEATURE_DIM 과 일치 (기본 5 + 깊이 8 + 모양 4)
 
 
 def _sample_one(rng: np.random.Generator) -> tuple[list[float], int]:
@@ -66,8 +66,6 @@ def _sample_one(rng: np.random.Generator) -> tuple[list[float], int]:
         depth_p25, depth_p75, sensor_invalid_ratio, depth_roughness,
         aspect_ratio, width_variance, relative_grasp_x, relative_grasp_y,
     ]
-    # FeatureExtractor.FEATURE_DIM=19 와 맞추기 위해 패딩 2개
-    features.extend([0.0, 0.0])
 
     # 성공 라벨: 이상 width(55) 가까울수록, sensor_invalid 적을수록, 위쪽 파지일수록 +
     width_term = float(np.exp(-((width - 55.0) ** 2) / (2 * 15.0 ** 2)))
