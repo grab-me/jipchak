@@ -6,13 +6,13 @@ class FeatureExtractor:
     """
     GraspCandidate를 평가 모델용 특징 벡터로 변환.
     """
-    FEATURE_DIM = 19  # 기본 7 + 깊이 8 + 모양 4
+    FEATURE_DIM = 17  # 기본 5 + 깊이 8 + 모양 4
 
     def extract(self, grasp: GraspCandidate, depth: Optional[np.ndarray] = None) -> np.ndarray:
         """
         단일 파지 후보에 대한 특징 추출.
         """
-        # 기본 특징 (7개)
+        # 기본 특징 (5개) — center_x/y 는 모양 특징의 상대 좌표로 대체됨
         features = [
             grasp.width,
             grasp.original_score,
