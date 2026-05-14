@@ -44,6 +44,10 @@ class ThreeJawEvaluator:
         # 학습 시 사용한 feature 정규화 통계 (없으면 정규화 안 함)
         self._norm_mean: Optional[np.ndarray] = None
         self._norm_std: Optional[np.ndarray] = None
+        # Isotonic regression calibration mapping (sigmoid 출력 -> 진짜 확률)
+        # 학습 시 train split 으로 fit, .pth 에 함께 저장됨. 없으면 calibration 없이 raw sigmoid 사용.
+        self._iso_x: Optional[np.ndarray] = None  # 정렬된 score boundary
+        self._iso_y: Optional[np.ndarray] = None  # 각 boundary 의 평균 라벨 (단조)
 
         if model_path:
             ckpt = torch.load(model_path, map_location="cpu")
@@ -62,6 +66,13 @@ class ThreeJawEvaluator:
                     print(
                         "[ThreeJawEvaluator] WARNING: model loaded without normalization stats — "
                         "추론 점수가 학습 시와 일치하지 않을 수 있음"
+                    )
+                if "iso_x" in ckpt and "iso_y" in ckpt:
+                    self._iso_x = np.asarray(ckpt["iso_x"], dtype=np.float64)
+                    self._iso_y = np.asarray(ckpt["iso_y"], dtype=np.float64)
+                    print(
+                        f"[ThreeJawEvaluator] isotonic calibration loaded "
+                        f"({len(self._iso_x)} points) — sigmoid → 진짜 확률 변환 활성"
                     )
             else:
                 # 구포맷: raw state_dict
@@ -196,10 +207,17 @@ class ThreeJawEvaluator:
             tensor = torch.from_numpy(features.astype(np.float32))
             scores = self.model(tensor).squeeze().numpy()
 
+        scores = np.atleast_1d(scores)
+
+        # Isotonic calibration: sigmoid 출력 -> 진짜 확률
+        # mapping 이 있으면 raw sigmoid 점수를 학습 시 fit 된 보정 곡선으로 변환.
+        if self._iso_x is not None and self._iso_y is not None:
+            scores = np.interp(scores, self._iso_x, self._iso_y)
+
         mask_multipliers = np.array([self._mask_fitness(c) for c in candidates])
         scores = scores * mask_multipliers
         scores = np.clip(scores, 0.0, 0.90)
-        return np.atleast_1d(scores)
+        return scores
 
     def _load_config(self, path: Optional[str]) -> dict:
         if path:
