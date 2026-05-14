@@ -1,9 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { 
-  BarChart as RechartsBarChart, Bar, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
-} from 'recharts';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Menu, LogOut, Settings, Image as ImageIcon, XCircle, ChevronLeft, ChevronRight, Cpu, BarChart3, Target } from 'lucide-react'; 
+import { useParams } from 'react-router-dom';
+import { Menu, XCircle, BarChart3, Target } from 'lucide-react'; 
+
+import DashboardHeader from '../components/dashboard/DashboardHeader';
+import Pagination from '../components/dashboard/Pagination';
+import ProbabilityChart from '../components/dashboard/ProbabilityChart';
+import ScatterDistributionChart from '../components/dashboard/ScatterDistributionChart';
+import OutlierLogTable from '../components/dashboard/OutlierLogTable';
 
 // --- MOCK DATA ---
 const MOCK_KPI = {
@@ -74,7 +77,6 @@ MOCK_OUTLIERS.forEach(item => {
 type SortOption = 'latest' | 'oldest' | 'high_conf' | 'low_conf';
 
 const AdminDashboard = () => {
-  const navigate = useNavigate();
   const { deviceId } = useParams<{ deviceId: string }>();
   
   const [activeTab, setActiveTab] = useState<'overview'|'logs'>('overview');
@@ -93,9 +95,6 @@ const AdminDashboard = () => {
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
-
-  // 페이지 점프용 입력 상태
-  const [jumpPageInput, setJumpPageInput] = useState<string>('');
 
   // --- 차트 인터랙션 핸들러 ---
   
@@ -175,35 +174,7 @@ const AdminDashboard = () => {
   // 필터가 변경되면 1페이지로 리셋
   useEffect(() => {
     setCurrentPage(1);
-    setJumpPageInput('1');
   }, [sortOption, resultFilter, outlierFilter, rangeFilter, searchTargetId]);
-
-  // 페이지 점프 처리
-  const handlePageJump = () => {
-    const pageNum = parseInt(jumpPageInput, 10);
-    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
-      setCurrentPage(pageNum);
-    } else {
-      // 잘못된 값이면 현재 페이지로 복구
-      setJumpPageInput(currentPage.toString());
-    }
-  };
-
-  const handlePageKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handlePageJump();
-      e.currentTarget.blur();
-    }
-  };
-
-  const handlePageInputBlur = () => {
-    handlePageJump();
-  };
-
-  // currentPage가 외부에서 바뀌면 input도 동기화
-  useEffect(() => {
-    setJumpPageInput(currentPage.toString());
-  }, [currentPage]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -263,44 +234,8 @@ const AdminDashboard = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden w-full relative">
         
-        {/* Top Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 shadow-sm z-30">
-          <div className="flex items-center gap-2 md:gap-4">
-            <button className="md:hidden p-2 text-slate-600 active:scale-95" onClick={toggleSidebar}>
-              <Menu size={28} />
-            </button>
-            
-            {/* 현재 조회 중인 기기 정보 */}
-            {deviceId && (
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-100 text-blue-700 rounded-lg">
-                <Cpu size={16} />
-                <span className="text-sm font-bold tracking-wide">Device ID: <span className="font-black">{deviceId}</span></span>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex gap-2 sm:gap-4 items-center ml-auto">
-            <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm sm:text-base font-semibold text-slate-600 hover:bg-gray-100 active:scale-95 transition-colors">
-              <Settings size={18} />
-              <span className="hidden sm:inline">설정 (기본 놓칠확률: 20%)</span>
-            </button>
-            <button 
-              onClick={() => navigate('/admin')}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm sm:text-base font-semibold bg-gray-100 text-slate-700 active:scale-95 transition-transform border border-gray-200"
-            >
-              <Cpu size={18} />
-              <span className="hidden sm:inline">기기 선택으로 돌아가기</span>
-              <span className="inline sm:hidden">기기</span>
-            </button>
-            <button 
-              onClick={() => navigate('/')}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm sm:text-base font-bold bg-red-50 text-red-600 active:scale-95 transition-transform border border-red-100"
-            >
-              <LogOut size={18} />
-              종료
-            </button>
-          </div>
-        </div>
+        {/* Top Header Extracted */}
+        <DashboardHeader deviceId={deviceId} toggleSidebar={toggleSidebar} />
 
         {/* Scrollable Area */}
         <div className="flex-1 w-full h-full p-4 md:p-8 overflow-y-auto custom-scrollbar">
@@ -352,54 +287,11 @@ const AdminDashboard = () => {
                 </p>
 
                 <div className="flex-1 w-full h-full cursor-pointer">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {chartType === 'bar' ? (
-                      <RechartsBarChart 
-                        data={MOCK_BAR_DATA} 
-                        margin={{ top: 20, right: 30, left: 0, bottom: 5 }} 
-                        maxBarSize={80}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                        <XAxis dataKey="range" stroke="#6b7280" tick={{ fill: '#6b7280', fontWeight: 500 }} />
-                        <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontWeight: 500 }} />
-                        <Tooltip 
-                          cursor={{ fill: '#f3f4f6' }}
-                          contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                          itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
-                        />
-                        <Legend wrapperStyle={{ paddingTop: '20px', fontWeight: 600, color: '#475569' }} />
-                        <Bar 
-                          dataKey="success" name="성공 (Success)" stackId="a" fill="#10b981" radius={[0, 0, 6, 6]} 
-                          onClick={(data) => handleBarClick(data, 'success')}
-                        />
-                        <Bar 
-                          dataKey="fail" name="실패 (Fail)" stackId="a" fill="#ef4444" radius={[6, 6, 0, 0]} 
-                          onClick={(data) => handleBarClick(data, 'fail')}
-                        />
-                      </RechartsBarChart>
-                    ) : (
-                      <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis type="number" dataKey="id" name="시행 순서(ID)" stroke="#6b7280" />
-                        <YAxis type="number" dataKey="confidence" name="AI 예측 확률" unit="%" stroke="#6b7280" />
-                        <Tooltip 
-                          cursor={{ strokeDasharray: '3 3' }} 
-                          contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                          itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
-                        />
-                        <Scatter 
-                          name="실패 (Fail)" data={MOCK_OUTLIERS.filter(d => !d.isSuccess)} fill="#ef4444" 
-                          onClick={handleScatterClick}
-                          className="focus:outline-none"
-                        />
-                        <Scatter 
-                          name="성공 (Success)" data={MOCK_OUTLIERS.filter(d => d.isSuccess)} fill="#10b981" 
-                          onClick={handleScatterClick}
-                          className="focus:outline-none"
-                        />
-                      </ScatterChart>
-                    )}
-                  </ResponsiveContainer>
+                  {chartType === 'bar' ? (
+                    <ProbabilityChart data={MOCK_BAR_DATA} onBarClick={handleBarClick} />
+                  ) : (
+                    <ScatterDistributionChart data={MOCK_OUTLIERS} onScatterClick={handleScatterClick} />
+                  )}
                 </div>
               </div>
             </div>
@@ -426,7 +318,7 @@ const AdminDashboard = () => {
                 </div>
               )}
 
-              {/* Advanced Filter Bar (특정 검색 상태일 땐 비활성화 시각처리) */}
+              {/* Advanced Filter Bar */}
               <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 ${searchTargetId !== null ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-500">정렬 기준</label>
@@ -469,96 +361,15 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Table */}
-              <div className="flex-1 overflow-x-auto min-h-[400px]">
-                <table className="w-full text-left border-collapse min-w-[700px]">
-                  <thead className="bg-gray-50 border-y border-gray-200">
-                    <tr className="text-slate-500 text-sm">
-                      <th className="p-3 font-semibold">ID</th>
-                      <th className="p-3 font-semibold">시간</th>
-                      <th className="p-3 font-semibold">AI 예측 확률</th>
-                      <th className="p-3 font-semibold text-center">놓칠 확률</th>
-                      <th className="p-3 font-semibold text-center">실제 결과</th>
-                      <th className="p-3 font-semibold text-center">파지 이미지</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentData.map((item) => {
-                      const isExtreme = (item.confidence >= 80 && !item.isSuccess) || (item.confidence <= 20 && item.isSuccess);
-                      
-                      return (
-                        <tr key={item.id} className={`border-b border-gray-100 transition-colors ${isExtreme ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
-                          <td className="p-3 text-slate-400 text-sm font-bold">#{item.id}</td>
-                          <td className="p-3 text-slate-600 text-sm font-medium">{item.timestamp}</td>
-                          <td className="p-3">
-                            <span className={`text-base font-bold ${item.confidence > 50 ? 'text-green-600' : 'text-red-600'}`}>
-                              {item.confidence.toFixed(1)}%
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className="text-slate-500 text-sm font-bold bg-gray-100 px-2 py-1 rounded">
-                              {item.dropProbability}%
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className={`px-3 py-1 rounded-md font-bold text-xs ${
-                              item.isSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {item.isSuccess ? '성공' : '실패'}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <button className="bg-blue-50 text-blue-600 p-2 rounded-lg active:scale-95 transition-transform border border-blue-200 hover:bg-blue-100 inline-flex items-center justify-center">
-                              <ImageIcon size={18} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {currentData.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-slate-500 font-medium">
-                          조건에 맞는 데이터가 없습니다. 필터를 변경해 보세요.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              {/* Table Extracted */}
+              <OutlierLogTable currentData={currentData} />
 
-              {/* Improved Pagination */}
-              {totalPages > 0 && (
-                <div className="flex flex-wrap justify-center items-center gap-4 mt-6 pt-6 border-t border-gray-100">
-                  <button 
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
-                    className="flex items-center gap-1 px-4 py-2 rounded-xl bg-white border border-gray-200 text-slate-700 shadow-sm disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed hover:bg-gray-50 active:scale-95 transition-all font-bold"
-                  >
-                    <ChevronLeft size={18} /> 이전
-                  </button>
-                  
-                  <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-300 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                    <input 
-                      type="text" 
-                      value={jumpPageInput}
-                      onChange={(e) => setJumpPageInput(e.target.value.replace(/[^0-9]/g, ''))}
-                      onBlur={handlePageInputBlur}
-                      onKeyDown={handlePageKeyDown}
-                      className="w-12 text-center font-bold text-blue-600 bg-transparent outline-none"
-                    />
-                    <span className="text-gray-300">/</span>
-                    <span className="font-medium text-slate-500 px-2">{totalPages}</span>
-                  </div>
-
-                  <button 
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
-                    className="flex items-center gap-1 px-4 py-2 rounded-xl bg-white border border-gray-200 text-slate-700 shadow-sm disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed hover:bg-gray-50 active:scale-95 transition-all font-bold"
-                  >
-                    다음 <ChevronRight size={18} />
-                  </button>
-                </div>
-              )}
+              {/* Pagination Extracted */}
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={totalPages} 
+                onPageChange={setCurrentPage} 
+              />
 
             </div>
           )}
