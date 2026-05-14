@@ -108,7 +108,10 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
                   className="flex flex-row items-stretch h-[clamp(320px,55vh,480px)] w-full px-[var(--guide-side-pad)] gap-[clamp(10px,1.4vw,16px)]"
                 >
                   <GuideImage />
-                  <GuideText description={guideSlides[currentIndex].description} />
+                  <GuideText 
+                    title={guideSlides[currentIndex].title}
+                    description={guideSlides[currentIndex].description}
+                  />
                 </motion.div>
               </AnimatePresence>
 
