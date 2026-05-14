@@ -42,8 +42,7 @@ THREE_JAW_MODEL_PATH = os.getenv(
     os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "trained-models",
-        "yolov8-seg",
-        "heart_chick_seg_best.pt",
+        "best_v3.pt",
     ),
 )
 
