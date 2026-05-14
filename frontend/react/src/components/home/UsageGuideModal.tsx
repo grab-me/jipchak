@@ -99,7 +99,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
             role="dialog"
             aria-modal="true"
             aria-label="사용 가이드"
-            className="relative flex flex-col w-full max-w-[min(88vw,860px)] max-h-[90vh] rounded-[2vw] border-[clamp(3px,0.5vw,6px)] border-crayon-line bg-crayon-bg p-[clamp(16px,2.2vw,28px)] shadow-2xl"
+            className="relative flex flex-col w-full max-w-[min(88vw,860px)] max-h-[90vh] rounded-[2vw] border-[clamp(3px,0.5vw,6px)] border-crayon-line bg-crayon-bg p-[clamp(16px,2.2vw,28px)] shadow-2xl [--guide-btn-offset:calc(clamp(16px,2.2vw,28px)+clamp(16px,2.2vw,28px)/2)]"
             initial={{ scale: 0.96, opacity: 0, y: 16 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.98, opacity: 0, y: 12 }}
