@@ -7,6 +7,7 @@ import NextStepModal from '@/components/machine/NextStepModal';
 import SettingsModal from '@/components/machine/SettingsModal';
 import Confetti, { ConfettiOptions } from '@/components/common/Confetti';
 import CameraTransitionOverlay from '@/components/machine/CameraTransitionOverlay';
+import StartGuide from '@/components/machine/StartGuide';
 import { useAudioStore } from '@/store/audioStore';
 import { useAudio } from '@/hooks/useAudio';
 import { SOUND_ASSETS } from '@/constants/soundConfig';
@@ -14,7 +15,16 @@ import { useCameraSwap } from '@/hooks/useCameraSwap';
 
 const PlayGround = () => {
   const navigate = useNavigate();
-  const { isSessionActive, lastResult, setAskingNextStep, records, resetSession, setAutoStarting } = useToolStore();
+  const { 
+    isSessionActive, 
+    lastResult, 
+    isCatching,
+    isAskingNextStep,
+    setAskingNextStep, 
+    records, 
+    resetSession, 
+    setAutoStarting 
+  } = useToolStore();
   const { setSettingsOpen } = useAudioStore();
   const { playBgm, stopBgm, playSfx } = useAudio();
   const { isSwapped, isTransitioning, handleSwap } = useCameraSwap();
@@ -119,6 +129,9 @@ const PlayGround = () => {
           channel={isSwapped ? "3d" : "2d"} 
           isMainView={true} 
         />
+
+        {/* 게임 시작 안내 가이드 (아이들 상태일 때만 표시) */}
+        {!isCatching && !lastResult && !isAskingNextStep && <StartGuide />}
 
         {/* 설정 버튼 (좌상단 고정, 스와프 시에도 유지됨) */}
         <button
