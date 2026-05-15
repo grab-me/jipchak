@@ -63,7 +63,7 @@ const DeviceRegistrationForm: React.FC<DeviceRegistrationFormProps> = ({
           onClick={onOpenRegionModal}
           className="flex items-center gap-1 text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg active:scale-95 border border-blue-100"
         >
-          <Search size={16} /> 법정동코드 조회
+          <Search size={16} /> 지역코드 조회
         </button>
       </div>
       
@@ -118,7 +118,7 @@ const DeviceRegistrationForm: React.FC<DeviceRegistrationFormProps> = ({
         </p>
       )}
       <p className="text-xs text-slate-400 mt-1 font-medium">
-        * 기기 번호는 [행정표준코드 5자리]-[기기 식별번호 3~4자리] 형태의 규칙을 따릅니다.
+        * 기기 번호는 [지역코드 5자리]-[기기 식별번호 3~4자리] 형태의 규칙을 따릅니다.
       </p>
     </div>
   );

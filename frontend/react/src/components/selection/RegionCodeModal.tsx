@@ -18,7 +18,7 @@ const RegionCodeModal: React.FC<RegionCodeModalProps> = ({ isOpen, onClose, onSe
       <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50">
           <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-            <Search size={20} className="text-blue-600" /> 법정동코드 안내
+            <Search size={20} className="text-blue-600" /> 지역코드 안내
           </h3>
           <button 
             onClick={onClose}
@@ -32,7 +32,7 @@ const RegionCodeModal: React.FC<RegionCodeModalProps> = ({ isOpen, onClose, onSe
             <thead className="bg-gray-100">
               <tr>
                 <th className="p-3 text-sm font-bold text-slate-600 border-b border-gray-200">지역명</th>
-                <th className="p-3 text-sm font-bold text-slate-600 border-b border-gray-200">행정표준코드(앞5자리)</th>
+                <th className="p-3 text-sm font-bold text-slate-600 border-b border-gray-200">지역코드(앞5자리)</th>
               </tr>
             </thead>
             <tbody>
@@ -54,7 +54,7 @@ const RegionCodeModal: React.FC<RegionCodeModalProps> = ({ isOpen, onClose, onSe
         </div>
         <div className="p-4 bg-gray-50 border-t border-gray-100">
           <p className="text-xs text-slate-500 font-medium text-center">
-            * 위 목록은 대한민국 주요 시/군/구 단위 행정표준코드입니다.
+            * 위 목록은 대한민국 주요 시/군/구 단위 지역코드입니다.
           </p>
         </div>
       </div>

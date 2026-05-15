@@ -37,7 +37,7 @@ const AdminDeviceSelection = () => {
 
     // Validation: Prefix 5 digits, Suffix 3~4 digits
     if (prefix.length !== 5) {
-      setError('행정표준코드(앞자리)는 5자리 숫자여야 합니다.');
+      setError('지역코드(앞자리)는 5자리 숫자여야 합니다.');
       return;
     }
     
