@@ -12,8 +12,8 @@ const int PIN_SERVO = 13;
 // --- Config ---
 const int CLAW_ANGLE_OPEN  = 90;
 const int CLAW_ANGLE_CLOSE = 0;
-const int Z_MOVE_STEPS_DOWN = 450;
-const int Z_MOVE_STEPS_UP = 600;
+const int Z_MOVE_STEPS_DOWN = 640;
+const int Z_MOVE_STEPS_UP = 670;
 const float MAX_SPEED_Z = 300.0;
 const float ACCELERATION_Z = 50000.0;
 
@@ -48,7 +48,6 @@ void loop() {
 
     if (!isMovingZ && stepperZ.distanceToGo() == 0) {
 
-        // A4 하강 완료 후 후속 동작 (원래 집게 여는 자리였으나 삭제)
         if (nextClawAction == 1) {
             Serial.println("-> Z축 하강 완료.");
             nextClawAction = -1;
@@ -60,14 +59,9 @@ void loop() {
 
         if (digitalRead(PIN_BTN_MAIN) == LOW) {
             if (digitalRead(PIN_BTN_MAIN) == LOW) {
-                Serial.println("[A4 입력] 집게 먼저 열기(90도)");
-                clawServo.write(CLAW_ANGLE_OPEN); // 하강 전에 집게 열기
-                
-                // 집게가 물리적으로 다 열릴 때까지 잠시(0.5초) 대기
-                unsigned long waitStart = millis();
-                while(millis() - waitStart < 500) { }
-                
-                Serial.println("-> Z축 하강 시작...");
+                Serial.println("[A4 입력] 집게 확인/열기(90도) -> Z축 하강 시작...");
+                clawServo.write(CLAW_ANGLE_OPEN);
+
                 stepperZ.move(-Z_MOVE_STEPS_DOWN);
                 isMovingZ = true;
                 nextClawAction = 1;

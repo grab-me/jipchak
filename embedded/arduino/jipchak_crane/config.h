@@ -35,7 +35,7 @@ const int PIN_ENDSTOP_Y_DOWN  = 12;
 const int PIN_SERVO = 13;
 
 const int CLAW_ANGLE_OPEN  = 90;
-const int CLAW_ANGLE_CLOSE = 0;
+const int CLAW_ANGLE_CLOSE = 20;
 const int CLAW_ANGLE_IDLE  = 90;
 
 // --- Stepper Motor Configuration ---
@@ -47,8 +47,8 @@ const float MAX_SPEED_Z = 300.0;
 const float ACCELERATION_Z = 50000.0; // Z축 등속도를 위해 가속도 무한대 설정
 
 // Z-axis movement steps
-const int Z_MOVE_STEPS_DOWN = 520;
-const int Z_MOVE_STEPS_UP = 550;
+const int Z_MOVE_STEPS_DOWN = 640;
+const int Z_MOVE_STEPS_UP = 670;
 
 // --- Conversion & Homing Configuration ---
 const float STEPS_PER_MM_X = 80.0f;
