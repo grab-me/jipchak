@@ -28,7 +28,7 @@ long prevPosX = 0, prevPosY = 0, prevPosZ = 0;
 
 void setup() {
   Serial.begin(115200);
-  
+
   pinMode(PIN_JOY_Y_UP, INPUT_PULLUP);
   pinMode(PIN_JOY_Y_DOWN, INPUT_PULLUP);
   pinMode(PIN_JOY_X_LEFT, INPUT_PULLUP);
@@ -42,14 +42,10 @@ void setup() {
   pinMode(PIN_ENDSTOP_Y_DOWN, INPUT_PULLUP);
 
   pinMode(PIN_ENABLE, OUTPUT);
-  digitalWrite(PIN_ENABLE, LOW); // 모터 활성화
+  digitalWrite(PIN_ENABLE, LOW);
 
-  // 가속도(Acceleration)에 의해 속도가 점진적으로 올라가지만, 
-  // setMaxSpeed로 설정한 '최대 속도'를 절대 넘지 않습니다.
-  // 너무 빠르다면 이 MaxSpeed 값을 줄이시면 됩니다. (현재 400으로 하향 조정)
   stepperX.setMaxSpeed(400); stepperX.setAcceleration(500);
   stepperY.setMaxSpeed(400); stepperY.setAcceleration(500);
-  // Z축은 가감속 없이 일정한 저속으로 움직이도록 가속도를 높게(또는 무의미하게) 설정 (기존 200 -> 300으로 1.5배 상향)
   stepperZ.setMaxSpeed(300); stepperZ.setAcceleration(2000);
 
   Serial.println("=== Stepper Calibration Tool ===");
@@ -64,33 +60,29 @@ void setup() {
 }
 
 void loop() {
-  // 1. 수동 조작 (X, Y는 가감속 제어, Z는 등속도 제어)
   static int lastDirX = 0, lastDirY = 0;
   int dirX = 0, dirY = 0;
   float speedZ = 0;
-  
+
   if (digitalRead(PIN_JOY_X_LEFT) == LOW) dirX = -1;
   else if (digitalRead(PIN_JOY_X_RIGHT) == LOW) dirX = 1;
 
   if (digitalRead(PIN_JOY_Y_DOWN) == LOW) dirY = -1;
   else if (digitalRead(PIN_JOY_Y_UP) == LOW) dirY = 1;
 
-  // Z축은 가감속 없이 일정한 속도(300)로 즉시 움직임
-  if (digitalRead(PIN_BTN_MAIN) == LOW) speedZ = 300; // Z 하강 (+)
-  else if (digitalRead(PIN_BTN_SUB) == LOW) speedZ = -300; // Z 상승 (-)
+  if (digitalRead(PIN_BTN_MAIN) == LOW) speedZ = 300;
+  else if (digitalRead(PIN_BTN_SUB) == LOW) speedZ = -300;
 
-  // X축 상태 변화 감지 및 가감속 명령
   if (dirX != lastDirX) {
     if (dirX == -1) stepperX.move(-1000000);
     else if (dirX == 1) stepperX.move(1000000);
-    else stepperX.stop(); // 부드럽게 감속하여 정지
+    else stepperX.stop();
     lastDirX = dirX;
   }
 
-  // X축 리미트 스위치 충돌 감지 (충돌 시 즉시 정지 후 반대 방향으로 5스텝 부드럽게 이동)
   if (digitalRead(PIN_ENDSTOP_X_LEFT) == LOW && stepperX.distanceToGo() < 0) {
-    stepperX.setCurrentPosition(0); // 0점(원점)으로 리셋하며 가속도 타이머도 초기화
-    stepperX.moveTo(5); // 0점에서부터 5스텝 튕겨나옴
+    stepperX.setCurrentPosition(0);
+    stepperX.moveTo(5);
     Serial.println("X LEFT LIMIT TRIGGERED! Origin Reset to 0. Bouncing back...");
   }
   if (digitalRead(PIN_ENDSTOP_X_RIGHT) == LOW && stepperX.distanceToGo() > 0) {
@@ -101,7 +93,6 @@ void loop() {
   }
   stepperX.run();
 
-  // Y축 상태 변화 감지 및 가감속 명령
   if (dirY != lastDirY) {
     if (dirY == -1) stepperY.move(-1000000);
     else if (dirY == 1) stepperY.move(1000000);
@@ -109,10 +100,9 @@ void loop() {
     lastDirY = dirY;
   }
 
-  // Y축 리미트 스위치 충돌 감지
   if (digitalRead(PIN_ENDSTOP_Y_DOWN) == LOW && stepperY.distanceToGo() < 0) {
-    stepperY.setCurrentPosition(0); // 0점(원점)으로 리셋하며 가속도 타이머도 초기화
-    stepperY.moveTo(5); // 0점에서부터 5스텝 튕겨나옴
+    stepperY.setCurrentPosition(0);
+    stepperY.moveTo(5);
     Serial.println("Y DOWN LIMIT TRIGGERED! Origin Reset to 0. Bouncing back...");
   }
   if (digitalRead(PIN_ENDSTOP_Y_UP) == LOW && stepperY.distanceToGo() > 0) {
@@ -123,7 +113,6 @@ void loop() {
   }
   stepperY.run();
 
-  // Z축 상태 변화 감지 및 등속도 명령
   static bool wasJoggingZ = false;
   if (speedZ != 0) {
     stepperZ.setSpeed(speedZ);
@@ -135,10 +124,9 @@ void loop() {
       stepperZ.moveTo(stepperZ.currentPosition());
       wasJoggingZ = false;
     }
-    stepperZ.run(); // 시리얼 명령(Z650 등)으로 조작할 때를 대비해 run() 유지
+    stepperZ.run();
   }
 
-  // 2. 조작이 끝나고 완전히 멈춘 후 누적 스텝 수 출력
   if (dirX == 0 && stepperX.distanceToGo() == 0 && prevPosX != stepperX.currentPosition()) {
     Serial.print("[X] Current Position: "); Serial.println(stepperX.currentPosition());
     prevPosX = stepperX.currentPosition();
@@ -152,14 +140,13 @@ void loop() {
     prevPosZ = stepperZ.currentPosition();
   }
 
-  // 3. 시리얼 창에서 명령어 입력 받기 (ex: X1000)
   if (Serial.available() > 0) {
     String input = Serial.readStringUntil('\n');
-    input.trim(); // 공백 및 줄바꿈 제거
+    input.trim();
     if (input.length() > 0) {
       char axis = input.charAt(0);
       long steps = input.substring(1).toInt();
-      
+
       if (axis == 'X' || axis == 'x') {
         stepperX.move(steps);
         Serial.print("Command: Move X by "); Serial.println(steps);

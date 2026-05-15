@@ -44,13 +44,8 @@ void StateMachine::update() {
             subState = 0;
         } else if (input->isBtnSubPressed()) {
             claw->open();
-            claw->wait(800);
-            subState = 100;
-        }
-
-        if (subState == 100 && claw->isWaitFinished()) {
-            claw->close();
-            subState = 0;
+            // 서브 버튼(A5)은 출구에서 인형을 놓기 위해 벌리는 용도입니다.
+            // 놓은 후에는 다음 게임을 위해 계속 벌어진 상태(IDLE)를 유지합니다.
         }
         break;
 
@@ -65,7 +60,7 @@ void StateMachine::update() {
     case AUTO_SEQ_OPEN:
     case SEQ_OPEN:
         if (claw->isWaitFinished()) {
-            motorAuto->moveZ(Z_MOVE_STEPS);
+            motorAuto->moveZ(-Z_MOVE_STEPS_DOWN);
             currentState = (currentState == AUTO_SEQ_OPEN) ? AUTO_SEQ_DOWN : SEQ_DOWN;
         }
         break;
@@ -86,7 +81,7 @@ void StateMachine::update() {
             claw->wait(1000);
             subState = 1;
         } else if (claw->isWaitFinished() && subState == 1) {
-            motorAuto->moveZ(-Z_MOVE_STEPS);
+            motorAuto->moveZ(Z_MOVE_STEPS_UP);
             currentState = (currentState == AUTO_SEQ_GRAB) ? AUTO_SEQ_UP : SEQ_UP;
             subState = 0;
         }

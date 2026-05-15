@@ -1,4 +1,5 @@
 #include "StateMachineTest.h"
+#include "../config.h"
 
 StateMachineTest::StateMachineTest(CommManager* c, MotorManager* m, MotorAuto* ma, MotorManual* mm, ClawManager* cl, InputManager* in)
     : motor(m), motorAuto(ma), claw(cl), input(in), testState(0) {
@@ -12,7 +13,6 @@ void StateMachineTest::init() {
 }
 
 void StateMachineTest::update() {
-    input->update();
     motor->update();
     claw->update();
 
@@ -20,7 +20,7 @@ void StateMachineTest::update() {
         case 0: // IDLE
             if (input->isBtnMainPressed()) { // A4 버튼
                 Serial.println("[TEST] Main Button Pressed: Moving Z Down");
-                motorAuto->moveZ(Z_MOVE_STEPS); // Z축 하강
+                motorAuto->moveZ(-Z_MOVE_STEPS_DOWN); // Z축 하강
                 testState = 1;
             } else if (input->isBtnSubPressed()) { // A5 (오른쪽 서브버튼)
                 Serial.println("[TEST] Sub Button Pressed: Closing Claw");
@@ -49,7 +49,7 @@ void StateMachineTest::update() {
         case 3: // Closing claw wait
             if (claw->isWaitFinished()) {
                 Serial.println("[TEST] Claw Closed: Moving Z Up");
-                motorAuto->moveZ(-Z_MOVE_STEPS); // Z축 상승
+                motorAuto->moveZ(Z_MOVE_STEPS_UP); // Z축 상승
                 testState = 4;
             }
             break;

@@ -25,9 +25,10 @@ void MotorManager::init() {
 
     stepperZ.setMaxSpeed(MAX_SPEED_Z);
     stepperZ.setAcceleration(ACCELERATION_Z);
+    stepperZ.setPinsInverted(true, false, false); // Z축 회전 방향 반전
 
     // 호밍을 사용하려면 아래 주석을 해제하세요.
-    // stepperX.moveTo(HOMING_TRAVEL_STEPS);
+    // stepperX.moveTo(HOMING_TRAVEL_STEPS_X);
 }
 
 void MotorManager::checkLimit(AccelStepper& stepper, int pin, bool checkNegative, LimitAction action) {
@@ -93,7 +94,7 @@ void MotorManager::update() {
                 stepperX.stop();
                 stepperX.setCurrentPosition(0);
                 currentState = MOTOR_HOMING_Y;
-                stepperY.moveTo(-HOMING_TRAVEL_STEPS);
+                stepperY.moveTo(HOMING_TRAVEL_STEPS_Y);
             }
             break;
 
