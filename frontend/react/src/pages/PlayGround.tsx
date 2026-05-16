@@ -82,10 +82,16 @@ const PlayGround = () => {
   // 하드웨어 입력(키보드) 감지 시 로직 처리
   useEffect(() => {
     const handleInteraction = (e: KeyboardEvent) => {
-      // 스페이스바, 엔터 등 UI 조작에 간섭할 수 있는 특정 키만 기본 동작 방지
-      if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-      }
+      // Modifier 키 조합(Ctrl+R, Alt+F4, Cmd+W 등) 무시 — 브라우저/OS 단축키와 충돌 방지
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      // 키 홀드로 인한 반복 입력 무시 — 손가락 떨림 한 번에 세션 종료되는 사고 차단
+      if (e.repeat) return;
+      // IME 합성 중 입력 무시
+      if (e.isComposing) return;
+      // 화이트리스트: 명시적으로 Enter / Space 만 트리거. F12/Esc/Tab 등 다른 키는 무시
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+
+      e.preventDefault();
 
       if (records.length >= 5) {
         // 5판 종료 후 입력 시: 홈으로 이동하여 자동 시작 연출 실행
