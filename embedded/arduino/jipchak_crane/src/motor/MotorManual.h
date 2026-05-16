@@ -5,8 +5,8 @@ class MotorManual {
 public:
     explicit MotorManual(MotorManager& manager);
 
-    void setSpeedX(float speed);
-    void setSpeedY(float speed);
+    void setDirectionX(int dir);
+    void setDirectionY(int dir);
 
 private:
     MotorManager& _manager;

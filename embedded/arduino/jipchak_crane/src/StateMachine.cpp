@@ -29,7 +29,7 @@ void StateMachine::update() {
 
     switch (currentState) {
     case IDLE:
-        if (!motor->isReady()) break; // 호밍 완료 대기
+        if (!motor->isReady()) break;
 
         handleManualInput();
 
@@ -38,34 +38,39 @@ void StateMachine::update() {
             currentState = AUTO_SEQ_MOVE;
             subState = 0;
         } else if (input->isBtnMainPressed()) {
-            motorAuto->moveZ(Z_MOVE_STEPS); // 하강
-            currentState = SEQ_DOWN;
+            claw->open();
+            claw->wait(500);
+            currentState = SEQ_OPEN;
             subState = 0;
         } else if (input->isBtnSubPressed()) {
             claw->open();
-            claw->wait(800);
-            subState = 100;
-        }
-
-        if (subState == 100 && claw->isWaitFinished()) {
-            claw->close();
-            subState = 0;
+            // 서브 버튼(A5)은 출구에서 인형을 놓기 위해 벌리는 용도입니다.
+            // 놓은 후에는 다음 게임을 위해 계속 벌어진 상태(IDLE)를 유지합니다.
         }
         break;
 
     case AUTO_SEQ_MOVE:
         if (motorAuto->isReachedTarget()) {
-            motorAuto->moveZ(Z_MOVE_STEPS); // 하강
-            currentState = AUTO_SEQ_DOWN;
+            claw->open();
+            claw->wait(500);
+            currentState = AUTO_SEQ_OPEN;
+        }
+        break;
+
+    case AUTO_SEQ_OPEN:
+    case SEQ_OPEN:
+        if (claw->isWaitFinished()) {
+            motorAuto->moveZ(-Z_MOVE_STEPS_DOWN);
+            currentState = (currentState == AUTO_SEQ_OPEN) ? AUTO_SEQ_DOWN : SEQ_DOWN;
         }
         break;
 
     case AUTO_SEQ_DOWN:
     case SEQ_DOWN:
         if (motorAuto->isZReachedTarget()) {
-            claw->open();
             claw->wait(500);
             currentState = (currentState == AUTO_SEQ_DOWN) ? AUTO_SEQ_GRAB : SEQ_GRAB;
+            subState = 0;
         }
         break;
 
@@ -76,7 +81,7 @@ void StateMachine::update() {
             claw->wait(1000);
             subState = 1;
         } else if (claw->isWaitFinished() && subState == 1) {
-            motorAuto->moveZ(-Z_MOVE_STEPS); // 상승
+            motorAuto->moveZ(Z_MOVE_STEPS_UP);
             currentState = (currentState == AUTO_SEQ_GRAB) ? AUTO_SEQ_UP : SEQ_UP;
             subState = 0;
         }
@@ -86,7 +91,7 @@ void StateMachine::update() {
     case SEQ_UP:
         if (motorAuto->isZReachedTarget()) {
             if (currentState == AUTO_SEQ_UP) {
-                motorAuto->setTarget(0.0f, 0.0f); // 원점 복귀
+                motorAuto->setTarget(0.0f, 0.0f);
                 currentState = AUTO_SEQ_RETURN;
             } else {
                 currentState = IDLE;
@@ -108,9 +113,11 @@ void StateMachine::handleManualInput() {
     int yDir = input->getJoystickY();
 
     if (xDir != 0 || yDir != 0) {
-        motorManual->setSpeedX(xDir * MAX_SPEED_X);
-        motorManual->setSpeedY(yDir * MAX_SPEED_Y);
+        motorManual->setDirectionX(xDir);
+        motorManual->setDirectionY(yDir);
     } else {
+        motorManual->setDirectionX(0);
+        motorManual->setDirectionY(0);
         motor->setManualMode(false);
     }
 }

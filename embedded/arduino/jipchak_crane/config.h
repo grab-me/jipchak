@@ -4,9 +4,9 @@
 const unsigned long BAUD_RATE = 115200;
 
 // --- Joystick Pins ---
-const int PIN_JOY_Y_UP    = A0;
-const int PIN_JOY_Y_DOWN  = A1;
-const int PIN_JOY_X_LEFT  = A2;
+const int PIN_JOY_Y_DOWN  = A0;
+const int PIN_JOY_X_LEFT  = A1;
+const int PIN_JOY_Y_UP    = A2;
 const int PIN_JOY_X_RIGHT = A3;
 
 // --- Button Pins ---
@@ -35,21 +35,25 @@ const int PIN_ENDSTOP_Y_DOWN  = 12;
 const int PIN_SERVO = 13;
 
 const int CLAW_ANGLE_OPEN  = 90;
-const int CLAW_ANGLE_CLOSE = 145;
-const int CLAW_ANGLE_IDLE  = 45;
+const int CLAW_ANGLE_CLOSE = 20;
+const int CLAW_ANGLE_IDLE  = 90;
 
 // --- Stepper Motor Configuration ---
-const float MAX_SPEED_X = 1000.0;
+const float MAX_SPEED_X = 400.0;
 const float ACCELERATION_X = 500.0;
-const float MAX_SPEED_Y = 1000.0;
+const float MAX_SPEED_Y = 400.0;
 const float ACCELERATION_Y = 500.0;
-const float MAX_SPEED_Z = 1000.0;
-const float ACCELERATION_Z = 500.0;
+const float MAX_SPEED_Z = 300.0;
+const float ACCELERATION_Z = 50000.0; // Z축 등속도를 위해 가속도 무한대 설정
 
-// Z-axis movement steps (from original code: 650 steps)
-const int Z_MOVE_STEPS = 650;
+// Z-axis movement steps
+const int Z_MOVE_STEPS_DOWN = 640;
+const int Z_MOVE_STEPS_UP = 670;
 
 // --- Conversion & Homing Configuration ---
-const float STEPS_PER_MM_X = 10.0f; // 임시 값
-const float STEPS_PER_MM_Y = 10.0f; // 임시 값
-const long HOMING_TRAVEL_STEPS = -100000;
+const float STEPS_PER_MM_X = 80.0f;
+const float STEPS_PER_MM_Y = 80.0f;
+
+// --- Homing Travel Steps Configuration ---
+const long HOMING_TRAVEL_STEPS_X = -3200;
+const long HOMING_TRAVEL_STEPS_Y = 3200;
