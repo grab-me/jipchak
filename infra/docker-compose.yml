@@ -119,6 +119,9 @@ services:
     build:
       context: ../frontend/react
       dockerfile: Dockerfile
+      args:
+        # Vite 빌드 시점에 번들에 박히는 변수들 (런타임 주입 불가)
+        VITE_ADMIN_PASSWORD: ${VITE_ADMIN_PASSWORD}
     container_name: frontend-jipchak
     restart: on-failure
     ports:
