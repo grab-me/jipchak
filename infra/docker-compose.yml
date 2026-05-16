@@ -10,8 +10,10 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     env_file:
       - .env
+    # 호스트 외부에서의 직접 접근 차단. localhost 와 호스트 내부 디버깅만 허용.
+    # 외부 트래픽은 모두 nginx 를 통해서만 들어오게 한다.
     ports:
-      - "${DB_PORT}:3306"
+      - "127.0.0.1:${DB_PORT}:3306"
     volumes:
       - ./mysql_data:/var/lib/mysql
     healthcheck:
@@ -79,8 +81,9 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
+    # 호스트 외부 노출 차단. nginx 가 docker network 로 직접 호출하므로 영향 없음.
     ports:
-      - "${BACKEND_PORT}:8080" # Spring Boot 내부 기본 포트 8080을 외부 8108로 매핑
+      - "127.0.0.1:${BACKEND_PORT}:8080" # Spring Boot 내부 기본 포트 8080을 호스트 8108로 매핑
     env_file:
       - .env
     # 영상 영속화 (JIPCHAK_VIDEO_BASE_DIR=/data/videos 매핑, QR 다운로드용)
@@ -99,8 +102,9 @@ services:
       dockerfile: Dockerfile
     container_name: ai-jipchak
     restart: on-failure
+    # 호스트 외부 노출 차단. nginx 가 docker network 로 직접 호출.
     ports:
-      - "${AI_PORT}:8000"
+      - "127.0.0.1:${AI_PORT}:8000"
     env_file:
       - .env
     volumes:
@@ -124,7 +128,8 @@ services:
         VITE_ADMIN_PASSWORD: ${VITE_ADMIN_PASSWORD}
     container_name: frontend-jipchak
     restart: on-failure
+    # 호스트 외부 노출 차단. nginx 가 docker network 로 직접 호출.
     ports:
-      - "${FRONTEND_PORT}:80"
+      - "127.0.0.1:${FRONTEND_PORT}:80"
     env_file:
       - .env
