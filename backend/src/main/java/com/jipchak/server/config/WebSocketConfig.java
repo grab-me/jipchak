@@ -1,5 +1,6 @@
 package com.jipchak.server.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -16,9 +17,16 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     private final VideoWebSocketHandler videoWebSocketHandler;
 
+    // jipchak.cors.allowed-origins (콤마 구분). HTTP CORS 와 동일한 정책 사용.
+    @Value("${jipchak.cors.allowed-origins}")
+    private String[] allowedOrigins;
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(videoWebSocketHandler, "/ws").setAllowedOrigins("*");
+        // setAllowedOrigins("*") 는 보안상 금지.
+        // 와일드카드 패턴(localhost:*) 지원을 위해 setAllowedOriginPatterns 사용.
+        registry.addHandler(videoWebSocketHandler, "/ws")
+                .setAllowedOriginPatterns(allowedOrigins);
     }
 
     @Bean
