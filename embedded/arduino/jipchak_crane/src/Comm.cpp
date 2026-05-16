@@ -8,14 +8,17 @@ void CommManager::init() {
 }
 
 void CommManager::sendStatus(float currentX, float currentY, int currentState) {
-    // StaticJsonDocument<128> doc;
-    // doc["t"] = "s";
-    // doc["x"] = currentX;
-    // doc["y"] = currentY;
-    // doc["st"] = currentState;
+    // 송신 형식: {"t":"s","x":<float>,"y":<float>,"st":<int>}
+    // RPi (rpi_full.py / streamer.py) 가 이 메시지의 st 전이로 게임 START/STOP 을 감지하고
+    // AI 서버의 영상 녹화 세션을 트리거한다. 비활성화하면 자동 녹화 흐름이 끊긴다.
+    StaticJsonDocument<128> doc;
+    doc["t"] = "s";
+    doc["x"] = currentX;
+    doc["y"] = currentY;
+    doc["st"] = currentState;
 
-    // serializeJson(doc, Serial);
-    // Serial.println();
+    serializeJson(doc, Serial);
+    Serial.println();
 }
 
 CommandType CommManager::receiveCommand() {
