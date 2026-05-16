@@ -57,3 +57,11 @@ const float STEPS_PER_MM_Y = 80.0f;
 // --- Homing Travel Steps Configuration ---
 const long HOMING_TRAVEL_STEPS_X = -3200;
 const long HOMING_TRAVEL_STEPS_Y = 3200;
+
+// --- Auto Target Safety Limits (mm) ---
+// AI 서버가 보내는 CMD_CATCH 좌표는 이 범위 안이어야 함. 밖이면 명령 거부.
+// 호밍 트래블 기준으로 보수적 추정값. 실제 작업 영역 측정 후 조정 권장.
+const float AUTO_TARGET_X_MIN_MM = -50.0f;
+const float AUTO_TARGET_X_MAX_MM =  50.0f;
+const float AUTO_TARGET_Y_MIN_MM = -50.0f;
+const float AUTO_TARGET_Y_MAX_MM =  50.0f;
