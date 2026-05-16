@@ -22,8 +22,13 @@ const Home = () => {
   };
 
   const handleAdminAccess = () => {
+    const expected = import.meta.env.VITE_ADMIN_PASSWORD;
+    if (!expected) {
+      alert('관리자 접근이 설정되지 않았습니다.');
+      return;
+    }
     const pwd = prompt('관리자 비밀번호를 입력하세요:');
-    if (pwd === 'ssafy123') {
+    if (pwd && pwd === expected) {
       sessionStorage.setItem('isAdmin', 'true');
       navigate('/admin');
     } else if (pwd !== null) {

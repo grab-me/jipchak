@@ -3,6 +3,12 @@ FROM node:24-alpine AS build
 
 WORKDIR /app
 
+# 빌드 타임 환경변수 (Vite 가 import.meta.env.* 로 번들에 정적 삽입)
+# - 클라이언트 번들에 그대로 박히므로 진짜 비밀은 여기에 넣지 말 것
+# - 운영 진짜 보안은 백엔드 인증으로 이전 예정 (2단계)
+ARG VITE_ADMIN_PASSWORD=
+ENV VITE_ADMIN_PASSWORD=${VITE_ADMIN_PASSWORD}
+
 # npm 버전을 특정 버전으로 고정
 RUN npm install -g npm@11.6.2
 

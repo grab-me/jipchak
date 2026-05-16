@@ -1,6 +1,8 @@
 package com.jipchak.server.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -8,6 +10,10 @@ import java.nio.file.Paths;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+
+    // jipchak.cors.allowed-origins (콤마 구분). 운영에서는 반드시 도메인만 명시.
+    @Value("${jipchak.cors.allowed-origins}")
+    private String[] allowedOrigins;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
@@ -19,9 +25,11 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
     @Override
-    public void addCorsMappings(org.springframework.web.servlet.config.annotation.CorsRegistry registry) {
+    public void addCorsMappings(CorsRegistry registry) {
+        // allowedOrigins("*") 는 보안상 금지.
+        // 와일드카드 패턴(localhost:*) 지원을 위해 allowedOriginPatterns 사용.
         registry.addMapping("/**")
-                .allowedOrigins("*") // 모든 도메인 허용 (개발 단계)
+                .allowedOriginPatterns(allowedOrigins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*");
     }

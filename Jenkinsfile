@@ -112,6 +112,9 @@ pipeline {
                 echo 'Infra changed, rebuilding all services...'
                 dir("${DOCKER_COMPOSE_DIR}") {
                     sh "docker compose up -d --build"
+                    // nginx conf 가 바인드 마운트라 컨테이너 recreate 가 일어나지 않음.
+                    // 무중단 reload 로 새 conf 적용. 실패 시 컨테이너 restart 로 fallback.
+                    sh "docker compose exec -T nginx nginx -s reload || docker compose restart nginx"
                 }
             }
         }
