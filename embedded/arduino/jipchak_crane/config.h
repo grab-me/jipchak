@@ -10,8 +10,9 @@ const int PIN_JOY_Y_UP    = A2;
 const int PIN_JOY_X_RIGHT = A3;
 
 // --- Button Pins ---
-const int PIN_BTN_MAIN = A4;
-const int PIN_BTN_SUB  = A5;
+// 빨강(MAIN) = A5, 파랑(SUB) = A4 — 실측 배선 기준
+const int PIN_BTN_MAIN = A5;
+const int PIN_BTN_SUB  = A4;
 
 // --- Stepper Motor Pins ---
 const int PIN_STEP_X = 2;
@@ -55,16 +56,19 @@ const float STEPS_PER_MM_X = 80.0f;
 const float STEPS_PER_MM_Y = 80.0f;
 
 // --- Homing Travel Steps Configuration ---
-const long HOMING_TRAVEL_STEPS_X = -3200;
-const long HOMING_TRAVEL_STEPS_Y = 3200;
+// 호밍 끝나면 (0,0) = X 왼쪽 끝 + Y 아래쪽 끝 = 배출구 (좌하단).
+// 작업 영역 실측 전이라 안전 마진으로 크게 (-10000 step ≈ 125mm) 잡음.
+// endstop 만나면 즉시 멈추니까 over-shoot 위험 없음.
+const long HOMING_TRAVEL_STEPS_X = -10000;
+const long HOMING_TRAVEL_STEPS_Y = -10000;
 
 // --- Auto Target Safety Limits (mm) ---
-// AI 서버가 보내는 CMD_CATCH 좌표는 이 범위 안이어야 함. 밖이면 명령 거부.
-// 호밍 트래블 기준으로 보수적 추정값. 실제 작업 영역 측정 후 조정 권장.
-const float AUTO_TARGET_X_MIN_MM = -50.0f;
-const float AUTO_TARGET_X_MAX_MM =  50.0f;
-const float AUTO_TARGET_Y_MIN_MM = -50.0f;
-const float AUTO_TARGET_Y_MAX_MM =  50.0f;
+// 호밍 후 (0,0) = 좌하단(배출구) → 작업영역은 X+, Y+ 방향으로 펼쳐짐.
+// 실제 작업영역 측정 전까지 보수적 값으로 설정 (대각선 ~40mm 정도만 허용).
+const float AUTO_TARGET_X_MIN_MM = 0.0f;
+const float AUTO_TARGET_X_MAX_MM = 40.0f;
+const float AUTO_TARGET_Y_MIN_MM = 0.0f;
+const float AUTO_TARGET_Y_MAX_MM = 40.0f;
 
 // --- Game Flow ---
 // PLAYING 상태 진입 후 사용자가 자유 조작 가능한 시간. 만료 시 자동 집기.

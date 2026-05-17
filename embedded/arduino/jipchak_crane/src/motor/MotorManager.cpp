@@ -5,7 +5,7 @@ MotorManager::MotorManager()
     : stepperX(AccelStepper::DRIVER, PIN_STEP_X, PIN_DIR_X),
       stepperY(AccelStepper::DRIVER, PIN_STEP_Y, PIN_DIR_Y),
       stepperZ(AccelStepper::DRIVER, PIN_STEP_Z, PIN_DIR_Z),
-      currentState(MOTOR_READY), // 호밍을 사용하려면 MOTOR_HOMING_X 로 변경하세요.
+      currentState(MOTOR_HOMING_X), // 부팅 시 호밍 → (0,0) = 좌하단(배출구).
       _onReady(nullptr) {}
 
 void MotorManager::init() {
@@ -27,8 +27,14 @@ void MotorManager::init() {
     stepperZ.setAcceleration(ACCELERATION_Z);
     stepperZ.setPinsInverted(true, false, false); // Z축 회전 방향 반전
 
-    // 호밍을 사용하려면 아래 주석을 해제하세요.
-    // stepperX.moveTo(HOMING_TRAVEL_STEPS_X);
+    // Z 는 endstop 이 없어 절대 위치를 모름.
+    // 전원 OFF 동안 집게가 자중으로 가장 아래까지 떨어졌다고 가정하고
+    // 부팅 직후 강제로 위로 올림. 호밍 (X,Y) 와 병렬 진행됨.
+    stepperZ.setCurrentPosition(0);
+    stepperZ.moveTo(Z_MOVE_STEPS_UP);
+
+    // X 호밍 시작 (왼쪽 끝까지). Y 호밍은 X 완료 후 자동 시작.
+    stepperX.moveTo(HOMING_TRAVEL_STEPS_X);
 }
 
 void MotorManager::checkLimit(AccelStepper& stepper, int pin, bool checkNegative, LimitAction action) {
@@ -89,6 +95,7 @@ void MotorManager::update() {
     switch (currentState) {
         case MOTOR_HOMING_X:
             stepperX.run();
+            stepperZ.run();  // Z 상승은 호밍과 병렬로 진행.
             if (digitalRead(PIN_ENDSTOP_X_LEFT) == LOW) {
                 Serial.println("HOMING X COMPLETE");
                 stepperX.stop();
@@ -100,7 +107,9 @@ void MotorManager::update() {
 
         case MOTOR_HOMING_Y:
             stepperY.run();
-            if (digitalRead(PIN_ENDSTOP_Y_UP) == LOW) {
+            stepperZ.run();  // Z 상승은 호밍과 병렬로 진행.
+            // 배출구가 좌하단이므로 아래쪽 endstop 에서 멈춤.
+            if (digitalRead(PIN_ENDSTOP_Y_DOWN) == LOW) {
                 Serial.println("HOMING Y COMPLETE");
                 stepperY.stop();
                 stepperY.setCurrentPosition(0);
@@ -111,10 +120,11 @@ void MotorManager::update() {
 
         case MOTOR_READY:
         case MOTOR_MANUAL:
+            // (0,0) = 좌하단(배출구) 기준. 좌하단 두 endstop 이 origin reset 역할.
             checkLimit(stepperX, PIN_ENDSTOP_X_LEFT,  true,  LimitAction::STOP_AND_RESET_ORIGIN);
             checkLimit(stepperX, PIN_ENDSTOP_X_RIGHT, false, LimitAction::STOP_ONLY);
-            checkLimit(stepperY, PIN_ENDSTOP_Y_DOWN,  true,  LimitAction::STOP_ONLY);
-            checkLimit(stepperY, PIN_ENDSTOP_Y_UP,    false, LimitAction::STOP_AND_RESET_ORIGIN);
+            checkLimit(stepperY, PIN_ENDSTOP_Y_DOWN,  true,  LimitAction::STOP_AND_RESET_ORIGIN);
+            checkLimit(stepperY, PIN_ENDSTOP_Y_UP,    false, LimitAction::STOP_ONLY);
 
             if (currentState == MOTOR_MANUAL) {
                 stepperX.run();
