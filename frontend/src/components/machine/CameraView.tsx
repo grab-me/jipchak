@@ -27,6 +27,7 @@ const CameraView = ({
     setLastResult,
     startSession,
     setSessionId,
+    forceStopGame,
     isSessionActive,
   } = useToolStore();
 
@@ -95,6 +96,13 @@ const CameraView = ({
 
       setTimeout(() => setLastResult(null), 3000);
     }
+
+    if (lastSessionEvent.type === 'SESSION_END') {
+      // 사용자가 POST_GAME 에서 파란 → 세션 명시적 종료. 5판 미만이어도 QR 안내로 전환.
+      setCatching(false);
+      setLastResult(null);
+      forceStopGame();
+    }
   }, [
     lastSessionEvent,
     isMainView,
@@ -105,6 +113,7 @@ const CameraView = ({
     setLastResult,
     playSfx,
     addRecord,
+    forceStopGame,
   ]);
 
   // ── 캔버스 렌더링 ────────────────────────────────

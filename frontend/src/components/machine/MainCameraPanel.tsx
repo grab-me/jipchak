@@ -2,6 +2,7 @@ import { useToolStore } from '@/store/toolStore';
 import { useAudioStore } from '@/store/audioStore';
 import CameraView from './CameraView';
 import StartGuide from './StartGuide';
+import PlayingTimer from './PlayingTimer';
 import NextStepModal from './NextStepModal';
 import SettingsModal from './SettingsModal';
 
@@ -29,6 +30,9 @@ const MainCameraPanel = ({ label, channel }: MainCameraPanelProps) => {
 
             {/* 게임 시작 안내 가이드 (아이들 상태일 때만 표시) */}
             {!isCatching && !lastResult && !isAskingNextStep && <StartGuide />}
+
+            {/* 플레이 중 15초 카운트다운 (SESSION_START ~ GAME_RESULT 구간) */}
+            {isCatching && !lastResult && <PlayingTimer />}
 
             {/* 설정 버튼 (좌상단 고정, 스왑 시에도 유지됨) */}
             <button
