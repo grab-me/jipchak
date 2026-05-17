@@ -18,6 +18,10 @@ class Yolo26sSegWrapper:
         face_only_max_area_ratio: float = 0.12,
     ):
         try:
+            import ultralytics.nn.modules.head as head
+            if not hasattr(head, 'Segment26') and hasattr(head, 'Segment'):
+                head.Segment26 = head.Segment
+                
             from ultralytics import YOLO
             self.model = YOLO(model_path)
             self.valid = True
