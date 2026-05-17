@@ -238,7 +238,10 @@ class SessionManager:
             f"judge={result}"
         )
 
+        # session_id 를 함께 전달 — Spring 이 Redis 키 (session:{id}) 로 저장하고
+        # 모바일이 같은 id 로 영상 목록을 조회할 수 있게 한다.
         return await self._spring.upload_game_log(
             video_path=video_path,
             is_success=result.is_caught,
+            session_id=session_id,
         )
