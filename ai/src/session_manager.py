@@ -123,7 +123,7 @@ class SessionManager:
         현재 세션의 마지막 프레임으로 파지점 추론.
 
         우선순위:
-            1. ThreeJawGraspService (YOLOv8-seg + ChickEvaluator)
+            1. ThreeJawGraspService (YOLO26s-seg + ChickEvaluator)
                → GRASP_POSE dict 반환 (event 키 포함)
             2. Detection(SSDLite) + GR-ConvNet per-object
                → GRASP_SCORE 호환 dict 반환 (detections 키 포함)
@@ -138,7 +138,7 @@ class SessionManager:
         rgb = session.last_color_frame
         depth = session.last_depth_frame
 
-        # 1. YOLOv8-seg ThreeJawGrasp (1순위)
+        # 1. YOLO26s-seg ThreeJawGrasp (1순위)
         if self._three_jaw is not None:
             pose = self._three_jaw.infer(rgb, depth)
             if pose is not None:

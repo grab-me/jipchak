@@ -7,19 +7,30 @@ from three_jaw_grasp.adapters import YoloSegGraspAdapter
 from three_jaw_grasp.evaluator_chick import ChickEvaluator
 
 
-class YoloV8SegWrapper:
-    """Ultralytics YOLOv8-seg 모델 래퍼"""
-    def __init__(self, model_path: str):
+class Yolo26sSegWrapper:
+    """Ultralytics YOLO26s-seg 모델 래퍼"""
+    def __init__(
+        self,
+        model_path: str,
+        min_box_area_ratio: float = 0.04,
+        max_box_area_ratio: float = 0.60,
+        min_mask_fill_ratio: float = 0.35,
+        face_only_max_area_ratio: float = 0.12,
+    ):
         try:
             from ultralytics import YOLO
             self.model = YOLO(model_path)
             self.valid = True
         except ImportError:
-            print("[YoloV8SegWrapper] ultralytics 패키지가 설치되지 않았습니다.")
+            print("[Yolo26sSegWrapper] ultralytics 패키지가 설치되지 않았습니다.")
             self.valid = False
         except Exception as e:
-            print(f"[YoloV8SegWrapper] 모델 로드 실패: {e}")
+            print(f"[Yolo26sSegWrapper] 모델 로드 실패: {e}")
             self.valid = False
+        self.min_box_area_ratio = min_box_area_ratio
+        self.max_box_area_ratio = max_box_area_ratio
+        self.min_mask_fill_ratio = min_mask_fill_ratio
+        self.face_only_max_area_ratio = face_only_max_area_ratio
     
     def predict(self, rgb, depth=None, **kwargs):
         if not self.valid:
@@ -36,9 +47,9 @@ class YoloV8SegWrapper:
                 raw_summary = [
                     f"cls={int(c)}:conf={cf:.2f}" for c, cf in zip(cls_arr, conf_arr)
                 ]
-                print(f"[YoloV8Seg] raw detections (n={len(cls_arr)}): {raw_summary}")
+                print(f"[Yolo26sSeg] raw detections (n={len(cls_arr)}): {raw_summary}")
             else:
-                print("[YoloV8Seg] raw detections: 0")
+                print("[Yolo26sSeg] raw detections: 0")
 
             if r.masks is not None:
                 masks = r.masks.data.cpu().numpy()
@@ -53,21 +64,51 @@ class YoloV8SegWrapper:
                     # 1. 클래스 체크: 0번(병아리)만 (주석 처리하여 모든 클래스를 임시로 허용)
                     # 새로 학습한 모델의 클래스 ID가 0이 아닐 수 있습니다.
                     # if int(classes[i]) != 0:
-                    #     print(f"[YoloV8Seg] dropped: cls={int(classes[i])} != 0 (conf={confs[i]:.2f})")
+                    #     print(f"[Yolo26sSeg] dropped: cls={int(classes[i])} != 0 (conf={confs[i]:.2f})")
                     #     continue
-                    print(f"[YoloV8Seg] accepted: cls={int(classes[i])} (conf={confs[i]:.2f})") # 어떤 클래스가 잡히는지 확인용 로그
+                    print(f"[Yolo26sSeg] accepted: cls={int(classes[i])} (conf={confs[i]:.2f})") # 어떤 클래스가 잡히는지 확인용 로그
 
-                    # 2. 크기 체크: 화면의 60% 이상 차지 시 제외 (너무 가까운 경우 등)
+                    # 2. bbox area ratio filtering
                     box = boxes[i]
                     bw, bh = box[2] - box[0], box[3] - box[1]
-                    if (bw * bh) > (total_area * 0.6):
-                        print(f"[YoloV8Seg] dropped: too large ({bw*bh/total_area*100:.0f}%)")
+                    box_area = float(max(bw, 0.0) * max(bh, 0.0))
+                    box_area_ratio = box_area / float(total_area)
+                    if box_area_ratio < self.min_box_area_ratio:
+                        print(f"[Yolo26sSeg] dropped: too small ({box_area_ratio*100:.1f}%)")
+                        continue
+                    if box_area_ratio > self.max_box_area_ratio:
+                        print(f"[Yolo26sSeg] dropped: too large ({box_area_ratio*100:.1f}%)")
                         continue
 
                     m = masks[i]
                     if m.shape[0] != h or m.shape[1] != w:
                         import cv2
                         m = cv2.resize(m, (w, h), interpolation=cv2.INTER_NEAREST)
+                    m = (m > 0.5).astype(np.uint8)
+
+                    x0 = int(max(0, min(box[0], w - 1)))
+                    y0 = int(max(0, min(box[1], h - 1)))
+                    x1 = int(max(x0 + 1, min(box[2], w)))
+                    y1 = int(max(y0 + 1, min(box[3], h)))
+                    crop_mask = m[y0:y1, x0:x1]
+                    if crop_mask.size == 0:
+                        print("[Yolo26sSeg] dropped: empty crop mask")
+                        continue
+
+                    mask_fill_ratio = float(crop_mask.mean())
+                    # face-only rejection heuristic: small + round-ish + dense
+                    aspect = float((bw + 1e-6) / (bh + 1e-6))
+                    is_roundish = 0.8 <= aspect <= 1.25
+                    if (
+                        box_area_ratio <= self.face_only_max_area_ratio
+                        and is_roundish
+                        and mask_fill_ratio >= self.min_mask_fill_ratio
+                    ):
+                        print(
+                            "[Yolo26sSeg] dropped: likely face-only "
+                            f"(area={box_area_ratio:.3f}, aspect={aspect:.2f}, fill={mask_fill_ratio:.2f})"
+                        )
+                        continue
 
                     output.append({
                         'mask': m,
@@ -78,19 +119,35 @@ class YoloV8SegWrapper:
 
 
 class ThreeJawGraspService:
-    def __init__(self):
+    def __init__(
+        self,
+        min_box_area_ratio: float = 0.04,
+        max_box_area_ratio: float = 0.60,
+        min_mask_fill_ratio: float = 0.35,
+        face_only_max_area_ratio: float = 0.12,
+    ):
         self._pipeline = None
         self._image_wh = (640, 480) # D435 기본 해상도
+        self._min_box_area_ratio = min_box_area_ratio
+        self._max_box_area_ratio = max_box_area_ratio
+        self._min_mask_fill_ratio = min_mask_fill_ratio
+        self._face_only_max_area_ratio = face_only_max_area_ratio
         
     def load(self, model_path: str) -> None:
         """
-        YOLOv8-seg 모델과 파이프라인 초기화
+        YOLO26s-seg 모델과 파이프라인 초기화
         """
         if not os.path.exists(model_path):
             print(f"[ThreeJawGraspService] 모델 파일을 찾을 수 없습니다: {model_path}")
             return
             
-        model = YoloV8SegWrapper(model_path)
+        model = Yolo26sSegWrapper(
+            model_path,
+            min_box_area_ratio=self._min_box_area_ratio,
+            max_box_area_ratio=self._max_box_area_ratio,
+            min_mask_fill_ratio=self._min_mask_fill_ratio,
+            face_only_max_area_ratio=self._face_only_max_area_ratio,
+        )
         adapter = YoloSegGraspAdapter()
         evaluator = ChickEvaluator(jaw_count=3)
         
