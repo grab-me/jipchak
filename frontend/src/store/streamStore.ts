@@ -57,7 +57,7 @@ interface DecodedPayload {
 // Store 상태
 // ─────────────────────────────────────────
 
-interface StreamState {
+export interface StreamState {
     connected: boolean;
 
     /** 2D 채널 ObjectURL (웹캠) */
