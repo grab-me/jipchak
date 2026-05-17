@@ -28,7 +28,14 @@ interface ToolState {
   // DEAD: setViewType 은 어디서도 호출되지 않음. viewType 은 records.length / qrValue 로 derive 가능.
   //       Phase 2 의 SessionState 머신 통합 작업에서 제거 예정.
   // setViewType: (view: ToolAreaView) => void;
-  startSession: () => void;
+  /**
+   * 세션 시작.
+   *
+   * @param sessionId 서버(AI)가 발급한 session_id. 있으면 그대로 채택하여
+   *   Spring 백엔드와 모바일 QR 영상 조회의 키를 일치시킨다.
+   *   없으면 클라이언트 임시 ID 를 생성 (SESSION_START 전에 UI 만 띄울 때 등).
+   */
+  startSession: (sessionId?: string) => void;
   addRecord: (record: RecordItem) => void;
   forceStopGame: () => void;
   handleQRConsent: (agreed: boolean) => Promise<void>;
@@ -63,9 +70,10 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
   // DEAD (see interface comment above): setViewType: (view) => set({ viewType: view }),
 
-  // 1. 시작하기 버튼 클릭 시 세션 시작
-  startSession: () => {
-    const newSessionId = `session_${Date.now()}`;
+  // 1. 시작하기 버튼 클릭 또는 SESSION_START 수신 시 세션 시작.
+  //    서버 id 를 넘기면 그대로 채택하여 Spring 백엔드 / 모바일과 동일한 키 사용.
+  startSession: (sessionId?: string) => {
+    const newSessionId = sessionId ?? `session_${Date.now()}`;
     set({
       sessionId: newSessionId,
       isSessionActive: true,
@@ -74,7 +82,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
       qrValue: '',
       qrTimer: 0,
     });
-    console.log('[Session] 새로운 세션이 시작되었습니다.');
+    console.log(`[Session] 새로운 세션이 시작되었습니다. id=${newSessionId}`);
   },
 
   // 2. 게임 한판 끝날 때마다 영상 추가

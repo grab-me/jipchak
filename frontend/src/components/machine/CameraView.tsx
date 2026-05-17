@@ -40,7 +40,8 @@ const CameraView = ({ label, channel, isMainView = false, onClick, className = '
 
     if (lastSessionEvent.type === 'SESSION_START') {
       if (!isSessionActive) {
-        startSession();
+        // 서버(AI) 가 발급한 session_id 를 그대로 채택 → Spring 백엔드 / 모바일과 동일한 키 사용.
+        startSession(lastSessionEvent.session_id);
       }
       setCatching(true);
       setLastResult(null);
