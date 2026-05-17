@@ -19,8 +19,13 @@ import { decode } from '@msgpack/msgpack';
 // ─────────────────────────────────────────
 
 export interface SessionEvent {
-    type: 'SESSION_START' | 'GAME_RESULT';
-    session_id: string;
+    /**
+     * - SESSION_START : Arduino READY → PLAYING (한 판 시작)
+     * - GAME_RESULT   : Arduino → POST_GAME  (한 판 종료, 결과 포함)
+     * - SESSION_END   : Arduino POST_GAME → IDLE (사용자가 명시적으로 세션 종료)
+     */
+    type: 'SESSION_START' | 'GAME_RESULT' | 'SESSION_END';
+    session_id?: string;
     is_caught?: boolean;
     confidence?: number;
 }
@@ -190,6 +195,19 @@ function connect() {
                             is_caught: msg.is_caught,
                             confidence: msg.confidence,
                         },
+                    });
+                } else if (msg.event === 'SESSION_END') {
+                    // 사용자가 POST_GAME 에서 파란 버튼 → 카메라 OFF 로 전환.
+                    // 마지막 frame 도 비워서 검정 화면이 되도록 한다.
+                    if (prevFrame2d) { URL.revokeObjectURL(prevFrame2d); prevFrame2d = null; }
+                    if (prevFrame3d) { URL.revokeObjectURL(prevFrame3d); prevFrame3d = null; }
+                    useStreamStore.setState({
+                        lastSessionEvent: { type: 'SESSION_END' },
+                        frame2d: null,
+                        frame3d: null,
+                        graspScore: 0,
+                        detections: [],
+                        graspPose: null,
                     });
                 }
             } catch { /* malformed JSON 은 조용히 무시 */ }

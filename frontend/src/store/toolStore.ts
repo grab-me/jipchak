@@ -59,7 +59,7 @@ interface ToolState {
 }
 
 const MAX_RECORDS = 5;
-const QR_TIMEOUT_SECONDS = 30;
+const QR_TIMEOUT_SECONDS = 60;
 
 /**
  * useToolStore

@@ -65,3 +65,7 @@ const float AUTO_TARGET_X_MIN_MM = -50.0f;
 const float AUTO_TARGET_X_MAX_MM =  50.0f;
 const float AUTO_TARGET_Y_MIN_MM = -50.0f;
 const float AUTO_TARGET_Y_MAX_MM =  50.0f;
+
+// --- Game Flow ---
+// PLAYING 상태 진입 후 사용자가 자유 조작 가능한 시간. 만료 시 자동 집기.
+const unsigned long PLAY_TIMEOUT_MS = 15000UL;

@@ -8,7 +8,7 @@ import LandingHeader from '../../components/mobile/LandingHeader';
 import VideoCard from '../../components/mobile/VideoCard';
 
 // --- 세션 설정 상수 ---
-const MOCK_SESSION_TIME_MINUTES = 30; // 30분 유효기간
+const MOCK_SESSION_TIME_MINUTES = 5; // 5분 유효기간
 
 const MobileLanding = () => {
   const { sessionId } = useParams();
@@ -27,8 +27,8 @@ const MobileLanding = () => {
     }
   }, [sessionId]);
 
-  // 가상의 생성 시간 (5분 전에 생성되었다고 가정)
-  const [createdAt, setCreatedAt] = useState<number>(Date.now() - 5 * 60 * 1000);
+  // 가상의 생성 시간 (방금 생성된 것으로 가정 — 만료까지 5분)
+  const [createdAt, setCreatedAt] = useState<number>(Date.now());
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isExpired, setIsExpired] = useState<boolean>(false);
 

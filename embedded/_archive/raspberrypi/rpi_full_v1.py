@@ -1,32 +1,24 @@
 """
-rpi_full.py — RPi 통합 송신 스크립트 (게임 플로우 + 카메라 라이프사이클)
+rpi_full.py — RPi 통합 송신 스크립트 (게임 트리거 기반)
 
 동작 흐름:
-    1) Arduino 시리얼에서 state 읽기 (sendStatus 의 st 필드)
-    2) state 전이 감지:
-         IDLE     (1) ↔ READY (2)         : 카메라 ON/OFF 토글 (발열 보호)
-         READY    (2) → PLAYING (3)       : SESSION_START 송신 (한 판 시작)
-         RETURN_UP(10) → POST_GAME (11)   : GAME_RESULT 송신 (한 판 종료)
-         POST_GAME (11) → PLAYING (3)     : SESSION_START 송신 (다음 판)
-         POST_GAME (11) → IDLE (1)        : 카메라 OFF (세션 전체 종료)
-    3) 카메라 ON 동안만 D435 + 웹캠 영상을 AI 서버로 송신
+    1) 카메라 (D435 + 웹캠) 영상은 **항상** 송신 → 브라우저 라이브 미리보기
+    2) Arduino 시리얼에서 state 읽기 → IDLE↔게임 전환을 감지
+    3) 게임 시작 (IDLE → !IDLE) 시 WS 텍스트 START 송신 → AI 가 녹화 시작
+    4) 게임 종료 (!IDLE → IDLE) 시 WS 텍스트 STOP 송신 → AI 가 mp4 finalize + Spring 업로드
 
-Arduino StateMachine.h::SystemState 와 일치 (게임 플로우 재설계 후):
-    IDLE        = 1   캠 OFF
-    READY       = 2   캠 ON, 게임 시작 대기
-    PLAYING     = 3   게임 중 (조이스틱 + 15초 타이머)
-    GRAB_DOWN   = 4
-    GRAB_CLOSE  = 5
-    GRAB_UP     = 6
-    RETURN_MOVE = 7
-    RETURN_DOWN = 8
-    RETURN_OPEN = 9
-    RETURN_UP   = 10
-    POST_GAME   = 11  한 판 종료, 다음판/종료 대기
+Arduino 프로토콜 (embedded/arduino/.../Comm.cpp 와 일치):
+    - 매 100ms : {"t":"s","x":<float>,"y":<float>,"st":<int>}
+    - st 값: 1=IDLE, 2~9=게임 진행 중 (StateMachine.h::SystemState 참조)
+
+vs. rpi_realsense.py 와 차이점:
+    - 단일 세션(연결=세션) → 다중 세션 (게임마다 별도 mp4)
+    - Arduino 시리얼 통합 (pyserial)
+    - 영상은 항상 송신, 녹화만 게임 동안
 
 의존성 (RPi):
     pip install opencv-python-headless msgpack websockets numpy lz4 pyserial
-    + librealsense2 빌드 후 venv 에 pyrealsense2 복사
+    + librealsense2 빌드 후 venv 에 pyrealsense2 복사 (rpi_realsense.py 와 동일)
 
 사용 예:
     python3 rpi_full.py \
@@ -53,17 +45,7 @@ import websockets
 
 
 # Arduino StateMachine.h::SystemState 와 일치
-ARDUINO_STATE_IDLE        = 1
-ARDUINO_STATE_READY       = 2
-ARDUINO_STATE_PLAYING     = 3
-ARDUINO_STATE_GRAB_DOWN   = 4
-ARDUINO_STATE_GRAB_CLOSE  = 5
-ARDUINO_STATE_GRAB_UP     = 6
-ARDUINO_STATE_RETURN_MOVE = 7
-ARDUINO_STATE_RETURN_DOWN = 8
-ARDUINO_STATE_RETURN_OPEN = 9
-ARDUINO_STATE_RETURN_UP   = 10
-ARDUINO_STATE_POST_GAME   = 11
+ARDUINO_STATE_IDLE = 1
 
 _stop = asyncio.Event()
 
@@ -80,32 +62,20 @@ def _install_signal_handlers() -> None:
 # ---------- D435 (pyrealsense2) ----------
 
 class RealSensePipeline:
-    """D435 RGB + Depth 동시 캡처 + align. start/stop 반복 가능."""
+    """D435 RGB + Depth 동시 캡처 + align."""
 
     def __init__(self, width: int, height: int, fps: int) -> None:
-        self.width = width
-        self.height = height
-        self.fps = fps
-        self.pipeline: Optional[rs.pipeline] = None
-        self.align: Optional[rs.align] = None
-        self.depth_scale: float = 0.0
-
-    def start(self) -> None:
-        if self.pipeline is not None:
-            return
         self.pipeline = rs.pipeline()
         config = rs.config()
-        config.enable_stream(rs.stream.color, self.width, self.height, rs.format.bgr8, self.fps)
-        config.enable_stream(rs.stream.depth, self.width, self.height, rs.format.z16, self.fps)
+        config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, fps)
+        config.enable_stream(rs.stream.depth, width, height, rs.format.z16, fps)
         profile = self.pipeline.start(config)
         self.align = rs.align(rs.stream.color)
         depth_sensor = profile.get_device().first_depth_sensor()
         self.depth_scale = depth_sensor.get_depth_scale()
-        print(f"[d435] started: {self.width}x{self.height} @ {self.fps} fps")
+        print(f"[d435] started: {width}x{height} @ {fps} fps, depth_scale={self.depth_scale}")
 
-    def get_frames(self):
-        if self.pipeline is None:
-            return None, None
+    def get_frames(self) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         try:
             frames = self.pipeline.wait_for_frames(timeout_ms=1000)
             aligned = self.align.process(frames)
@@ -119,116 +89,40 @@ class RealSensePipeline:
             return None, None
 
     def stop(self) -> None:
-        if self.pipeline is None:
-            return
         try:
             self.pipeline.stop()
         except Exception:
             pass
-        self.pipeline = None
-        self.align = None
         print("[d435] stopped")
 
 
 # ---------- 일반 USB 웹캠 (cv2) ----------
 
 class WebcamCapture:
-    """USB 웹캠. start/stop 반복 가능 (cv2 캡처 객체를 그때마다 재생성)."""
-
     def __init__(self, device, width: int, height: int, fps: int) -> None:
-        self.device = device
-        self.width = width
-        self.height = height
-        self.fps = fps
-        self.cap: Optional[cv2.VideoCapture] = None
-
-    def start(self) -> None:
-        if self.cap is not None:
-            return
-        self.cap = cv2.VideoCapture(self.device, cv2.CAP_V4L2)
+        self.cap = cv2.VideoCapture(device, cv2.CAP_V4L2)
         if not self.cap.isOpened():
-            self.cap = None
-            raise RuntimeError(f"webcam open failed (device={self.device})")
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-        self.cap.set(cv2.CAP_PROP_FPS, self.fps)
+            raise RuntimeError(f"webcam open failed (device={device})")
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        self.cap.set(cv2.CAP_PROP_FPS, fps)
         actual_w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         actual_h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         actual_fps = self.cap.get(cv2.CAP_PROP_FPS)
-        print(f"[webcam] opened: {actual_w}x{actual_h} @ {actual_fps:.1f} fps (device={self.device})")
+        print(f"[webcam] opened: {actual_w}x{actual_h} @ {actual_fps:.1f} fps (device={device})")
 
-    def read(self):
-        if self.cap is None:
-            return None
+    def read(self) -> Optional[np.ndarray]:
         ok, frame = self.cap.read()
         return frame if ok else None
 
     def release(self) -> None:
-        if self.cap is None:
-            return
-        try:
-            self.cap.release()
-        except Exception:
-            pass
-        self.cap = None
+        self.cap.release()
         print("[webcam] released")
-
-
-# ---------- 카메라 라이프사이클 ----------
-
-class CameraLifecycle:
-    """D435 + 웹캠을 묶어서 ON/OFF 토글. Arduino state 전이 시점에 호출된다.
-
-    동시성 가정:
-        - turn_on / turn_off 는 serial_reader_task 하나에서만 호출 (직렬).
-        - get_frames 는 frame_loop_task 에서만 호출.
-        - 토글 중 get_frames 가 호출되면 instance 가 None 으로 보이면서
-          그 프레임만 건너뛴다. 명시적 lock 은 두지 않음 (atomic 참조 갱신만).
-    """
-
-    def __init__(self, width: int, height: int, fps: int, webcam_dev) -> None:
-        self.d435 = RealSensePipeline(width, height, fps)
-        self.webcam = WebcamCapture(webcam_dev, width, height, fps) if webcam_dev is not None else None
-        self._on = False
-
-    def is_on(self) -> bool:
-        return self._on
-
-    def turn_on(self) -> None:
-        if self._on:
-            return
-        try:
-            self.d435.start()
-        except Exception as e:
-            print(f"[cam] d435 start failed: {e}")
-        if self.webcam is not None:
-            try:
-                self.webcam.start()
-            except Exception as e:
-                print(f"[cam] webcam start failed: {e}")
-        self._on = True
-        print("[cam] ON")
-
-    def turn_off(self) -> None:
-        if not self._on:
-            return
-        self.d435.stop()
-        if self.webcam is not None:
-            self.webcam.release()
-        self._on = False
-        print("[cam] OFF")
-
-    def get_frames(self):
-        if not self._on:
-            return None, None, None
-        d435_color, d435_depth = self.d435.get_frames()
-        webcam_color = self.webcam.read() if self.webcam is not None else None
-        return webcam_color, d435_color, d435_depth
 
 
 # ---------- Frame packing ----------
 
-def _encode_jpeg(frame, quality: int) -> bytes:
+def _encode_jpeg(frame: Optional[np.ndarray], quality: int) -> bytes:
     if frame is None:
         return b""
     ok, jpg = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
@@ -252,10 +146,10 @@ def _pack_frame(webcam_color, d435_color, d435_depth, jpeg_q: int) -> Optional[b
     return msgpack.packb(payload)
 
 
-# ---------- 게임 세션 ----------
+# ---------- 게임 세션 추적 ----------
 
 class GameSession:
-    """현재 진행 중인 한 판의 ID. PLAYING 진입마다 새 ID 발급."""
+    """현재 진행 중인 게임 세션 ID. 동시 한 게임만 가정."""
 
     def __init__(self) -> None:
         self.id: Optional[str] = None
@@ -272,6 +166,12 @@ class GameSession:
         return prev
 
 
+# ---------- WS 송신 직렬화용 락 ----------
+# frame 송신 (binary) 과 control 송신 (text) 가 동시에 일어나면 race 가능 →
+# asyncio.Lock 으로 직렬화. websockets 의 send 자체는 atomic 이지만
+# 명시적 직렬화로 디버깅 단순화.
+
+
 # ---------- 시리얼 reader 태스크 ----------
 
 async def serial_reader_task(
@@ -279,13 +179,9 @@ async def serial_reader_task(
     baud: int,
     ws,
     session: GameSession,
-    cam: CameraLifecycle,
     send_lock: asyncio.Lock,
 ) -> None:
-    """Arduino 시리얼에서 state 변화 감지 →
-       1) 카메라 ON/OFF 토글
-       2) SESSION_START / GAME_RESULT 송신
-    """
+    """Arduino 시리얼에서 state 변화 감지 → WS START/STOP 텍스트 송신."""
     try:
         ser = serial.Serial(port, baud, timeout=0.1)
     except Exception as e:
@@ -319,37 +215,24 @@ async def serial_reader_task(
             state = data.get("st")
             if not isinstance(state, int):
                 continue
-            if state == last_state:
-                continue
 
-            # ───── 카메라 lifecycle ─────
+            # state 변화 감지
             was_idle = last_state == ARDUINO_STATE_IDLE
             now_idle = state == ARDUINO_STATE_IDLE
-            if was_idle and not now_idle:
-                cam.turn_on()
-            elif not was_idle and now_idle:
-                cam.turn_off()
 
-            # ───── 세션 이벤트 ─────
-            #   PLAYING 진입(=한 판 시작) : SESSION_START
-            #   POST_GAME 진입(=한 판 끝) : GAME_RESULT
-            if state == ARDUINO_STATE_PLAYING and last_state != ARDUINO_STATE_PLAYING:
+            if was_idle and not now_idle:
+                # 게임 시작
                 sid = session.start()
                 async with send_lock:
                     await ws.send(json.dumps({"event": "START", "session_id": sid}))
                 print(f"[serial] game START: {sid} (state {last_state} → {state})")
-            elif state == ARDUINO_STATE_POST_GAME and last_state != ARDUINO_STATE_POST_GAME:
+            elif not was_idle and now_idle:
+                # 게임 종료
                 sid = session.stop()
                 if sid:
                     async with send_lock:
                         await ws.send(json.dumps({"event": "STOP", "session_id": sid}))
-                    print(f"[serial] game STOP:  {sid} (state {last_state} → {state})")
-
-            # 사용자가 POST_GAME 에서 파란 버튼 → IDLE: 세션 명시적 종료 (QR 안내로 전환)
-            if state == ARDUINO_STATE_IDLE and last_state == ARDUINO_STATE_POST_GAME:
-                async with send_lock:
-                    await ws.send(json.dumps({"event": "SESSION_END"}))
-                print(f"[serial] session END (user blue button in POST_GAME)")
+                    print(f"[serial] game STOP: {sid} (state {last_state} → {state})")
 
             last_state = state
     finally:
@@ -363,23 +246,22 @@ async def serial_reader_task(
 # ---------- 카메라 frame 송신 태스크 ----------
 
 async def frame_loop_task(
-    cam: CameraLifecycle,
+    d435: RealSensePipeline,
+    webcam: Optional[WebcamCapture],
     ws,
     fps: int,
     jpeg_q: int,
     send_lock: asyncio.Lock,
 ) -> None:
-    """카메라 ON 동안만 frame 송신. OFF 면 그냥 polling sleep."""
+    """영상 프레임을 항상 송신 (게임 진행 여부 무관)."""
     interval = 1.0 / max(fps, 1)
     sent = 0
     t_start = time.time()
 
     while not _stop.is_set():
-        if not cam.is_on():
-            await asyncio.sleep(interval)
-            continue
+        d435_color, d435_depth = d435.get_frames()
+        webcam_color = webcam.read() if webcam else None
 
-        webcam_color, d435_color, d435_depth = cam.get_frames()
         payload = _pack_frame(webcam_color, d435_color, d435_depth, jpeg_q)
         if payload is not None:
             try:
@@ -409,7 +291,13 @@ async def run(
     fps: int,
     jpeg_q: int,
 ) -> None:
-    cam = CameraLifecycle(width, height, fps, webcam_dev)
+    d435 = RealSensePipeline(width, height, fps)
+    try:
+        webcam = WebcamCapture(webcam_dev, width, height, fps) if webcam_dev else None
+    except RuntimeError as e:
+        print(f"[main] webcam disabled: {e}")
+        webcam = None
+
     session = GameSession()
     send_lock = asyncio.Lock()
 
@@ -419,8 +307,8 @@ async def run(
             print("[main] connected")
 
             tasks = [
-                asyncio.create_task(frame_loop_task(cam, ws, fps, jpeg_q, send_lock)),
-                asyncio.create_task(serial_reader_task(serial_port, baud, ws, session, cam, send_lock)),
+                asyncio.create_task(frame_loop_task(d435, webcam, ws, fps, jpeg_q, send_lock)),
+                asyncio.create_task(serial_reader_task(serial_port, baud, ws, session, send_lock)),
             ]
             await _stop.wait()
 
@@ -438,7 +326,9 @@ async def run(
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
     finally:
-        cam.turn_off()
+        if webcam is not None:
+            webcam.release()
+        d435.stop()
 
 
 def main() -> None:
