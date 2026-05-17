@@ -401,7 +401,7 @@ async def main(args: argparse.Namespace) -> None:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="웹캠 + D435 통합 스트리밍")
-    p.add_argument("--url",           required=True,       help="EC2 WebSocket 주소")
+    p.add_argument("--url",           default="wss://k14d108.p.ssafy.io/ws/camera", help="EC2 WebSocket 주소 (기본: k14d108)")
     p.add_argument("--webcam",        default="0",         help="웹캠 장치 번호 (기본 0)")
     p.add_argument("--webcam-width",  type=int, default=640,  help="웹캠 너비 (기본 640)")
     p.add_argument("--webcam-height", type=int, default=480,  help="웹캠 높이 (기본 480)")
