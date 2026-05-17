@@ -36,6 +36,15 @@ interface ToolState {
    *   없으면 클라이언트 임시 ID 를 생성 (SESSION_START 전에 UI 만 띄울 때 등).
    */
   startSession: (sessionId?: string) => void;
+  /**
+   * 진행 중인 세션의 sessionId 만 교체.
+   *
+   * 사용 케이스:
+   *   사용자가 START 클릭 시 startSession() 으로 임시 client id 가 발급되고,
+   *   이후 첫 SESSION_START 이벤트가 도착하면 그 server id 로 교체해야 한다.
+   *   startSession 을 다시 호출하면 records 가 초기화되므로 분리.
+   */
+  setSessionId: (sessionId: string) => void;
   addRecord: (record: RecordItem) => void;
   forceStopGame: () => void;
   handleQRConsent: (agreed: boolean) => Promise<void>;
@@ -83,6 +92,15 @@ export const useToolStore = create<ToolState>((set, get) => ({
       qrTimer: 0,
     });
     console.log(`[Session] 새로운 세션이 시작되었습니다. id=${newSessionId}`);
+  },
+
+  // 1-1. 진행 중 세션의 sessionId 만 교체 (records 등 다른 상태는 유지).
+  //      START 클릭 후 발급된 client fallback id 를 첫 SESSION_START 의 server id 로 갈아끼울 때 사용.
+  setSessionId: (sessionId: string) => {
+    const prev = get().sessionId;
+    if (prev === sessionId) return;
+    set({ sessionId });
+    console.log(`[Session] sessionId 갱신: ${prev} → ${sessionId}`);
   },
 
   // 2. 게임 한판 끝날 때마다 영상 추가

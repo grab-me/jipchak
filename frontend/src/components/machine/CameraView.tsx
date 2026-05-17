@@ -26,6 +26,7 @@ const CameraView = ({
     setCatching,
     setLastResult,
     startSession,
+    setSessionId,
     isSessionActive,
   } = useToolStore();
 
@@ -56,8 +57,14 @@ const CameraView = ({
 
     if (lastSessionEvent.type === 'SESSION_START') {
       if (!isSessionActive) {
-        // 서버(AI) 가 발급한 session_id 를 그대로 채택 → Spring 백엔드 / 모바일과 동일한 키 사용.
+        // 세션이 아직 비활성 → 서버 id 로 처음부터 시작.
         startSession(lastSessionEvent.session_id);
+      } else {
+        // 이미 사용자 START 클릭으로 client fallback id 가 활성 중.
+        // sessionId 만 server id 로 교체 (records 등 다른 상태는 유지).
+        // 이게 없으면 Spring Redis (session:rpi-*) 와 클라이언트 (session_<timestamp>) 의
+        // 키가 어긋나 모바일 영상 조회가 깨진다.
+        setSessionId(lastSessionEvent.session_id);
       }
       setCatching(true);
       setLastResult(null);
@@ -93,6 +100,7 @@ const CameraView = ({
     isMainView,
     isSessionActive,
     startSession,
+    setSessionId,
     setCatching,
     setLastResult,
     playSfx,
