@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToolStore } from '@/store/toolStore';
+import { useStreamSocket } from '@/store/streamStore';
 import CameraView from '@/components/machine/CameraView';
 import ToolArea from '@/components/machine/ToolArea';
 import NextStepModal from '@/components/machine/NextStepModal';
@@ -28,6 +29,9 @@ const PlayGround = () => {
   const { setSettingsOpen } = useAudioStore();
   const { playBgm, stopBgm, playSfx } = useAudio();
   const { isSwapped, isTransitioning, handleSwap } = useCameraSwap();
+
+  // AI 서버 카메라 스트림 단일 WebSocket 연결. CameraView 들은 store 만 구독.
+  useStreamSocket();
 
   // BGM 재생 관리
   useEffect(() => {

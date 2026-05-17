@@ -14,6 +14,7 @@
 |------|-----------|-----------|
 | `services/gameService.ts` | `createGameLog`, `getHomeMessage` 둘 다 호출처 없음. 백엔드 연동 시 신규 작성 예정 | 2026-05-16 |
 | `utils/axios.ts` | `gameService.ts` 외 사용 없음. gameService archive 와 함께 이동 | 2026-05-16 |
+| `hooks/useCameraStream.ts` | WebSocket 이 hook 안에 있어 컴포넌트 인스턴스마다 새 연결이 생기던 패턴. `streamStore` 로 대체되어 호출처 없어짐 | 2026-05-17 |
 
 ## 부활 또는 영구 삭제 기준
 

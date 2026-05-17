@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useToolStore } from '@/store/toolStore';
-import { useCameraStream, DetectionItem, GraspPose } from '@/hooks/useCameraStream';
+import { useStreamStore, DetectionItem, GraspPose } from '@/store/streamStore';
 import Thermometer from './Thermometer';
 import { useAudio } from '@/hooks/useAudio';
 import { SOUND_ASSETS } from '@/constants/soundConfig';
@@ -19,10 +19,20 @@ const CameraView = ({ label, channel, isMainView = false, onClick, className = '
   const { playSfx } = useAudio();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const { frameUrl, connected, graspScore, detections, graspPose, lastSessionEvent } = useCameraStream(channel);
+  // 단일 streamStore 에서 채널별 프레임 + AI 분석 데이터 구독.
+  // 두 CameraView 인스턴스가 같은 store 를 본다 → WS 는 페이지 레벨에서 1 개만.
+  const frameUrl = useStreamStore((s) => (channel === '2d' ? s.frame2d : s.frame3d));
+  const connected = useStreamStore((s) => s.connected);
+  const graspScore = useStreamStore((s) => s.graspScore);
+  const detections = useStreamStore((s) => s.detections);
+  const graspPose = useStreamStore((s) => s.graspPose);
+  const lastSessionEvent = useStreamStore((s) => s.lastSessionEvent);
 
   useEffect(() => {
     if (!lastSessionEvent) return;
+    // 세션 이벤트로 인한 부수 효과(startSession/addRecord/효과음)는 메인 뷰 1 곳에서만 처리.
+    // 두 인스턴스가 같은 store 를 보므로 가드가 없으면 중복 호출됨.
+    if (!isMainView) return;
 
     const eventKey = `${lastSessionEvent.type}_${lastSessionEvent.session_id}`;
     if (processedRef.current === eventKey) return;
@@ -34,11 +44,7 @@ const CameraView = ({ label, channel, isMainView = false, onClick, className = '
       }
       setCatching(true);
       setLastResult(null);
-
-      // 집게 하강 효과음 재생 (메인 화면에서만 1번 재생되도록)
-      if (isMainView) {
-        playSfx(SOUND_ASSETS.SFX.TRY_CATCH);
-      }
+      playSfx(SOUND_ASSETS.SFX.TRY_CATCH);
     }
 
     if (lastSessionEvent.type === 'GAME_RESULT') {
@@ -62,7 +68,7 @@ const CameraView = ({ label, channel, isMainView = false, onClick, className = '
 
       setTimeout(() => setLastResult(null), 3000);
     }
-  }, [lastSessionEvent]);
+  }, [lastSessionEvent, isMainView]);
 
   useEffect(() => {
     if (!frameUrl || !canvasRef.current) return;

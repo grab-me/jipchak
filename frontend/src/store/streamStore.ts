@@ -1,0 +1,290 @@
+import { useEffect } from 'react';
+import { create } from 'zustand';
+import { decode } from '@msgpack/msgpack';
+
+/**
+ * AI 서버의 카메라 스트림 (/ws/stream) 을 **단일 WebSocket** 으로 받아
+ * 2D / 3D 프레임과 AI 분석 이벤트를 모두 store 에 채워 넣는다.
+ *
+ * 이전 구조 (`useCameraStream`) 는 컴포넌트 인스턴스마다 WS 를 새로 열어서
+ * 같은 데이터를 N 번 받았고, ObjectURL 생성/디코딩 비용도 N 배였다.
+ * 이 store 는 페이지 레벨에서 `useStreamSocket()` 1 회만 호출하면 충분하다.
+ *
+ * 페이로드 스키마 (RPi 의 FramePacker 와 일치):
+ *   { timestamp, color_2d?: Uint8Array, color_3d?: Uint8Array, depth_3d?, depth_3d_shape? }
+ */
+
+// ─────────────────────────────────────────
+// 공개 타입
+// ─────────────────────────────────────────
+
+export interface SessionEvent {
+    type: 'SESSION_START' | 'GAME_RESULT';
+    session_id: string;
+    is_caught?: boolean;
+    confidence?: number;
+}
+
+export interface DetectionItem {
+    bbox: number[];           // [xmin, ymin, xmax, ymax]
+    label: number;
+    det_score: number;
+    grasp_confidence: number;
+    grasp_center_px: number[]; // [x, y]
+    x_mm: number;
+    y_mm: number;
+    z_mm: number;
+}
+
+export interface GraspPose {
+    center_x: number;
+    center_y: number;
+    angle_rad: number;
+    radius: number;
+    jaw_count: number;
+    confidence: number;
+    image_width: number;
+    image_height: number;
+}
+
+interface DecodedPayload {
+    color_2d?: Uint8Array;
+    color_3d?: Uint8Array;
+    timestamp?: number | bigint;
+}
+
+// ─────────────────────────────────────────
+// Store 상태
+// ─────────────────────────────────────────
+
+interface StreamState {
+    connected: boolean;
+
+    /** 2D 채널 ObjectURL (웹캠) */
+    frame2d: string | null;
+    /** 3D 채널 ObjectURL (D435 RGB) */
+    frame3d: string | null;
+
+    graspScore: number;
+    detections: DetectionItem[];
+    graspPose: GraspPose | null;
+
+    /** 마지막 세션 이벤트. 컴포넌트는 이걸 effect 로 관찰하여 처리한다. */
+    lastSessionEvent: SessionEvent | null;
+}
+
+export const useStreamStore = create<StreamState>(() => ({
+    connected: false,
+    frame2d: null,
+    frame3d: null,
+    graspScore: 0,
+    detections: [],
+    graspPose: null,
+    lastSessionEvent: null,
+}));
+
+// ─────────────────────────────────────────
+// 모듈 스코프 상태 (단일 WebSocket + ObjectURL refs)
+// ─────────────────────────────────────────
+
+let wsInstance: WebSocket | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let detectionStaleTimer: ReturnType<typeof setTimeout> | null = null;
+let backoffMs = 500;
+let cancelled = false;
+
+/** 페이지 마운트 카운트. StrictMode 더블 마운트 / 여러 consumer 동시 호출 대응. */
+let mountCount = 0;
+
+/** 이전 ObjectURL (revoke 대상). 채널별로 따로 관리. */
+let prevFrame2d: string | null = null;
+let prevFrame3d: string | null = null;
+
+const DETECTION_STALE_MS = 1500; // 1.5초간 새 GRASP_SCORE 없으면 클리어
+
+// ─────────────────────────────────────────
+// WebSocket URL 해석
+// ─────────────────────────────────────────
+
+function resolveWsUrl(): string {
+    const path = (import.meta.env.VITE_WS_STREAM_PATH as string | undefined) ?? '/ws/stream';
+    if (/^wss?:\/\//.test(path)) return path;
+
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${window.location.host}${path}`;
+}
+
+// ─────────────────────────────────────────
+// 헬퍼
+// ─────────────────────────────────────────
+
+function toObjectUrl(jpegBytes: Uint8Array): string {
+    // Uint8Array<ArrayBufferLike> → 새 ArrayBuffer 로 복사 (TS 엄격 generic 호환)
+    const ab = new ArrayBuffer(jpegBytes.byteLength);
+    new Uint8Array(ab).set(jpegBytes);
+    const blob = new Blob([ab], { type: 'image/jpeg' });
+    return URL.createObjectURL(blob);
+}
+
+function armDetectionStaleTimer() {
+    if (detectionStaleTimer) clearTimeout(detectionStaleTimer);
+    detectionStaleTimer = setTimeout(() => {
+        useStreamStore.setState({ detections: [], graspPose: null, graspScore: 0 });
+    }, DETECTION_STALE_MS);
+}
+
+// ─────────────────────────────────────────
+// WebSocket 라이프사이클
+// ─────────────────────────────────────────
+
+function connect() {
+    if (cancelled) return;
+
+    const url = resolveWsUrl();
+    const ws = new WebSocket(url);
+    ws.binaryType = 'arraybuffer';
+    wsInstance = ws;
+
+    ws.onopen = () => {
+        useStreamStore.setState({ connected: true });
+        backoffMs = 500; // 성공 시 백오프 리셋
+    };
+
+    ws.onmessage = (event) => {
+        // 텍스트 메시지: JSON 이벤트
+        if (typeof event.data === 'string') {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg.event === 'GRASP_POSE' && typeof msg.confidence === 'number') {
+                    useStreamStore.setState({
+                        graspScore: msg.confidence,
+                        graspPose: {
+                            center_x: msg.center_x,
+                            center_y: msg.center_y,
+                            angle_rad: msg.angle_rad,
+                            radius: msg.radius,
+                            jaw_count: msg.jaw_count,
+                            confidence: msg.confidence,
+                            image_width: msg.image_width,
+                            image_height: msg.image_height,
+                        },
+                        detections: [], // 다른 경로 결과는 비움
+                    });
+                    armDetectionStaleTimer();
+                } else if (msg.event === 'GRASP_SCORE' && typeof msg.confidence === 'number') {
+                    useStreamStore.setState({
+                        graspScore: msg.confidence,
+                        detections: Array.isArray(msg.detections) ? msg.detections : [],
+                        graspPose: null, // 다른 경로 결과는 비움
+                    });
+                    armDetectionStaleTimer();
+                } else if (msg.event === 'SESSION_START') {
+                    useStreamStore.setState({
+                        lastSessionEvent: { type: 'SESSION_START', session_id: msg.session_id },
+                    });
+                } else if (msg.event === 'GAME_RESULT') {
+                    useStreamStore.setState({
+                        lastSessionEvent: {
+                            type: 'GAME_RESULT',
+                            session_id: msg.session_id,
+                            is_caught: msg.is_caught,
+                            confidence: msg.confidence,
+                        },
+                    });
+                }
+            } catch { /* malformed JSON 은 조용히 무시 */ }
+            return;
+        }
+
+        if (!(event.data instanceof ArrayBuffer)) return;
+
+        let payload: DecodedPayload;
+        try {
+            payload = decode(new Uint8Array(event.data)) as DecodedPayload;
+        } catch {
+            // 깨진 프레임은 조용히 무시 (다음 프레임이 곧 도착)
+            return;
+        }
+
+        // 2D 와 3D 채널을 한 번에 처리. 이전 구조처럼 채널별로 따로 받지 않음.
+        if (payload.color_2d && payload.color_2d.length > 0) {
+            const next = toObjectUrl(payload.color_2d);
+            if (prevFrame2d) URL.revokeObjectURL(prevFrame2d);
+            prevFrame2d = next;
+            useStreamStore.setState({ frame2d: next });
+        }
+
+        if (payload.color_3d && payload.color_3d.length > 0) {
+            const next = toObjectUrl(payload.color_3d);
+            if (prevFrame3d) URL.revokeObjectURL(prevFrame3d);
+            prevFrame3d = next;
+            useStreamStore.setState({ frame3d: next });
+        }
+    };
+
+    ws.onerror = () => {
+        // close 가 뒤이어 호출되므로 여기서는 별도 처리 X
+    };
+
+    ws.onclose = () => {
+        useStreamStore.setState({ connected: false });
+        if (cancelled) return;
+        // 지수 백오프 재연결 (최대 5초)
+        reconnectTimer = setTimeout(connect, backoffMs);
+        backoffMs = Math.min(backoffMs * 2, 5000);
+    };
+}
+
+function teardown() {
+    cancelled = true;
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    if (detectionStaleTimer) { clearTimeout(detectionStaleTimer); detectionStaleTimer = null; }
+    if (wsInstance && wsInstance.readyState <= WebSocket.OPEN) {
+        wsInstance.close();
+    }
+    wsInstance = null;
+
+    if (prevFrame2d) { URL.revokeObjectURL(prevFrame2d); prevFrame2d = null; }
+    if (prevFrame3d) { URL.revokeObjectURL(prevFrame3d); prevFrame3d = null; }
+
+    useStreamStore.setState({
+        connected: false,
+        frame2d: null,
+        frame3d: null,
+        graspScore: 0,
+        detections: [],
+        graspPose: null,
+        lastSessionEvent: null,
+    });
+}
+
+// ─────────────────────────────────────────
+// 공개 훅
+// ─────────────────────────────────────────
+
+/**
+ * 페이지 레벨에서 1회 호출하여 WebSocket 라이프사이클을 관리한다.
+ * 여러 곳에서 호출해도 mountCount 로 단일 연결만 유지하므로 안전.
+ *
+ * 사용 예:
+ *   const PlayGround = () => {
+ *     useStreamSocket();
+ *     ...
+ *   };
+ */
+export function useStreamSocket(): void {
+    useEffect(() => {
+        mountCount += 1;
+        if (mountCount === 1) {
+            cancelled = false;
+            connect();
+        }
+
+        return () => {
+            mountCount = Math.max(0, mountCount - 1);
+            if (mountCount === 0) {
+                teardown();
+            }
+        };
+    }, []);
+}
