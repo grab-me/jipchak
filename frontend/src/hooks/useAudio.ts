@@ -83,10 +83,14 @@ export const useAudio = () => {
         bgmInstance = audio;
 
         // SFX/Voice 진행 중이 아니면 즉시 재생.
+        // jsdom 등 테스트 환경에서는 play() 가 undefined 반환할 수 있음 → 가드 필요.
         if (!isDucking()) {
-            audio.play().catch(() => {
-                console.warn('[Audio] BGM autoplay blocked. Interaction required.');
-            });
+            const p = audio.play();
+            if (p !== undefined) {
+                p.catch(() => {
+                    console.warn('[Audio] BGM autoplay blocked. Interaction required.');
+                });
+            }
         }
     }, []);
 
@@ -111,7 +115,11 @@ export const useAudio = () => {
         };
 
         audio.onended = cleanup;
-        audio.play().catch(cleanup);
+        // jsdom 등 테스트 환경에서는 play() 가 undefined 반환할 수 있음 → 가드 필요.
+        const p = audio.play();
+        if (p !== undefined) {
+            p.catch(cleanup);
+        }
     }, []);
 
     /**
@@ -141,7 +149,11 @@ export const useAudio = () => {
             updateBgmDucking();
         };
 
-        audio.play().catch(cleanup);
+        // jsdom 등 테스트 환경에서는 play() 가 undefined 반환할 수 있음 → 가드 필요.
+        const p = audio.play();
+        if (p !== undefined) {
+            p.catch(cleanup);
+        }
 
         return cleanup;
     }, []);
