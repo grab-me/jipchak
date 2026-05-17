@@ -58,11 +58,11 @@ pipeline {
 
         stage('Frontend CI') {
             when {
-                changeset "frontend/react/**"
+                changeset "frontend/**"
             }
             steps {
                 echo 'Frontend typecheck & test...'
-                dir("frontend/react") {
+                dir("frontend") {
                     sh "docker run --rm -w /app -v \$(pwd):/app node:24-alpine sh -c '(npm ci || npm install) && npm run typecheck && npm run test:ci'"
                 }
             }
@@ -94,7 +94,7 @@ pipeline {
 
         stage('Frontend Deploy') {
             when {
-                changeset "frontend/react/**"
+                changeset "frontend/**"
             }
             steps {
                 echo 'Deploying Frontend...'

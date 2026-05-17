@@ -121,7 +121,7 @@ services:
   # 7. Frontend (React)
   frontend-jipchak:
     build:
-      context: ../frontend/react
+      context: ../frontend
       dockerfile: Dockerfile
       args:
         # Vite 빌드 시점에 번들에 박히는 변수들 (런타임 주입 불가)

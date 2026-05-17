@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { Menu, XCircle, BarChart3, Target } from 'lucide-react'; 
 
 import DashboardHeader from '../components/dashboard/DashboardHeader';
@@ -77,7 +77,6 @@ MOCK_OUTLIERS.forEach(item => {
 type SortOption = 'latest' | 'oldest' | 'high_conf' | 'low_conf';
 
 const AdminDashboard = () => {
-  const navigate = useNavigate();
   const { deviceId } = useParams<{ deviceId: string }>();
   
   const [activeTab, setActiveTab] = useState<'overview'|'logs'>('overview');
@@ -97,13 +96,7 @@ const AdminDashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
 
-  // 어드민 권한 체크 (URL 직접 접근 차단)
-  useEffect(() => {
-    if (sessionStorage.getItem('isAdmin') !== 'true') {
-      alert('비정상적인 접근입니다. 관리자 비밀번호를 입력해주세요.');
-      navigate('/');
-    }
-  }, [navigate]);
+  // 어드민 권한 체크는 App.tsx 의 <AdminRoute> 에서 일괄 처리.
 
   // --- 차트 인터랙션 핸들러 ---
   

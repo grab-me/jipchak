@@ -258,10 +258,10 @@ env.bak/
 venv.bak/
 infra/.env
 backend/.env
-frontend/react/.env
+frontend/.env
 
 # React 빌드 결과물
-frontend/react/dist/
+frontend/dist/
 
 # Jenkins 데이터
 infra/jenkins_home/

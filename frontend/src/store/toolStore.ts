@@ -25,7 +25,9 @@ interface ToolState {
   lastResult: 'win' | 'lose' | null;
 
   // Actions
-  setViewType: (view: ToolAreaView) => void;
+  // DEAD: setViewType 은 어디서도 호출되지 않음. viewType 은 records.length / qrValue 로 derive 가능.
+  //       Phase 2 의 SessionState 머신 통합 작업에서 제거 예정.
+  // setViewType: (view: ToolAreaView) => void;
   startSession: () => void;
   addRecord: (record: RecordItem) => void;
   forceStopGame: () => void;
@@ -59,7 +61,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   isAskingNextStep: false,
   isAutoStarting: false,
 
-  setViewType: (view) => set({ viewType: view }),
+  // DEAD (see interface comment above): setViewType: (view) => set({ viewType: view }),
 
   // 1. 시작하기 버튼 클릭 시 세션 시작
   startSession: () => {
