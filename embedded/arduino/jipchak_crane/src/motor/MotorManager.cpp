@@ -29,9 +29,9 @@ void MotorManager::init() {
 
     // Z 는 endstop 이 없어 절대 위치를 모름.
     // 전원 OFF 동안 집게가 자중으로 가장 아래까지 떨어졌다고 가정하고
-    // 부팅 직후 강제로 위로 올림. 호밍 (X,Y) 와 병렬 진행됨.
+    // 부팅 직후 강제로 위로 끝까지 올림. 호밍 (X,Y) 와 병렬 진행됨.
     stepperZ.setCurrentPosition(0);
-    stepperZ.moveTo(Z_MOVE_STEPS_UP);
+    stepperZ.moveTo(Z_HOMING_UP_STEPS);
 
     // X 호밍 시작 (왼쪽 끝까지). Y 호밍은 X 완료 후 자동 시작.
     stepperX.moveTo(HOMING_TRAVEL_STEPS_X);
