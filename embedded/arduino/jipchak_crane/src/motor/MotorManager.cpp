@@ -116,8 +116,8 @@ void MotorManager::update() {
                 // endstop 에서 살짝 떨어진 위치로 후퇴 — 진동에 의한 checkLimit 무한 트리거 방지
                 stepperY.moveTo(10);
 
-                // Z 가 도달했든 stall 이든 호밍 완료 시점에 강제 정지.
-                stepperZ.setCurrentPosition(stepperZ.currentPosition());
+                // Z 는 강제 정지하지 않고 그대로 MOTOR_READY 로 넘김.
+                // MOTOR_READY 에서도 stepperZ.run() 호출되어 도달 못 했으면 계속 진행.
 
                 currentState = MOTOR_READY;
                 if (_onReady) _onReady();

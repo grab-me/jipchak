@@ -52,9 +52,9 @@ const int Z_MOVE_STEPS_DOWN = 640;
 const int Z_MOVE_STEPS_UP = 670;
 
 // 부팅 시 Z 를 위로 올리기 위한 stroke.
-// 게임 한 판 stroke (670) 와 동일하게 잡아 모터 stall 방지.
-// 호밍 (X,Y) 종료 시 Z 도 강제 정지하므로 도달 못 해도 더 시도 안 함.
-const int Z_HOMING_UP_STEPS = 670;
+// 게임 한 판 stroke (670) 보다 약간 크게 잡아 자중으로 더 떨어진 케이스 흡수.
+// 도달 못 해도 MOTOR_READY 에서 stepperZ.run() 계속 호출되어 끝까지 진행.
+const int Z_HOMING_UP_STEPS = 800;
 
 // --- Conversion & Homing Configuration ---
 const float STEPS_PER_MM_X = 80.0f;
@@ -74,6 +74,12 @@ const float AUTO_TARGET_X_MIN_MM = 0.0f;
 const float AUTO_TARGET_X_MAX_MM = 40.0f;
 const float AUTO_TARGET_Y_MIN_MM = 0.0f;
 const float AUTO_TARGET_Y_MAX_MM = 40.0f;
+
+// --- Drop-off Position (mm) ---
+// 인형 떨굼 좌표. endstop 에 직접 닿으면 chatter 가 checkLimit 트리거를
+// 무한 반복시켜 모터가 멈추지 않는다. 1mm 정도 안쪽으로 잡아 endstop 회피.
+const float DROP_OFF_X_MM = 1.0f;
+const float DROP_OFF_Y_MM = 1.0f;
 
 // --- Game Flow ---
 // PLAYING 상태 진입 후 사용자가 자유 조작 가능한 시간. 만료 시 자동 집기.
