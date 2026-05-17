@@ -68,8 +68,9 @@ void StateMachine::update() {
     // ────────────────────────────────────────
     case READY:
         if (input->isBtnMainPressed()) {
-            // 게임 시작. PLAYING 진입 시 0,0 으로 자동 복귀 시도 (조이스틱 입력 없을 때만 동작).
-            motorAuto->setTarget(0.0f, 0.0f);
+            // 게임 시작. PLAYING 진입 시 배출구(좌하단)로 자동 복귀.
+            // 정확히 (0,0) 으로 두면 endstop chatter 에서 checkLimit 가 무한 트리거됨.
+            motorAuto->setTarget(DROP_OFF_X_MM, DROP_OFF_Y_MM);
             playStartTime = millis();
             currentState = PLAYING;
         }
@@ -108,8 +109,8 @@ void StateMachine::update() {
 
     case GRAB_UP:
         if (motorAuto->isZReachedTarget()) {
-            // 배출구 (0,0) 으로 이동
-            motorAuto->setTarget(0.0f, 0.0f);
+            // 배출구로 이동 (endstop chatter 회피 위해 정확히 0 이 아닌 1mm 안쪽).
+            motorAuto->setTarget(DROP_OFF_X_MM, DROP_OFF_Y_MM);
             currentState = RETURN_MOVE;
         }
         break;
