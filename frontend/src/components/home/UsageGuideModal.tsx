@@ -41,6 +41,8 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
+  const [isInteracting, setIsInteracting] = useState(false);
+  const [isAutoPlay, setIsAutoPlay] = useState(true);
 
   const goTo = (nextIndex: number) => {
     const wrapped = (nextIndex + guideSlides.length) % guideSlides.length;
@@ -53,14 +55,22 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
     setCurrentIndex(wrapped);
   };
 
+  // 상호작용 관리
+  const handleInteractionStart = () => setIsInteracting(true);
+  const handleInteractionEnd = () => {
+    setIsInteracting(false);
+    setIsDragging(false);
+  };
+
   // 드래그 후 스와이프 감지
   const handleDragStart = () => {
     setIsDragging(true);
+    setIsInteracting(true);
   };
 
   // 드래그 종료 시 스와이프 방향에 따라 슬라이드 전환
   const handleDragEnd = (_: unknown, info: { offset: { x: number } }) => {
-    setIsDragging(false);
+    handleInteractionEnd();
     if (info.offset.x < -SWIPE_THRESHOLD) goTo(currentIndex + 1);
     else if (info.offset.x > SWIPE_THRESHOLD) goTo(currentIndex - 1);
   };
@@ -73,7 +83,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
 
   // 슬라이드 자동 전환
   useEffect(() => {
-    if (!isOpen || isDragging) {
+    if (!isOpen || isDragging || isInteracting || !isAutoPlay) {
       return undefined;
     }
 
@@ -82,7 +92,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
     }, AUTO_ADVANCE_DELAY);
 
     return () => clearTimeout(timer);
-  }, [currentIndex, isOpen, isDragging]);
+  }, [currentIndex, isOpen, isDragging, isInteracting, isAutoPlay]);
 
   return (
     <AnimatePresence>
@@ -111,7 +121,21 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
               <h2 className="font-crayon text-[clamp(22px,3vw,38px)] font-black text-crayon-line leading-tight">
                 집착 사용 가이드 - {currentIndex + 1} / {guideSlides.length}
               </h2>
-              <GuideCloseButton onClick={handleModalClose} />
+              <div className="flex items-center gap-[1.5vw]">
+                {/* 자동 넘김 토글 */}
+                <button 
+                  onClick={() => setIsAutoPlay(!isAutoPlay)}
+                  className="flex items-center gap-2 transition-opacity hover:opacity-80"
+                >
+                  <div className={`w-[clamp(32px,4vw,48px)] h-[clamp(18px,2.2vw,28px)] rounded-full relative transition-colors duration-300 ${isAutoPlay ? 'bg-green-500' : 'bg-gray-400'}`}>
+                    <div className={`absolute top-1/2 -translate-y-1/2 w-[clamp(12px,1.5vw,20px)] h-[clamp(12px,1.5vw,20px)] bg-white rounded-full transition-all duration-300 ${isAutoPlay ? 'left-[calc(100%-clamp(14px,1.7vw,22px))]' : 'left-[clamp(2px,0.2vw,4px)]'}`} />
+                  </div>
+                  <span className="font-crayon text-[clamp(14px,1.8vw,22px)] font-bold text-crayon-line/70">
+                    자동 넘김 {isAutoPlay ? 'ON' : 'OFF'}
+                  </span>
+                </button>
+                <GuideCloseButton onClick={handleModalClose} />
+              </div>
             </div>
 
             {/* 슬라이드 영역 */}
@@ -130,6 +154,8 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
                   dragElastic={0.18}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
+                  onPointerDown={handleInteractionStart}
+                  onPointerUp={handleInteractionEnd}
                   className="flex flex-row items-stretch h-[clamp(320px,55vh,480px)] w-full px-[var(--guide-side-pad)] gap-[clamp(10px,1.4vw,16px)]"
                 >
                   <GuideImage step={guideSlides[currentIndex].step} />
