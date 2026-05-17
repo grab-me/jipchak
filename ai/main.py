@@ -7,6 +7,8 @@ from src.config import (
     GRCONVNET_CHECKPOINT, GRASP_DEVICE,
     DETECTION_ENABLED, DETECTION_THRESHOLD, DETECTION_TARGET_LABELS,
     THREE_JAW_ENABLED, THREE_JAW_MODEL_PATH,
+    THREE_JAW_MIN_BOX_AREA_RATIO, THREE_JAW_MAX_BOX_AREA_RATIO,
+    THREE_JAW_MIN_MASK_FILL_RATIO, THREE_JAW_FACE_ONLY_MAX_AREA_RATIO,
 )
 from src.inference.detection_service import DetectionService
 from src.inference.judge import CatchJudge
@@ -36,7 +38,12 @@ if DETECTION_ENABLED:
     )
 three_jaw_service = None
 if THREE_JAW_ENABLED:
-    three_jaw_service = ThreeJawGraspService()
+    three_jaw_service = ThreeJawGraspService(
+        min_box_area_ratio=THREE_JAW_MIN_BOX_AREA_RATIO,
+        max_box_area_ratio=THREE_JAW_MAX_BOX_AREA_RATIO,
+        min_mask_fill_ratio=THREE_JAW_MIN_MASK_FILL_RATIO,
+        face_only_max_area_ratio=THREE_JAW_FACE_ONLY_MAX_AREA_RATIO,
+    )
 session_manager = SessionManager(
     recorder=recorder, judge=judge, spring=spring,
     grasp_service=grasp_service,

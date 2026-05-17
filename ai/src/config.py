@@ -35,16 +35,22 @@ DETECTION_TARGET_LABELS = [
     int(x) for x in os.getenv("DETECTION_TARGET_LABELS", "88").split(",") if x.strip()
 ]
 
-# YOLOv8-seg + ThreeJawGrasp 파이프라인 (병아리/오리인형 전용 학습 모델)
+# YOLO26s-seg + ThreeJawGrasp 파이프라인 (병아리/오리인형 전용 학습 모델)
 THREE_JAW_ENABLED = os.getenv("THREE_JAW_ENABLED", "true").lower() == "true"
 THREE_JAW_MODEL_PATH = os.getenv(
     "THREE_JAW_MODEL_PATH",
     os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "trained-models",
-        "best_v3.pt",
+        "best_v4.pt",
     ),
 )
+
+# YOLO26s-seg candidate filtering (to hide overlay on partial views like face-only)
+THREE_JAW_MIN_BOX_AREA_RATIO = float(os.getenv("THREE_JAW_MIN_BOX_AREA_RATIO", "0.04"))
+THREE_JAW_MAX_BOX_AREA_RATIO = float(os.getenv("THREE_JAW_MAX_BOX_AREA_RATIO", "0.60"))
+THREE_JAW_MIN_MASK_FILL_RATIO = float(os.getenv("THREE_JAW_MIN_MASK_FILL_RATIO", "0.35"))
+THREE_JAW_FACE_ONLY_MAX_AREA_RATIO = float(os.getenv("THREE_JAW_FACE_ONLY_MAX_AREA_RATIO", "0.12"))
 
 # 로그
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
