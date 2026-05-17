@@ -51,6 +51,11 @@ const float ACCELERATION_Z = 50000.0; // Z축 등속도를 위해 가속도 무�
 const int Z_MOVE_STEPS_DOWN = 640;
 const int Z_MOVE_STEPS_UP = 670;
 
+// 부팅 시 Z 를 진짜 끝까지 올리기 위한 stroke.
+// 게임용 stroke (670) 보다 크게 잡아 정상 시작 위치 보장.
+// Z 는 endstop 이 없으므로 끝에 닿으면 모터가 stall 함 (모터/벨트 부담은 작음).
+const int Z_HOMING_UP_STEPS = 1500;
+
 // --- Conversion & Homing Configuration ---
 const float STEPS_PER_MM_X = 80.0f;
 const float STEPS_PER_MM_Y = 80.0f;
