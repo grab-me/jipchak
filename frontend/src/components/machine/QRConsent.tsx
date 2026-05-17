@@ -17,8 +17,9 @@ const QRConsent = () => {
 
   // 안내 음성 재생 및 자동 종료 타이머
   useEffect(() => {
-    playVoice(SOUND_ASSETS.VOICE.QR_AGREE);
-    
+    // playVoice 는 cleanup 함수를 반환한다. 컴포넌트 언마운트 시 음성도 같이 정지.
+    const stopVoice = playVoice(SOUND_ASSETS.VOICE.QR_AGREE);
+
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -30,8 +31,11 @@ const QRConsent = () => {
       });
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [resetSession]);
+    return () => {
+      clearInterval(timer);
+      stopVoice();
+    };
+  }, [resetSession, playVoice]);
 
   return (
     <CrayonWrapper showCharacter={false} className="justify-around items-center gap-[4%]">
