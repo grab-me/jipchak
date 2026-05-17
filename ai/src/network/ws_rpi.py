@@ -185,5 +185,13 @@ async def _apply_control(
         }).encode())
         return None
 
+    # 사용자가 POST_GAME 에서 파란 버튼을 눌러 세션을 명시적으로 종료한 경우.
+    # 5판 미만이어도 즉시 QR 안내 화면으로 전환하도록 브라우저에 릴레이.
+    if event == "SESSION_END":
+        await relay_hub.broadcast_text(json.dumps({
+            "event": "SESSION_END",
+        }).encode())
+        return current_session
+
     print(f"[ws_rpi] unknown control: {data}")
     return current_session
