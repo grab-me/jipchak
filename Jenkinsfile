@@ -75,7 +75,9 @@ pipeline {
             steps {
                 echo 'Deploying Backend...'
                 dir("${DOCKER_COMPOSE_DIR}") {
-                    sh "docker compose up -d --build app-jipchak"
+                    // --force-recreate 로 compose 의 변경 감지 오판으로 컨테이너가
+                    // Created 상태에 멈추는 사고를 방지한다.
+                    sh "docker compose up -d --force-recreate --build app-jipchak"
                 }
             }
         }
@@ -87,7 +89,9 @@ pipeline {
             steps {
                 echo 'Deploying AI Server...'
                 dir("${DOCKER_COMPOSE_DIR}") {
-                    sh "docker compose up -d ai-jipchak"
+                    // --force-recreate 로 컨테이너 정의 변경이 없을 때도 명시적으로 재생성.
+                    // ai/** 변경에는 코드가 포함되므로 --build 도 같이.
+                    sh "docker compose up -d --force-recreate --build ai-jipchak"
                 }
             }
         }
@@ -99,7 +103,9 @@ pipeline {
             steps {
                 echo 'Deploying Frontend...'
                 dir("${DOCKER_COMPOSE_DIR}") {
-                    sh "docker compose up -d --build frontend-jipchak"
+                    // --force-recreate 로 빌드 후 컨테이너가 Created 상태에 멈추는
+                    // 과거 사고 (Phase 1 / Phase 2 머지 직후 frontend 다운) 재발 방지.
+                    sh "docker compose up -d --force-recreate --build frontend-jipchak"
                 }
             }
         }
@@ -109,11 +115,19 @@ pipeline {
                 changeset "infra/**"
             }
             steps {
-                echo 'Infra changed, rebuilding all services...'
+                echo 'Infra changed, rebuilding all services (jenkins excluded)...'
                 dir("${DOCKER_COMPOSE_DIR}") {
-                    sh "docker compose up -d --build"
-                    // nginx conf 가 바인드 마운트라 컨테이너 recreate 가 일어나지 않음.
-                    // 무중단 reload 로 새 conf 적용. 실패 시 컨테이너 restart 로 fallback.
+                    // ⚠️ jenkins 는 명시적으로 제외.
+                    //    Jenkins 가 자기 자신 컨테이너를 docker compose 로 재생성하면
+                    //    Jenkins JVM 이 죽는 순간 현재 빌드 프로세스도 같이 종료되어
+                    //    새 컨테이너가 Created 상태에 멈춘다 (실제 사고 발생함).
+                    //    Jenkins 자체 업데이트는 호스트에서 수동으로:
+                    //      docker compose up -d --force-recreate jenkins
+                    //
+                    // --force-recreate 로 정의 변경 감지 오판에 의한 컨테이너 stuck 방지.
+                    sh "docker compose up -d --force-recreate --build db-jipchak redis-jipchak app-jipchak ai-jipchak frontend-jipchak nginx"
+                    // nginx conf 가 바인드 마운트라 컨테이너 recreate 만으로는 conf 갱신이 안 될 수도 있어
+                    // 명시적으로 reload 호출. 실패 시 컨테이너 restart 로 fallback.
                     sh "docker compose exec -T nginx nginx -s reload || docker compose restart nginx"
                 }
             }
