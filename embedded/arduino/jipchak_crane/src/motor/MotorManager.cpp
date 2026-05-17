@@ -98,8 +98,9 @@ void MotorManager::update() {
             stepperZ.run();  // Z 상승은 호밍과 병렬로 진행.
             if (digitalRead(PIN_ENDSTOP_X_LEFT) == LOW) {
                 Serial.println("HOMING X COMPLETE");
-                stepperX.stop();
                 stepperX.setCurrentPosition(0);
+                // endstop 에서 살짝 떨어진 위치로 후퇴 — 진동에 의한 checkLimit 무한 트리거 방지
+                stepperX.moveTo(10);
                 currentState = MOTOR_HOMING_Y;
                 stepperY.moveTo(HOMING_TRAVEL_STEPS_Y);
             }
@@ -111,8 +112,13 @@ void MotorManager::update() {
             // 배출구가 좌하단이므로 아래쪽 endstop 에서 멈춤.
             if (digitalRead(PIN_ENDSTOP_Y_DOWN) == LOW) {
                 Serial.println("HOMING Y COMPLETE");
-                stepperY.stop();
                 stepperY.setCurrentPosition(0);
+                // endstop 에서 살짝 떨어진 위치로 후퇴 — 진동에 의한 checkLimit 무한 트리거 방지
+                stepperY.moveTo(10);
+
+                // Z 가 도달했든 stall 이든 호밍 완료 시점에 강제 정지.
+                stepperZ.setCurrentPosition(stepperZ.currentPosition());
+
                 currentState = MOTOR_READY;
                 if (_onReady) _onReady();
             }
