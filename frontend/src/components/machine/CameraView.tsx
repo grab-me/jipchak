@@ -57,19 +57,23 @@ const CameraView = ({
     processedRef.current = eventKey;
 
     if (lastSessionEvent.type === 'SESSION_START') {
-      if (!isSessionActive) {
-        // 세션이 아직 비활성 → 서버 id 로 처음부터 시작.
-        startSession(lastSessionEvent.session_id);
-      } else {
-        // 이미 사용자 START 클릭으로 client fallback id 가 활성 중.
-        // sessionId 만 server id 로 교체 (records 등 다른 상태는 유지).
-        // 이게 없으면 Spring Redis (session:rpi-*) 와 클라이언트 (session_<timestamp>) 의
-        // 키가 어긋나 모바일 영상 조회가 깨진다.
-        setSessionId(lastSessionEvent.session_id);
+      // session_id 없는 SESSION_START 는 무시 (서버 id 매칭이 깨지므로).
+      const sid = lastSessionEvent.session_id;
+      if (sid) {
+        if (!isSessionActive) {
+          // 세션이 아직 비활성 → 서버 id 로 처음부터 시작.
+          startSession(sid);
+        } else {
+          // 이미 사용자 START 클릭으로 client fallback id 가 활성 중.
+          // sessionId 만 server id 로 교체 (records 등 다른 상태는 유지).
+          // 이게 없으면 Spring Redis (session:rpi-*) 와 클라이언트 (session_<timestamp>) 의
+          // 키가 어긋나 모바일 영상 조회가 깨진다.
+          setSessionId(sid);
+        }
+        setCatching(true);
+        setLastResult(null);
+        playSfx(SOUND_ASSETS.SFX.TRY_CATCH);
       }
-      setCatching(true);
-      setLastResult(null);
-      playSfx(SOUND_ASSETS.SFX.TRY_CATCH);
     }
 
     if (lastSessionEvent.type === 'GAME_RESULT') {
