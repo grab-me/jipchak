@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
@@ -134,8 +135,10 @@ public class GameLogService {
 
     /** 파일명 규칙: "yyMMdd_HHmmss.mp4" — 같은 초 동시 종료는 거의 없으므로 초 단위로 충분. */
     private static final DateTimeFormatter FILE_NAME_FORMAT = DateTimeFormatter.ofPattern("yyMMdd_HHmmss");
+    /** 파일명 timestamp 는 항상 KST 로 — JVM default timezone (UTC) 영향 받지 않도록 명시. */
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private String buildFileName(String sessionId) {
-        return LocalDateTime.now().format(FILE_NAME_FORMAT) + ".mp4";
+        return LocalDateTime.now(KST).format(FILE_NAME_FORMAT) + ".mp4";
     }
 }
