@@ -8,11 +8,11 @@ import { useStreamStore, StreamState } from '@/store/streamStore';
  * 3 가지 메시지로 분기된다:
  *
  *   1) CAM_OFF   : 캠 OFF (frame 없음, lastSessionEvent 없거나 SESSION_END)
- *                 → "빨간 버튼을 누르면 캠이 켜집니다" (점멸 X)
+ *                 → "파란 버튼을 누르면 캠이 켜집니다" (점멸 X)
  *   2) READY     : 캠 ON, 아직 게임 시작 전 (frame 있음, SESSION_START 미수신)
- *                 → "게임 시작을 위해 빨간색 버튼을 눌러주세요" (점멸 O)
+ *                 → "게임 시작을 위해 파란색 버튼을 눌러주세요" (점멸 O)
  *   3) POST_GAME : 한 판 종료 직후 (lastSessionEvent.type === 'GAME_RESULT')
- *                 → "다음 판: 빨간 / 종료: 파란" (점멸 O)
+ *                 → "다음 판: 파란 / 종료: 빨강" (점멸 O)
  *
  * PLAYING (집기 시퀀스 포함) 단계의 카운트다운은 별도 <PlayingTimer /> 가 담당.
  */
@@ -44,10 +44,10 @@ const StaticGuide = () => (
     <div className="flex flex-col items-center gap-[1vh]">
       <div className="relative">
         <span className="absolute inset-0 text-white font-crayon text-[clamp(24px,4.5vw,48px)] font-black select-none text-center break-keep leading-tight opacity-20 blur-[2px]">
-          빨간색 버튼을 누르면<br />카메라가 켜집니다
+          파란색 버튼을 누르면<br />카메라가 켜집니다
         </span>
         <h2 className="relative text-white font-crayon text-[clamp(24px,4.5vw,48px)] font-black select-none text-center break-keep leading-tight drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
-          <span className="text-red-500 [text-shadow:2px_2px_0_#fff,-2px_-2px_0_#fff,2px_-2px_0_#fff,-2px_2px_0_#fff]">빨간색 버튼</span>을 누르면<br />
+          <span className="text-blue-500 [text-shadow:2px_2px_0_#fff,-2px_-2px_0_#fff,2px_-2px_0_#fff,-2px_2px_0_#fff]">파란색 버튼</span>을 누르면<br />
           카메라가 켜집니다
         </h2>
       </div>
@@ -68,11 +68,11 @@ const ReadyGuide = () => (
     >
       <div className="relative">
         <span className="absolute inset-0 text-white font-crayon text-[clamp(24px,4.5vw,48px)] font-black select-none text-center break-keep leading-tight opacity-20 blur-[2px]">
-          게임 시작을 위해<br />빨간색 버튼을 눌러주세요!
+          게임 시작을 위해<br />파란색 버튼을 눌러주세요!
         </span>
         <h2 className="relative text-white font-crayon text-[clamp(24px,4.5vw,48px)] font-black select-none text-center break-keep leading-tight drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
           게임 시작을 위해<br />
-          <span className="text-red-500 [text-shadow:2px_2px_0_#fff,-2px_-2px_0_#fff,2px_-2px_0_#fff,-2px_2px_0_#fff]">빨간색 버튼</span>을 눌러주세요!
+          <span className="text-blue-500 [text-shadow:2px_2px_0_#fff,-2px_-2px_0_#fff,2px_-2px_0_#fff,-2px_2px_0_#fff]">파란색 버튼</span>을 눌러주세요!
         </h2>
       </div>
       <div className="flex gap-[1vw] mt-[1vh]">
@@ -81,7 +81,7 @@ const ReadyGuide = () => (
             key={i}
             animate={{ y: [0, 5, 0] }}
             transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-            className="w-[1vw] h-[1vw] min-w-[10px] min-h-[10px] bg-red-500 rounded-full border-2 border-white shadow-sm"
+            className="w-[1vw] h-[1vw] min-w-[10px] min-h-[10px] bg-blue-500 rounded-full border-2 border-white shadow-sm"
           />
         ))}
       </div>
@@ -105,10 +105,10 @@ const PostGameGuide = () => (
       </h2>
       <div className="flex flex-col gap-[0.6vh] text-[clamp(18px,3vw,32px)] font-crayon font-black text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.7)]">
         <p>
-          <span className="text-red-500 [text-shadow:2px_2px_0_#fff,-2px_-2px_0_#fff,2px_-2px_0_#fff,-2px_2px_0_#fff]">빨간색</span> = 한 판 더
+          <span className="text-blue-500 [text-shadow:2px_2px_0_#fff,-2px_-2px_0_#fff,2px_-2px_0_#fff,-2px_2px_0_#fff]">파란색</span> = 한 판 더
         </p>
         <p>
-          <span className="text-blue-500 [text-shadow:2px_2px_0_#fff,-2px_-2px_0_#fff,2px_-2px_0_#fff,-2px_2px_0_#fff]">파란색</span> = 그만하기
+          <span className="text-red-500 [text-shadow:2px_2px_0_#fff,-2px_-2px_0_#fff,2px_-2px_0_#fff,-2px_2px_0_#fff]">빨간색</span> = 그만하기
         </p>
       </div>
     </motion.div>
