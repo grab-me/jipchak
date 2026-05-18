@@ -10,9 +10,10 @@ const int PIN_JOY_Y_UP    = A2;
 const int PIN_JOY_X_RIGHT = A3;
 
 // --- Button Pins ---
-// 빨강(MAIN) = A5, 파랑(SUB) = A4 — 실측 배선 기준
-const int PIN_BTN_MAIN = A5;
-const int PIN_BTN_SUB  = A4;
+// 역할 스왑: 파랑(A4) = 게임 시작 / 다음 판 (MAIN 의도), 빨강(A5) = 집게 내리기 / 세션 종료 (SUB 의도).
+// 물리 배선 그대로, 코드의 의미만 바뀜.
+const int PIN_BTN_MAIN = A4;
+const int PIN_BTN_SUB  = A5;
 
 // --- Stepper Motor Pins ---
 const int PIN_STEP_X = 2;

@@ -314,6 +314,16 @@ async def serial_reader_task(
                 data = json.loads(line)
             except json.JSONDecodeError:
                 continue
+
+            # 일회성 이벤트 (예: IDLE 빨강 → GUIDE 모달 호출)
+            if data.get("t") == "e":
+                name = data.get("e")
+                if isinstance(name, str) and name:
+                    async with send_lock:
+                        await ws.send(json.dumps({"event": name}))
+                    print(f"[serial] event forwarded: {name}")
+                continue
+
             if data.get("t") != "s":
                 continue
             state = data.get("st")
@@ -409,34 +419,60 @@ async def run(
     fps: int,
     jpeg_q: int,
 ) -> None:
+    """WS 끊김 시 지수 백오프로 자동 재연결.
+
+    발표장 핫스팟 환경에서 신호가 깜빡여도 사용자 개입 없이 복구되도록
+    한 번 끊겨도 프로세스가 죽지 않고 다시 붙는다. 카메라/세션 상태는
+    재연결 시점에 새로 시작 (이전 진행 중 세션은 STOP 으로 정리).
+    """
     cam = CameraLifecycle(width, height, fps, webcam_dev)
     session = GameSession()
     send_lock = asyncio.Lock()
 
-    print(f"[main] connecting to {url} ...")
+    backoff = 1.0
     try:
-        async with websockets.connect(url, max_size=None) as ws:
-            print("[main] connected")
+        while not _stop.is_set():
+            try:
+                print(f"[main] connecting to {url} ...")
+                async with websockets.connect(url, max_size=None, ping_interval=20, ping_timeout=20) as ws:
+                    print("[main] connected")
+                    backoff = 1.0  # 성공 시 백오프 리셋
 
-            tasks = [
-                asyncio.create_task(frame_loop_task(cam, ws, fps, jpeg_q, send_lock)),
-                asyncio.create_task(serial_reader_task(serial_port, baud, ws, session, cam, send_lock)),
-            ]
-            await _stop.wait()
+                    tasks = [
+                        asyncio.create_task(frame_loop_task(cam, ws, fps, jpeg_q, send_lock)),
+                        asyncio.create_task(serial_reader_task(serial_port, baud, ws, session, cam, send_lock)),
+                    ]
 
-            # 종료 시 진행 중 게임 있으면 STOP 송신
-            if session.is_active():
-                sid = session.stop()
-                try:
-                    async with send_lock:
-                        await ws.send(json.dumps({"event": "STOP", "session_id": sid}))
-                    print(f"[main] sent final STOP: {sid}")
-                except Exception:
-                    pass
+                    # _stop 또는 어느 한 task 라도 종료되면 빠져나옴 (WS 끊김 등).
+                    stop_task = asyncio.create_task(_stop.wait())
+                    done, pending = await asyncio.wait(
+                        tasks + [stop_task],
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
 
-            for t in tasks:
-                t.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
+                    # 진행 중 세션 있으면 STOP 송신 (가능하면)
+                    if session.is_active():
+                        sid = session.stop()
+                        try:
+                            async with send_lock:
+                                await ws.send(json.dumps({"event": "STOP", "session_id": sid}))
+                            print(f"[main] sent final STOP: {sid}")
+                        except Exception:
+                            pass
+
+                    for t in tasks + [stop_task]:
+                        t.cancel()
+                    await asyncio.gather(*tasks, stop_task, return_exceptions=True)
+
+                    if _stop.is_set():
+                        break
+
+                    # WS 끊김 외 사유로 task 종료 → 재연결 시도
+                    print("[main] connection lost, reconnecting ...")
+            except (websockets.ConnectionClosed, OSError, asyncio.TimeoutError) as e:
+                print(f"[main] connect failed: {e}; retry in {backoff:.1f}s")
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, 30.0)
     finally:
         cam.turn_off()
 

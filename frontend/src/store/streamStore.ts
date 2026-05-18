@@ -76,6 +76,13 @@ export interface StreamState {
 
     /** 마지막 세션 이벤트. 컴포넌트는 이걸 effect 로 관찰하여 처리한다. */
     lastSessionEvent: SessionEvent | null;
+
+    /**
+     * 마지막 UI 이벤트. 메인 페이지 / 가이드 모달 등 세션과 무관한 단발성 트리거.
+     * 예: IDLE 에서 빨강 버튼 → 'GUIDE' (가이드 모달 호출)
+     * 같은 이벤트가 연속 도착해도 매번 다른 객체로 setState 되어 effect 가 다시 발화됨.
+     */
+    lastUiEvent: { type: 'GUIDE'; ts: number } | null;
 }
 
 export const useStreamStore = create<StreamState>(() => ({
@@ -86,6 +93,7 @@ export const useStreamStore = create<StreamState>(() => ({
     detections: [],
     graspPose: null,
     lastSessionEvent: null,
+    lastUiEvent: null,
 }));
 
 // ─────────────────────────────────────────
@@ -195,6 +203,11 @@ function connect() {
                             is_caught: msg.is_caught,
                             confidence: msg.confidence,
                         },
+                    });
+                } else if (msg.event === 'GUIDE') {
+                    // 메인 페이지의 사용자가 빨강 버튼으로 가이드 모달 호출.
+                    useStreamStore.setState({
+                        lastUiEvent: { type: 'GUIDE', ts: Date.now() },
                     });
                 } else if (msg.event === 'SESSION_END') {
                     // 사용자가 POST_GAME 에서 파란 버튼 → 카메라 OFF 로 전환.
