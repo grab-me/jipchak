@@ -194,10 +194,10 @@ class ThreeJawGraspService:
             # 현장 환경에 따라 1mm당 픽셀(PX_PER_MM) 비율 조절 필요 (기본 1.0)
             PX_PER_MM = 1.0 
             
-            # 집게 중심 좌표 (카메라 기준: 오른쪽 +15mm, 앞으로(위쪽) 50mm)
-            # 2D 영상 좌표계에서 '앞으로'는 화면 위쪽이므로 Y축 감소 방향(-)
-            gripper_x = cam_x + (15 * PX_PER_MM)
-            gripper_y = cam_y - (50 * PX_PER_MM)
+            # 집게 중심 좌표 보정
+            # 카메라가 집게보다 오른쪽으로 90mm 있으므로, 카메라 화면상 집게는 왼쪽(-90mm)에 위치함
+            gripper_x = cam_x - (90 * PX_PER_MM)
+            gripper_y = cam_y  # 앞뒤 단차(Y축)에 대한 언급이 없으므로 일단 중앙(0)으로 둡니다
             
             # 병아리 중심과 '실제 집게 중심' 사이의 거리
             dist = np.sqrt((best.center_x - gripper_x)**2 + (best.center_y - gripper_y)**2)
