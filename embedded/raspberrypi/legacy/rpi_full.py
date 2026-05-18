@@ -332,30 +332,38 @@ async def serial_reader_task(
             if state == last_state:
                 continue
 
-            # ───── 카메라 lifecycle ─────
+            # ───── 카메라 lifecycle + 세션 생성 ─────
+            # 세션 = 한 사용자가 다회 플레이하는 단위 (최대 5판).
+            # IDLE → 비IDLE (READY 진입) 시 session.start() 로 새 uuid 발급, 그 후 모든 판이 같은 id 공유.
+            # 비IDLE → IDLE (세션 종료) 시 session.stop() 으로 정리.
             was_idle = last_state == ARDUINO_STATE_IDLE
             now_idle = state == ARDUINO_STATE_IDLE
             if was_idle and not now_idle:
                 cam.turn_on()
+                if not session.is_active():
+                    session.start()
             elif not was_idle and now_idle:
                 cam.turn_off()
+                session.stop()
 
-            # ───── 세션 이벤트 ─────
-            #   PLAYING 진입(=한 판 시작) : SESSION_START
-            #   POST_GAME 진입(=한 판 끝) : GAME_RESULT
+            # ───── 판(round) 이벤트 ─────
+            #   PLAYING 진입(=한 판 시작) : START (기존 session_id 재사용)
+            #   POST_GAME 진입(=한 판 끝) : STOP
             if state == ARDUINO_STATE_PLAYING and last_state != ARDUINO_STATE_PLAYING:
-                sid = session.start()
-                async with send_lock:
-                    await ws.send(json.dumps({"event": "START", "session_id": sid}))
-                print(f"[serial] game START: {sid} (state {last_state} → {state})")
+                sid = session.id
+                if sid:
+                    async with send_lock:
+                        await ws.send(json.dumps({"event": "START", "session_id": sid}))
+                    print(f"[serial] game START: {sid} (state {last_state} → {state})")
             elif state == ARDUINO_STATE_POST_GAME and last_state != ARDUINO_STATE_POST_GAME:
-                sid = session.stop()
+                sid = session.id
                 if sid:
                     async with send_lock:
                         await ws.send(json.dumps({"event": "STOP", "session_id": sid}))
                     print(f"[serial] game STOP:  {sid} (state {last_state} → {state})")
 
-            # 사용자가 POST_GAME 에서 파란 버튼 → IDLE: 세션 명시적 종료 (QR 안내로 전환)
+            # 사용자가 POST_GAME 에서 파란 버튼 → IDLE: 세션 명시적 종료 (QR 안내로 전환).
+            # session.stop() 은 위 비IDLE→IDLE 분기에서 이미 호출됨.
             if state == ARDUINO_STATE_IDLE and last_state == ARDUINO_STATE_POST_GAME:
                 async with send_lock:
                     await ws.send(json.dumps({"event": "SESSION_END"}))
