@@ -21,6 +21,16 @@ void CommManager::sendStatus(float currentX, float currentY, int currentState) {
     Serial.println();
 }
 
+void CommManager::sendEvent(const char* name) {
+    // 송신 형식: {"t":"e","e":"<name>"}
+    // 예: IDLE 상태에서 빨강 버튼 누르면 sendEvent("GUIDE") → 브라우저 가이드 모달 호출.
+    StaticJsonDocument<64> doc;
+    doc["t"] = "e";
+    doc["e"] = name;
+    serializeJson(doc, Serial);
+    Serial.println();
+}
+
 CommandType CommManager::receiveCommand() {
     if (Serial.available() > 0) {
         String jsonString = Serial.readStringUntil('\n');

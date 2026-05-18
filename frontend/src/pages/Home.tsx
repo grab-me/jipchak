@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToolStore } from '@/store/toolStore';
+import { useStreamSocket, useStreamStore, StreamState } from '@/store/streamStore';
 import StartButton from '@/components/home/StartButton';
 import GuideButton from '@/components/home/GuideButton';
 import CrayonWrapper from '@/components/common/CrayonWrapper';
@@ -14,12 +15,39 @@ const Home = () => {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const { playSfx } = useAudio();
 
+  // 메인 페이지에서도 WS 연결 유지 — 아두이노 버튼으로 페이지 자동 전환 / 모달 호출.
+  // streamStore 의 mountCount 가 PlayGround 와 공유하므로 추가 비용 없음.
+  useStreamSocket();
+  const frame2d = useStreamStore((s: StreamState) => s.frame2d);
+  const frame3d = useStreamStore((s: StreamState) => s.frame3d);
+  const lastUiEvent = useStreamStore((s: StreamState) => s.lastUiEvent);
+
   const handleStart = () => {
     playSfx(SOUND_ASSETS.SFX.BUTTON_CLICK);
     startSession(); // 세션 시작
     if (isAutoStarting) setAutoStarting(false); // 자동 시작 플래그 해제
     navigate('/play');
   };
+
+  // 🔵 파랑 버튼 → IDLE→READY → 카메라 ON → frame 도착 시점에 자동 navigate.
+  // 기존 START 버튼 클릭 동선과 동일한 effect, 진입 자체만 키오스크 친화적.
+  useEffect(() => {
+    if (frame2d || frame3d) {
+      handleStart();
+    }
+    // handleStart 를 의존성에 넣지 않음 — 매 렌더마다 새 함수라 무한 루프 됨.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frame2d, frame3d]);
+
+  // 🔴 빨강 버튼 (IDLE) → GUIDE 이벤트 → 사용 가이드 모달 자동 오픈.
+  // ts 가 매번 새 값이라 같은 사용자가 빨강 두 번 눌러도 effect 가 다시 실행됨.
+  const lastGuideTs = useRef<number | null>(null);
+  useEffect(() => {
+    if (lastUiEvent?.type !== 'GUIDE') return;
+    if (lastGuideTs.current === lastUiEvent.ts) return;
+    lastGuideTs.current = lastUiEvent.ts;
+    setIsGuideOpen(true);
+  }, [lastUiEvent]);
 
   const handleAdminAccess = () => {
     const expected = import.meta.env.VITE_ADMIN_PASSWORD;
@@ -38,7 +66,7 @@ const Home = () => {
 
   return (
     // 모서리 제거
-    <div 
+    <div
       className="w-full h-screen [&>div]:!rounded-none relative"
       onContextMenu={(e) => e.preventDefault()}
     >

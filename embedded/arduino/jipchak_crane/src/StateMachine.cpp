@@ -59,7 +59,11 @@ void StateMachine::update() {
     // ────────────────────────────────────────
     case IDLE:
         if (input->isBtnMainPressed()) {
+            // 파랑 (MAIN) → 캠 ON, 게임 시작 대기
             currentState = READY;
+        } else if (input->isBtnSubPressed()) {
+            // 빨강 (SUB) → 메인 페이지의 가이드 모달 호출 (브라우저로 forward)
+            comm->sendEvent("GUIDE");
         }
         break;
 
