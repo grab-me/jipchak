@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToolStore } from '@/store/toolStore';
-import { useStreamSocket } from '@/store/streamStore';
+import { useStreamSocket, useStreamStore, StreamState } from '@/store/streamStore';
 import { useAudio } from '@/hooks/useAudio';
 import { useCameraSwap } from '@/hooks/useCameraSwap';
 import { useGameKeyboard } from '@/hooks/useGameKeyboard';
@@ -11,6 +11,7 @@ import Confetti from '@/components/common/Confetti';
 import CameraTransitionOverlay from '@/components/machine/CameraTransitionOverlay';
 import MainCameraPanel from '@/components/machine/MainCameraPanel';
 import SidePanel from '@/components/machine/SidePanel';
+import GameCountModal from '@/components/machine/GameCountModal';
 
 /**
  * 게임 플레이 화면.
@@ -31,6 +32,7 @@ const PlayGround = () => {
     const navigate = useNavigate();
     const isSessionActive = useToolStore((s) => s.isSessionActive);
     const lastResult = useToolStore((s) => s.lastResult);
+    const resetSession = useToolStore((s) => s.resetSession);
 
     const { playBgm, stopBgm } = useAudio();
     const { isSwapped, isTransitioning, handleSwap } = useCameraSwap();
@@ -39,6 +41,19 @@ const PlayGround = () => {
     useStreamSocket();
     useGameKeyboard();
     const { confettiBursts, removeBurst } = useGameConfetti();
+
+    // GameCountModal — 페이지 진입 시 자동 표시
+    const [isCountModalOpen, setIsCountModalOpen] = useState(true);
+
+    // 아두이노 빨강 (READY 단계) → BACK_TO_HOME 이벤트 → 메인 페이지로
+    const lastUiEvent = useStreamStore((s: StreamState) => s.lastUiEvent);
+    const lastBackTs = useRef<number | null>(null);
+    useEffect(() => {
+        if (lastUiEvent?.type !== 'BACK_TO_HOME') return;
+        if (lastBackTs.current === lastUiEvent.ts) return;
+        lastBackTs.current = lastUiEvent.ts;
+        resetSession(); // 세션 / 카메라 / QR 상태 정리 + 홈으로 navigate
+    }, [lastUiEvent, resetSession]);
 
     // 페이지 진입 시 BGM 재생, 이탈 시 정지
     useEffect(() => {
@@ -82,6 +97,12 @@ const PlayGround = () => {
                 label={isSwapped ? 'Cam1' : 'Cam2'}
                 channel={isSwapped ? '3d' : '2d'}
                 onCameraSwap={handleSwap}
+            />
+
+            {/* 페이지 진입 시 자동 표시되는 판수 선택 모달 */}
+            <GameCountModal
+                isOpen={isCountModalOpen}
+                onConfirm={() => setIsCountModalOpen(false)}
             />
         </div>
     );

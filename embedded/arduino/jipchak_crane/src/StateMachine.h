@@ -64,11 +64,18 @@ private:
     InputManager* input;
 
     SystemState currentState;
-    unsigned long lastStatusTime;   // sendStatus 100ms 주기 트래커
-    unsigned long playStartTime;    // PLAYING 진입 시각 (15초 타이머용)
-    int subState;                   // 일부 상태에서 단계 진행 캐치용
+    unsigned long lastStatusTime;     // sendStatus 100ms 주기 트래커
+    unsigned long playStartTime;      // 조이스틱 첫 입력 시각 (PLAY_TIMEOUT_MS 타이머용). 0 이면 아직 미입력
+    unsigned long playingEnteredTime; // PLAYING 진입 시각 (PLAYING_IDLE_TIMEOUT_MS safety 용)
+    unsigned long postGameEnteredTime;// POST_GAME 진입 시각 (POST_GAME_TO_PLAYING_MS 자동 진입 용)
+    int subState;                     // 일부 상태에서 단계 진행 캐치용
+
+    // 조이스틱 edge detection (READY 의 모달 옵션 순환 / PLAYING 첫 입력 트리거 용)
+    int prevJoyX;
+    int prevJoyY;
 
     void handleManualInput();
     bool isPlayingTimeout() const;
-    void startGrabSequence();       // PLAYING → GRAB_DOWN 진입 시 공통 처리
+    void startGrabSequence();         // PLAYING → GRAB_DOWN 진입 시 공통 처리
+    void enterPlaying();              // READY / POST_GAME → PLAYING 진입 시 공통 reset
 };

@@ -2,12 +2,26 @@
 #include "../config.h"
 
 /**
- * 게임 한 판 흐름:
- *   IDLE → READY (빨간) → PLAYING (빨간) → 집기 시퀀스 → POST_GAME → 다음판 or 세션 종료
+ * 게임 한 판 흐름 (GameCountModal 도입 후):
+ *   IDLE → READY (파랑) → PLAYING (조이스틱 첫 입력) → 집기 시퀀스 → POST_GAME → 다음판 자동 or 세션 종료
  *
- * 캠 lifecycle (RPi 가 관리):
- *   IDLE: 카메라 OFF (발열 보호)
- *   READY 이상: 카메라 ON
+ * READY 단계:
+ *   - 캠 ON, Frontend 의 GameCountModal 표시
+ *   - 조이스틱 좌/우 edge → 모달 옵션 순환 이벤트 (JOY_LEFT/RIGHT)
+ *   - 파랑 → PLAYING 진입 (모달의 "시작" 트리거)
+ *   - 빨강 → IDLE + BACK_TO_HOME 이벤트 (모달의 "뒤로" 트리거)
+ *
+ * PLAYING 단계:
+ *   - PLAYING 진입 시점엔 playStartTime = 0 (아직 타이머 미작동)
+ *   - 첫 조이스틱 입력 시 playStartTime 설정 + ROUND_TIMER_START 이벤트 송신
+ *   - playStartTime 설정 후 PLAY_TIMEOUT_MS (20초) 만료 시 자동 GRAB
+ *   - 빨강 → 즉시 GRAB
+ *   - PLAYING_IDLE_TIMEOUT_MS (60초) 동안 조이스틱 무동작 → 사용자 이탈 추정, IDLE 진입
+ *
+ * POST_GAME 단계:
+ *   - 결과 표시 + POST_GAME_TO_PLAYING_MS (5초) 후 자동 PLAYING 진입
+ *   - 중간 종료 불가 (빨강/파랑 무동작)
+ *   - 세션 전체 종료는 Frontend 의 maxGames 도달 시 또는 PLAYING IDLE_TIMEOUT 으로
  */
 
 StateMachine::StateMachine(
@@ -18,7 +32,11 @@ StateMachine::StateMachine(
       currentState(IDLE),
       lastStatusTime(0),
       playStartTime(0),
-      subState(0) {}
+      playingEnteredTime(0),
+      postGameEnteredTime(0),
+      subState(0),
+      prevJoyX(0),
+      prevJoyY(0) {}
 
 void StateMachine::init() {
     motor->init();
@@ -27,7 +45,8 @@ void StateMachine::init() {
 }
 
 bool StateMachine::isPlayingTimeout() const {
-    return (millis() - playStartTime) >= PLAY_TIMEOUT_MS;
+    // 조이스틱 첫 입력 후에만 타이머 작동.
+    return playStartTime > 0 && (millis() - playStartTime) >= PLAY_TIMEOUT_MS;
 }
 
 void StateMachine::startGrabSequence() {
@@ -38,6 +57,16 @@ void StateMachine::startGrabSequence() {
 
     motorAuto->moveZ(-Z_MOVE_STEPS_DOWN);
     currentState = GRAB_DOWN;
+}
+
+void StateMachine::enterPlaying() {
+    // PLAYING 진입 시 공통: 배출구 복귀 target + 타이머 초기화 + 조이스틱 edge 초기화
+    motorAuto->setTarget(DROP_OFF_X_MM, DROP_OFF_Y_MM);
+    playStartTime = 0;                    // 조이스틱 첫 입력까지 타이머 정지
+    playingEnteredTime = millis();        // safety timeout 기준점
+    prevJoyX = 0;
+    prevJoyY = 0;
+    currentState = PLAYING;
 }
 
 void StateMachine::update() {
@@ -55,43 +84,77 @@ void StateMachine::update() {
 
     switch (currentState) {
     // ────────────────────────────────────────
-    // 1. IDLE — 캠 OFF, 빨간(1) 누름 대기
+    // 1. IDLE — 캠 OFF, 파란=캠ON / 빨간=가이드모달
     // ────────────────────────────────────────
     case IDLE:
         if (input->isBtnMainPressed()) {
-            // 파랑 (MAIN) → 캠 ON, 게임 시작 대기
+            // 파랑 → READY (캠 ON, GameCountModal 표시 시점)
             currentState = READY;
         } else if (input->isBtnSubPressed()) {
-            // 빨강 (SUB) → 메인 페이지의 가이드 모달 호출 (브라우저로 forward)
+            // 빨강 → 메인 페이지의 가이드 모달
             comm->sendEvent("GUIDE");
         }
         break;
 
     // ────────────────────────────────────────
-    // 2. READY — 캠 ON, 빨간(2) 누름 대기 (게임 시작)
+    // 2. READY — 캠 ON, GameCountModal 인터랙션
     // ────────────────────────────────────────
-    case READY:
+    case READY: {
         if (input->isBtnMainPressed()) {
-            // 게임 시작. PLAYING 진입 시 배출구(좌하단)로 자동 복귀.
-            // 정확히 (0,0) 으로 두면 endstop chatter 에서 checkLimit 가 무한 트리거됨.
-            motorAuto->setTarget(DROP_OFF_X_MM, DROP_OFF_Y_MM);
-            playStartTime = millis();
-            currentState = PLAYING;
+            // 파랑 → 모달 "시작" → PLAYING 진입
+            enterPlaying();
+            break;
         }
+        if (input->isBtnSubPressed()) {
+            // 빨강 → 모달 "뒤로" → IDLE 복귀, Frontend 가 메인 페이지로 navigate
+            comm->sendEvent("BACK_TO_HOME");
+            currentState = IDLE;
+            break;
+        }
+        // 조이스틱 X edge → 모달 옵션 순환 이벤트
+        int xDir = input->getJoystickX();
+        if (xDir != 0 && prevJoyX == 0) {
+            comm->sendEvent(xDir > 0 ? "JOY_RIGHT" : "JOY_LEFT");
+        }
+        prevJoyX = xDir;
+        // Y 는 옵션 순환에 사용 안 함. edge 만 추적 (혹시 모를 충돌 방지).
+        prevJoyY = input->getJoystickY();
         break;
+    }
 
     // ────────────────────────────────────────
-    // 3. PLAYING — 조이스틱 자유 이동 + 15초 타이머
-    //              파란 누름 또는 타이머 만료 → 집기 시퀀스
+    // 3. PLAYING — 조이스틱 첫 입력 시 타이머 시작, 그 후 자유 이동
+    //              빨강 또는 타이머 만료 → 집기 시퀀스
     // ────────────────────────────────────────
-    case PLAYING:
+    case PLAYING: {
         if (!motor->isReady()) break;
+
+        // safety: 60초간 조이스틱 무동작 → 사용자 이탈, IDLE 진입
+        if (playStartTime == 0 &&
+            (millis() - playingEnteredTime) >= PLAYING_IDLE_TIMEOUT_MS) {
+            comm->sendEvent("PLAYING_IDLE_TIMEOUT");
+            currentState = IDLE;
+            break;
+        }
+
+        // 조이스틱 입력 처리
+        int xDir = input->getJoystickX();
+        int yDir = input->getJoystickY();
+        bool joyMoved = (xDir != 0 || yDir != 0);
+
+        // 첫 입력 시점 캐치 → 타이머 시작 + ROUND_TIMER_START 이벤트
+        if (playStartTime == 0 && joyMoved) {
+            playStartTime = millis();
+            comm->sendEvent("ROUND_TIMER_START");
+        }
+
         handleManualInput();
 
         if (input->isBtnSubPressed() || isPlayingTimeout()) {
             startGrabSequence();
         }
         break;
+    }
 
     // ────────────────────────────────────────
     // 4. GRAB_DOWN → GRAB_CLOSE → GRAB_UP : 집기 시퀀스
@@ -146,22 +209,19 @@ void StateMachine::update() {
 
     case RETURN_UP:
         if (motorAuto->isZReachedTarget()) {
+            postGameEnteredTime = millis();
             currentState = POST_GAME;
         }
         break;
 
     // ────────────────────────────────────────
-    // 6. POST_GAME — 한 판 종료. 빨간=다음 판, 파란=세션 종료
+    // 6. POST_GAME — 결과 표시 + 5초 후 자동 PLAYING (중간 종료 불가)
     // ────────────────────────────────────────
     case POST_GAME:
-        if (input->isBtnMainPressed()) {
-            // 다음 판 시작 — PLAYING 진입 (이미 0,0 에 있음)
-            playStartTime = millis();
-            currentState = PLAYING;
-        } else if (input->isBtnSubPressed()) {
-            // 세션 종료 → 캠 OFF
-            currentState = IDLE;
+        if ((millis() - postGameEnteredTime) >= POST_GAME_TO_PLAYING_MS) {
+            enterPlaying();
         }
+        // 빨강/파랑 무동작 (Frontend 가 maxGames 도달 시 QR 화면, Arduino safety 는 PLAYING_IDLE_TIMEOUT 으로).
         break;
     }
 }

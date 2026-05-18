@@ -83,5 +83,12 @@ const float DROP_OFF_X_MM = 1.0f;
 const float DROP_OFF_Y_MM = 1.0f;
 
 // --- Game Flow ---
-// PLAYING 상태 진입 후 사용자가 자유 조작 가능한 시간. 만료 시 자동 집기.
-const unsigned long PLAY_TIMEOUT_MS = 15000UL;
+// 조이스틱 첫 입력 후 사용자가 자유 조작 가능한 시간. 만료 시 자동 집기.
+const unsigned long PLAY_TIMEOUT_MS = 20000UL;
+
+// POST_GAME (결과 표시) 후 자동으로 다음 판 PLAYING 진입까지의 대기 시간.
+const unsigned long POST_GAME_TO_PLAYING_MS = 5000UL;
+
+// PLAYING 진입 후 조이스틱 무동작 safety. 이 시간 안에 조이스틱 입력 없으면
+// 사용자 이탈로 판단하고 IDLE 진입 (캠 OFF + 세션 종료).
+const unsigned long PLAYING_IDLE_TIMEOUT_MS = 60000UL;

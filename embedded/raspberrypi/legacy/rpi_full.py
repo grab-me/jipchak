@@ -333,9 +333,9 @@ async def serial_reader_task(
                 continue
 
             # ───── 카메라 lifecycle + 세션 생성 ─────
-            # 세션 = 한 사용자가 다회 플레이하는 단위 (최대 5판).
+            # 세션 = 한 사용자가 다회 플레이하는 단위 (Frontend 가 선택한 1/3/5 판).
             # IDLE → 비IDLE (READY 진입) 시 session.start() 로 새 uuid 발급, 그 후 모든 판이 같은 id 공유.
-            # 비IDLE → IDLE (세션 종료) 시 session.stop() 으로 정리.
+            # 비IDLE → IDLE (세션 종료) 시 session.stop() + SESSION_END 송신.
             was_idle = last_state == ARDUINO_STATE_IDLE
             now_idle = state == ARDUINO_STATE_IDLE
             if was_idle and not now_idle:
@@ -345,6 +345,11 @@ async def serial_reader_task(
             elif not was_idle and now_idle:
                 cam.turn_off()
                 session.stop()
+                # 어떤 이유로든 세션이 끝났음을 브라우저에 알림
+                # (POST_GAME timeout / PLAYING idle timeout / READY 빨강 뒤로 등 모든 경로).
+                async with send_lock:
+                    await ws.send(json.dumps({"event": "SESSION_END"}))
+                print(f"[serial] SESSION_END (state {last_state} → {state})")
 
             # ───── 판(round) 이벤트 ─────
             #   PLAYING 진입(=한 판 시작) : START (기존 session_id 재사용)
@@ -362,12 +367,7 @@ async def serial_reader_task(
                         await ws.send(json.dumps({"event": "STOP", "session_id": sid}))
                     print(f"[serial] game STOP:  {sid} (state {last_state} → {state})")
 
-            # 사용자가 POST_GAME 에서 파란 버튼 → IDLE: 세션 명시적 종료 (QR 안내로 전환).
-            # session.stop() 은 위 비IDLE→IDLE 분기에서 이미 호출됨.
-            if state == ARDUINO_STATE_IDLE and last_state == ARDUINO_STATE_POST_GAME:
-                async with send_lock:
-                    await ws.send(json.dumps({"event": "SESSION_END"}))
-                print(f"[serial] session END (user blue button in POST_GAME)")
+            # SESSION_END 는 위 "비IDLE → IDLE" 통합 분기에서 이미 송신됨.
 
             last_state = state
     finally:
