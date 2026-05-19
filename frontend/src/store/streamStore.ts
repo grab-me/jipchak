@@ -250,19 +250,33 @@ function connect() {
             return;
         }
 
-        // 2D 와 3D 채널을 한 번에 처리. 이전 구조처럼 채널별로 따로 받지 않음.
+        // ObjectURL revoke 를 지연 처리. CameraView 의 img.onload 가 비동기라
+        // 새 frame setState 직후 이전 URL 을 revoke 하면 img.src 가 이미 invalid
+        // 상태가 되어 그리기 실패 → 화면 깜빡임/떨림. 200ms 지연으로 onload 완료 보장.
+        const REVOKE_DELAY_MS = 200;
+        const safeRevoke = (url: string | null) => {
+            if (url) setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
+        };
+
+        // 2D 와 3D 채널을 한 번에 처리. 두 채널을 같은 setState 로 묶어서
+        // CameraView 가 한 번만 re-render 하도록 (jitter 감소).
+        const stateUpdate: Partial<StreamState> = {};
         if (payload.color_2d && payload.color_2d.length > 0) {
             const next = toObjectUrl(payload.color_2d);
-            if (prevFrame2d) URL.revokeObjectURL(prevFrame2d);
+            const old = prevFrame2d;
             prevFrame2d = next;
-            useStreamStore.setState({ frame2d: next });
+            stateUpdate.frame2d = next;
+            safeRevoke(old);  // setState 후 200ms 지연 revoke
         }
-
         if (payload.color_3d && payload.color_3d.length > 0) {
             const next = toObjectUrl(payload.color_3d);
-            if (prevFrame3d) URL.revokeObjectURL(prevFrame3d);
+            const old = prevFrame3d;
             prevFrame3d = next;
-            useStreamStore.setState({ frame3d: next });
+            stateUpdate.frame3d = next;
+            safeRevoke(old);
+        }
+        if (Object.keys(stateUpdate).length > 0) {
+            useStreamStore.setState(stateUpdate);
         }
     };
 
