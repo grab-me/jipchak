@@ -63,13 +63,13 @@ const GameCountModal = ({ isOpen, onConfirm }: GameCountModalProps) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="absolute inset-0 z-modal flex items-center justify-center p-[5%] font-crayon">
-          <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0 z-modal flex items-center justify-center p-[5%] font-crayon pointer-events-none">
+          <div className="absolute inset-0 bg-black/40 pointer-events-none" />
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="relative w-full max-w-[540px] bg-crayon-bg rounded-[2.5vw] shadow-2xl p-[clamp(24px,6vw,48px)] border-[clamp(4px,0.8vw,8px)] border-crayon-line flex flex-col items-center"
+            className="relative w-full max-w-[540px] bg-crayon-bg rounded-[2.5vw] shadow-2xl p-[clamp(24px,6vw,48px)] border-[clamp(4px,0.8vw,8px)] border-crayon-line flex flex-col items-center pointer-events-auto"
           >
             <h2 className="text-[clamp(24px,4vw,40px)] font-black text-crayon-line mb-[clamp(8px,1.5vw,12px)] break-keep">
               몇 판 하시겠어요?

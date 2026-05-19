@@ -61,6 +61,8 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
         last_infer_time: float = 0.0
         last_relay_time: float = 0.0
         relay_interval: float = 0.1  # 10fps cap for browser relay
+        # 추론 주기 1초. GPU 환경 (RunPod 등) 에서는 부하 문제 없음.
+        # CPU 환경에서 돌릴 때만 컨테이너 CPU 가 200% 까지 올라가는 점 주의.
         infer_interval: float = 1.0
         infer_state = {"running": False}
 
@@ -191,6 +193,13 @@ async def _apply_control(
         await relay_hub.broadcast_text(json.dumps({
             "event": "SESSION_END",
         }).encode())
+        return current_session
+
+    # 그 외 단발성 UI 이벤트 (GUIDE / JOY_LEFT / JOY_RIGHT / BACK_TO_HOME /
+    # ROUND_TIMER_START / PLAYING_IDLE_TIMEOUT 등) 는 그대로 브라우저로 forward.
+    # 새 이벤트 추가 시 ws_rpi 코드 안 건드려도 자동 전달됨.
+    if isinstance(event, str) and event:
+        await relay_hub.broadcast_text(text.encode())
         return current_session
 
     print(f"[ws_rpi] unknown control: {data}")
