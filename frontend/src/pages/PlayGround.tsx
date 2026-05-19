@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToolStore } from '@/store/toolStore';
 import { useStreamSocket, useStreamStore, StreamState } from '@/store/streamStore';
@@ -11,7 +11,7 @@ import Confetti from '@/components/common/Confetti';
 import CameraTransitionOverlay from '@/components/machine/CameraTransitionOverlay';
 import MainCameraPanel from '@/components/machine/MainCameraPanel';
 import SidePanel from '@/components/machine/SidePanel';
-import GameCountModal from '@/components/machine/GameCountModal';
+// import GameCountModal from '@/components/machine/GameCountModal'; // [비활성화] 판수 선택 모달 - 2판 고정으로 변경
 
 /**
  * 게임 플레이 화면.
@@ -42,8 +42,8 @@ const PlayGround = () => {
     useGameKeyboard();
     const { confettiBursts, removeBurst } = useGameConfetti();
 
-    // GameCountModal — 페이지 진입 시 자동 표시
-    const [isCountModalOpen, setIsCountModalOpen] = useState(true);
+    // GameCountModal — 비활성화 (판수 2판 고정, 파란 버튼으로 바로 시작)
+    // const [isCountModalOpen, setIsCountModalOpen] = useState(true);
 
     // 아두이노 빨강 (READY 단계) → BACK_TO_HOME 이벤트 → 메인 페이지로
     const lastUiEvent = useStreamStore((s: StreamState) => s.lastUiEvent);
@@ -99,11 +99,12 @@ const PlayGround = () => {
                 onCameraSwap={handleSwap}
             />
 
-            {/* 페이지 진입 시 자동 표시되는 판수 선택 모달 */}
+            {/* [비활성화] 판수 선택 모달 — 2판 고정으로 대체
             <GameCountModal
                 isOpen={isCountModalOpen}
                 onConfirm={() => setIsCountModalOpen(false)}
             />
+            */}
         </div>
     );
 };
