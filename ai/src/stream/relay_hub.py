@@ -64,10 +64,19 @@ class RelayHub:
                 for ws in dead:
                     self._clients.discard(ws)
 
+    # frame 단위 send timeout. 느린 client (대역폭 부족) 가 backpressure 로
+    # 다음 frame 들 queue 에 누적시키면 영상 latency 가 무한 증가한다.
+    # 일정 시간 안에 못 보낸 frame 은 skip (jitter 발생하지만 latency 누적은 방지).
+    _SEND_TIMEOUT_S = 0.1
+
     @staticmethod
     async def _safe_send(ws: WebSocket, payload: bytes) -> bool:
         try:
-            await ws.send_bytes(payload)
+            await asyncio.wait_for(ws.send_bytes(payload), timeout=RelayHub._SEND_TIMEOUT_S)
+            return True
+        except asyncio.TimeoutError:
+            # 이 frame 만 skip — 클라이언트는 유지. 다음 frame 부터 fresh.
+            # latency 누적 방지가 핵심 (영상 끊김 < 영상 1초 늦음).
             return True
         except Exception:
             return False
@@ -75,7 +84,10 @@ class RelayHub:
     @staticmethod
     async def _safe_send_text(ws: WebSocket, data: bytes) -> bool:
         try:
-            await ws.send_text(data.decode())
+            await asyncio.wait_for(ws.send_text(data.decode()), timeout=RelayHub._SEND_TIMEOUT_S)
+            return True
+        except asyncio.TimeoutError:
+            # 이벤트 메시지는 짧으니 timeout 거의 안 일어남. 일어나면 skip.
             return True
         except Exception:
             return False
