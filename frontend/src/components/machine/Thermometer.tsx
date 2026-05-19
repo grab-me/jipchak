@@ -33,17 +33,20 @@ const Thermometer = ({ probability }: ThermometerProps) => {
   );
 
   // 컨벤션에 따른 유동적 사이즈
-  const glassBorderWidth = "clamp(2.5px,0.4vw,5px)"; 
-  const liquidInset = "clamp(3px,0.4vw,6px)"; 
+  const glassBorderWidth = "clamp(2.5px,0.4vw,5px)";
+  const liquidInset = "clamp(3px,0.4vw,6px)";
 
   return (
-    <div 
-      className="absolute right-0 bottom-[4%] h-[92%] w-[clamp(30px,4vw,60px)] z-overlay pointer-events-none select-none drop-shadow-lg"
+    <div
+      className="absolute right-4 bottom-[4%] h-[92%] w-[clamp(30px,4vw,60px)] z-overlay pointer-events-none select-none drop-shadow-lg flex flex-col items-center"
       onContextMenu={(e) => e.preventDefault()} // [컨벤션 147] 우클릭 방지
     >
+      <span className="text-white text-xs font-bold mb-1 tracking-tight" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
+        게이지바
+      </span>
       {/* 1. 기둥 (Bar) */}
       <div
-        className="absolute inset-0 bg-white rounded-full border-crayon-line overflow-hidden"
+        className="relative flex-1 w-full bg-white rounded-full border-crayon-line overflow-hidden"
         style={{
           borderWidth: glassBorderWidth,
         }}

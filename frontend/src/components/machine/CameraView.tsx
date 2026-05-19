@@ -29,6 +29,7 @@ const CameraView = ({
     setSessionId,
     forceStopGame,
     isSessionActive,
+    isCatching,
   } = useToolStore();
 
   const processedRef = useRef<string | null>(null);
@@ -42,6 +43,18 @@ const CameraView = ({
   const detections = useStreamStore((s: StreamState) => s.detections);
   const graspPose = useStreamStore((s: StreamState) => s.graspPose);
   const lastSessionEvent = useStreamStore((s: StreamState) => s.lastSessionEvent);
+
+  const hasDetection = graspPose !== null || detections.length > 0;
+  const currentProbability = hasDetection ? (graspScore ?? 0) * 100 : 0;
+  const lockedScoreRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!isCatching) {
+      lockedScoreRef.current = currentProbability;
+    }
+  }, [currentProbability, isCatching]);
+
+  const displayProbability = isCatching ? lockedScoreRef.current : currentProbability;
 
   useEffect(() => {
     latestFrameRef.current = frameUrl ?? null;
@@ -151,7 +164,7 @@ const CameraView = ({
       // 4. 렌더링 (3D면 회전된 상태로, 2D면 원본 그대로 출력)
       ctx.drawImage(img, 0, 0, img.width, img.height);
 
-      if (channel === '3d') {
+      if (channel === '3d' && !isCatching) {
         if (graspPose && graspPose.confidence > 0) {
           // AI 결과는 원본 이미지 기준 좌표이므로 원래 크기(img.width, img.height)를 넘겨줌
           drawGraspPose(ctx, graspPose, img.width, img.height);
@@ -169,7 +182,7 @@ const CameraView = ({
       alive = false;
       img.onload = null;
     };
-  }, [frameUrl, detections, graspPose, channel]);
+  }, [frameUrl, detections, graspPose, channel, isCatching]);
 
   return (
     <div
@@ -195,7 +208,7 @@ const CameraView = ({
         title={connected ? 'WS connected' : 'WS disconnected'}
       />
 
-      {isMainView && <Thermometer probability={(graspScore ?? 0) * 100} />}
+      {isMainView && <Thermometer probability={displayProbability} />}
     </div>
   );
 };
