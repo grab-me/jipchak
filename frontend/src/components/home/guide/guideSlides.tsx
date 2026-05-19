@@ -70,15 +70,6 @@ export const guideSlides: GuideSlide[] = [
   },
   {
     step: '6',
-    title: '나의 기록',
-    description: (
-      <>
-        <span className="font-black text-red-500">선택한 판의 수</span>까지만 영상 저장     
-      </>
-    ),
-  },
-  {
-    step: '7',
     title: '뽑기 완료',
     description: (
       <>
@@ -91,7 +82,7 @@ export const guideSlides: GuideSlide[] = [
     ),
   },
   {
-    step: '8',
+    step: '7',
     title: 'QR 코드 생성',
     description: (
       <>
@@ -104,13 +95,13 @@ export const guideSlides: GuideSlide[] = [
     ),
   },
   {
-    step: '9',
+    step: '8',
     title: '다운로드',
     description: (
       <>
         휴대폰 카메라로 스캔 시
         <br></br>
-        지금까지 저장된 영상 확인
+        지금까지 저장된 영상 다운로드
         <br></br>
         <span className="font-black text-red-500">선택한 판의 수</span>까지만 저장
       </>
