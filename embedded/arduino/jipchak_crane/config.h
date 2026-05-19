@@ -87,7 +87,7 @@ const float DROP_OFF_Y_MM = 1.0f;
 const unsigned long PLAY_TIMEOUT_MS = 20000UL;
 
 // POST_GAME (결과 표시) 후 자동으로 다음 판 PLAYING 진입까지의 대기 시간.
-const unsigned long POST_GAME_TO_PLAYING_MS = 5000UL;
+const unsigned long POST_GAME_TO_PLAYING_MS = 500UL;
 
 // START 이후 허용할 최대 판수. 기본 2판 고정.
 const int MAX_ROUNDS_PER_SESSION = 2;

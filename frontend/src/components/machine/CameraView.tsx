@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useToolStore } from '@/store/toolStore';
 import { DetectionItem, GraspPose, useStreamStore } from '@/store/streamStore';
 import type { StreamState } from '@/store/streamStore';
@@ -29,7 +29,6 @@ const CameraView = ({
     setSessionId,
     forceStopGame,
     isSessionActive,
-    isCatching,
     setMaxGames,
   } = useToolStore();
 
@@ -47,19 +46,56 @@ const CameraView = ({
 
   const hasDetection = graspPose !== null || detections.length > 0;
   const currentProbability = hasDetection ? (graspScore ?? 0) * 100 : 0;
-  const lockedScoreRef = useRef<number>(0);
 
-  useEffect(() => {
-    if (!isCatching) {
-      lockedScoreRef.current = currentProbability;
-    }
-  }, [currentProbability, isCatching]);
+  // 타이머 작동 상태, 집게 하강 상태, 화면에 표시할 확률값 관리
+  const [timerStarted, setTimerStarted] = useState(false);
+  const [grabStarted, setGrabStarted] = useState(false);
+  const [displayProbability, setDisplayProbability] = useState(0);
 
-  const displayProbability = isCatching ? lockedScoreRef.current : currentProbability;
+  const lastUiEvent = useStreamStore((s: StreamState) => s.lastUiEvent);
+  const lastStartTs = useRef<number | null>(null);
+  const lastGrabTs = useRef<number | null>(null);
 
   useEffect(() => {
     latestFrameRef.current = frameUrl ?? null;
   }, [frameUrl]);
+
+  // 세션 이벤트에 따라 상태 초기화 (게임 리셋 및 다음 판 전환 시 게이지바 0)
+  useEffect(() => {
+    if (
+      lastSessionEvent?.type === 'SESSION_START' ||
+      lastSessionEvent?.type === 'GAME_RESULT' ||
+      lastSessionEvent?.type === 'SESSION_END'
+    ) {
+      setTimerStarted(false);
+      setGrabStarted(false);
+      setDisplayProbability(0);
+    }
+  }, [lastSessionEvent?.type, lastSessionEvent?.session_id]);
+
+  // UI 이벤트 감지 (타이머 시작 / 집게 하강 개시)
+  useEffect(() => {
+    if (!lastUiEvent) return;
+    if (lastUiEvent.type === 'ROUND_TIMER_START') {
+      if (lastStartTs.current === lastUiEvent.ts) return;
+      lastStartTs.current = lastUiEvent.ts;
+      setTimerStarted(true);
+      setGrabStarted(false);
+    }
+    if (lastUiEvent.type === 'GRAB_START') {
+      if (lastGrabTs.current === lastUiEvent.ts) return;
+      lastGrabTs.current = lastUiEvent.ts;
+      setTimerStarted(false);
+      setGrabStarted(true);
+    }
+  }, [lastUiEvent]);
+
+  // 타이머가 시작되었고 아직 집게 하강 전인 경우에만 확률 게이지를 실시간으로 업데이트
+  useEffect(() => {
+    if (timerStarted && !grabStarted) {
+      setDisplayProbability(currentProbability);
+    }
+  }, [currentProbability, timerStarted, grabStarted]);
 
   useEffect(() => {
     if (!lastSessionEvent || !isMainView) return;
@@ -168,7 +204,7 @@ const CameraView = ({
       // 4. 렌더링 (3D면 회전된 상태로, 2D면 원본 그대로 출력)
       ctx.drawImage(img, 0, 0, img.width, img.height);
 
-      if (channel === '3d' && !isCatching) {
+      if (channel === '3d' && !grabStarted) {
         if (graspPose && graspPose.confidence > 0) {
           // AI 결과는 원본 이미지 기준 좌표이므로 원래 크기(img.width, img.height)를 넘겨줌
           drawGraspPose(ctx, graspPose, img.width, img.height);
@@ -186,7 +222,7 @@ const CameraView = ({
       alive = false;
       img.onload = null;
     };
-  }, [frameUrl, detections, graspPose, channel, isCatching]);
+  }, [frameUrl, detections, graspPose, channel, grabStarted]);
 
   return (
     <div

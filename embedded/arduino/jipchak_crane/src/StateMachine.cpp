@@ -34,6 +34,7 @@ StateMachine::StateMachine(
       playStartTime(0),
       playingEnteredTime(0),
       postGameEnteredTime(0),
+      idleEnteredTime(0),
       roundsPlayed(0),
       subState(0),
       prevJoyX(0),
@@ -88,11 +89,12 @@ void StateMachine::update() {
     // 1. IDLE — 캠 OFF, 파란=캠ON / 빨간=가이드모달
     // ────────────────────────────────────────
     case IDLE:
-        if (input->isBtnMainPressed()) {
+        // IDLE 진입 후 3초간 버튼 무시 (디바운스 및 오작동 방지)
+        if (millis() - idleEnteredTime >= 3000 && input->isBtnMainPressed()) {
             // 파랑 → READY (캠 ON, GameCountModal 표시 시점)
             roundsPlayed = 0;
             currentState = READY;
-        } else if (input->isBtnSubPressed()) {
+        } else if (millis() - idleEnteredTime >= 3000 && input->isBtnSubPressed()) {
             // 빨강 → 메인 페이지의 가이드 모달
             comm->sendEvent("GUIDE");
         }
@@ -111,6 +113,7 @@ void StateMachine::update() {
             // 빨강 → 모달 "뒤로" → IDLE 복귀, Frontend 가 메인 페이지로 navigate
             comm->sendEvent("BACK_TO_HOME");
             currentState = IDLE;
+            idleEnteredTime = millis();
             break;
         }
         // 조이스틱 X edge → 모달 옵션 순환 이벤트
@@ -136,6 +139,7 @@ void StateMachine::update() {
             (millis() - playingEnteredTime) >= PLAYING_IDLE_TIMEOUT_MS) {
             comm->sendEvent("PLAYING_IDLE_TIMEOUT");
             currentState = IDLE;
+            idleEnteredTime = millis();
             break;
         }
 
@@ -153,6 +157,7 @@ void StateMachine::update() {
         handleManualInput();
 
         if (input->isBtnSubPressed() || isPlayingTimeout()) {
+            comm->sendEvent("GRAB_START");
             startGrabSequence();
         }
         break;
@@ -225,6 +230,7 @@ void StateMachine::update() {
             if (roundsPlayed >= MAX_ROUNDS_PER_SESSION) {
                 // 세션 최대 판수 도달 시 즉시 종료. 이후 조이스틱은 READY/PLAYING에 진입하기 전까지 무효.
                 currentState = IDLE;
+                idleEnteredTime = millis();
             } else {
                 enterPlaying();
             }
