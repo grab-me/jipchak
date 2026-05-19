@@ -101,28 +101,12 @@ services:
       redis-jipchak:
         condition: service_started
 
-  # 6. AI Server
-  ai-jipchak:
-    build:
-      context: ../ai
-      dockerfile: Dockerfile
-    container_name: ai-jipchak
-    restart: on-failure
-    # 호스트 외부 노출 차단. nginx 가 docker network 로 직접 호출.
-    ports:
-      - "127.0.0.1:${AI_PORT}:8000"
-    env_file:
-      - .env
-    volumes:
-      - ./ai_recordings:/data/recordings
-    depends_on:
-      - app-jipchak
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+  # [REMOVED] 6. AI Server (ai-jipchak)
+  #   AI 추론 서버는 RunPod (RTX 4000 Ada GPU) 으로 분리됨.
+  #   브라우저 / RPi 모두 wss://<pod-id>.proxy.runpod.net 으로 직접 연결.
+  #   - Frontend: VITE_WS_STREAM_PATH 환경변수로 RunPod URL 주입
+  #   - RPi:      rpi_full.py 의 --url 인자에 RunPod URL
+  #   EC2 의 nginx /ws/ proxy 도 더 이상 사용되지 않음 (브라우저가 직접 RunPod).
 
   # 7. Frontend (React)
   frontend-jipchak:

@@ -32,29 +32,10 @@ pipeline {
             }
         }
 
-        stage('AI Build') {
-            when {
-                changeset "ai/**"
-            }
-            steps {
-                echo 'Building AI Server...'
-                dir("${DOCKER_COMPOSE_DIR}") {
-                    sh "docker compose build ai-jipchak"
-                }
-            }
-        }
-
-        stage('AI Test') {
-            when {
-                changeset "ai/**"
-            }
-            steps {
-                echo 'Testing AI Server...'
-                dir("${DOCKER_COMPOSE_DIR}") {
-                    sh "docker compose run --rm ai-jipchak python -m pytest tests/ -v"
-                }
-            }
-        }
+        // [REMOVED] AI Build / AI Test / AI Deploy stages
+        //   AI 서버는 RunPod (GPU pod) 으로 분리됨.
+        //   EC2 에서 ai-jipchak 빌드/배포하지 않음 — 코드 변경은 RunPod 에서 git pull + uvicorn 재시작으로 적용.
+        //   docker-compose.yml 에서도 ai-jipchak service 제거.
 
         stage('Frontend CI') {
             when {
@@ -82,19 +63,7 @@ pipeline {
             }
         }
 
-        stage('AI Deploy') {
-            when {
-                changeset "ai/**"
-            }
-            steps {
-                echo 'Deploying AI Server...'
-                dir("${DOCKER_COMPOSE_DIR}") {
-                    // --force-recreate 로 컨테이너 정의 변경이 없을 때도 명시적으로 재생성.
-                    // ai/** 변경에는 코드가 포함되므로 --build 도 같이.
-                    sh "docker compose up -d --force-recreate --build ai-jipchak"
-                }
-            }
-        }
+        // [REMOVED] AI Deploy — AI 는 RunPod 에서 별도 운영.
 
         stage('Frontend Deploy') {
             when {
@@ -125,7 +94,7 @@ pipeline {
                     //      docker compose up -d --force-recreate jenkins
                     //
                     // --force-recreate 로 정의 변경 감지 오판에 의한 컨테이너 stuck 방지.
-                    sh "docker compose up -d --force-recreate --build db-jipchak redis-jipchak app-jipchak ai-jipchak frontend-jipchak nginx"
+                    sh "docker compose up -d --force-recreate --build db-jipchak redis-jipchak app-jipchak frontend-jipchak nginx"
                     // nginx conf 가 바인드 마운트라 컨테이너 recreate 만으로는 conf 갱신이 안 될 수도 있어
                     // 명시적으로 reload 호출. 실패 시 컨테이너 restart 로 fallback.
                     sh "docker compose exec -T nginx nginx -s reload || docker compose restart nginx"
