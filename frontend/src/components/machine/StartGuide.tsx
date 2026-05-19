@@ -31,29 +31,11 @@ function useStage(): Stage {
 const StartGuide = () => {
   const stage = useStage();
 
-  if (stage === 'CAM_OFF') return <StaticGuide />;
+  if (stage === 'CAM_OFF') return null;
   if (stage === 'POST_GAME') return <PostGameGuide />;
   return <ReadyGuide />;
 };
 
-// ─────────────────────────────────────────
-// 1) CAM_OFF — 점멸 없는 정적 안내
-// ─────────────────────────────────────────
-const StaticGuide = () => (
-  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-sub">
-    <div className="flex flex-col items-center gap-[1vh]">
-      <div className="relative">
-        <span className="absolute inset-0 text-white font-crayon text-[clamp(24px,4.5vw,48px)] font-black select-none text-center break-keep leading-tight opacity-20 blur-[2px]">
-          파란색 버튼을 누르면<br />카메라가 켜집니다
-        </span>
-        <h2 className="relative text-white font-crayon text-[clamp(24px,4.5vw,48px)] font-black select-none text-center break-keep leading-tight drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
-          <span className="text-blue-500 [text-shadow:2px_2px_0_#fff,-2px_-2px_0_#fff,2px_-2px_0_#fff,-2px_2px_0_#fff]">파란색 버튼</span>을 누르면<br />
-          카메라가 켜집니다
-        </h2>
-      </div>
-    </div>
-  </div>
-);
 
 // ─────────────────────────────────────────
 // 2) READY — 점멸 + 화살표

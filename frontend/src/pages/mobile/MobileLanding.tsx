@@ -8,7 +8,7 @@ import LandingHeader from '../../components/mobile/LandingHeader';
 import VideoCard from '../../components/mobile/VideoCard';
 
 // --- 세션 설정 상수 ---
-const MOCK_SESSION_TIME_MINUTES = 5; // 5분 유효기간
+const MOCK_SESSION_TIME_MINUTES = 3; // 3분 유효기간
 
 const MobileLanding = () => {
   const { sessionId } = useParams();
@@ -21,9 +21,16 @@ const MobileLanding = () => {
       console.log(`[MobileLanding] Session ID ${sessionId} 데이터 로드 시작.`);
       sessionService.getSessionVideos(sessionId)
         .then(data => {
-          setVideos(data);
+          // 백엔드가 반환한 { timeLeft, videos } 구조 사용
+          setVideos(data.videos || []);
+          const now = Date.now();
+          const targetExpire = now + (data.timeLeft || 0) * 1000;
+          setCreatedAt(targetExpire - MOCK_SESSION_TIME_MINUTES * 60 * 1000);
         })
-        .catch(err => console.error("데이터 로드 실패:", err));
+        .catch(err => {
+          console.error("데이터 로드 실패:", err);
+          setIsExpired(true);
+        });
     }
   }, [sessionId]);
 
@@ -32,12 +39,6 @@ const MobileLanding = () => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isExpired, setIsExpired] = useState<boolean>(false);
 
-  // 테스트용: 만료 5초 전으로 강제 설정
-  const triggerExpireTest = () => {
-    const fiveSecondsInMs = 5 * 1000;
-    const expireTimeInMs = MOCK_SESSION_TIME_MINUTES * 60 * 1000;
-    setCreatedAt(Date.now() - (expireTimeInMs - fiveSecondsInMs));
-  };
 
   // 실시간 만료 체크 로직
   useEffect(() => {
@@ -107,37 +108,33 @@ const MobileLanding = () => {
       className="w-full h-[100dvh] bg-crayon-bg text-crayon-line font-crayon overflow-hidden relative flex flex-col items-center"
       onContextMenu={(e) => e.preventDefault()}
     >
+      {isExpired ? (
+        <ExpiredModal isExpired={isExpired} />
+      ) : (
+        <div className="w-full h-full max-w-[500px] flex flex-col flex-1 pb-safe relative">
+          {/* 상단 헤더 및 타이머 */}
+          <LandingHeader 
+            timeLeft={timeLeft} 
+            formatTime={formatTime} 
+          />
 
-      {/* 1. 만료 안내 모달 */}
-      <ExpiredModal isExpired={isExpired} />
+          {/* 영상 리스트 (스크롤 영역) */}
+          <div className="flex-1 overflow-y-auto px-[5%] pb-[5%] flex flex-col gap-[4%] snap-y snap-mandatory">
+            {videos.map((video, index) => (
+              <VideoCard 
+                key={video.id} 
+                video={video} 
+                index={index} 
+                filename={formatFilename(createdAt, index)}
+                onDownload={handleDownload} 
+              />
+            ))}
 
-      {/* 2. 정상 화면 (만료 전) */}
-      <div className="w-full h-full max-w-[500px] flex flex-col flex-1 pb-safe relative">
-
-        {/* 상단 헤더 및 타이머 */}
-        <LandingHeader 
-          timeLeft={timeLeft} 
-          formatTime={formatTime} 
-          triggerExpireTest={triggerExpireTest} 
-        />
-
-        {/* 영상 리스트 (스크롤 영역) */}
-        <div className="flex-1 overflow-y-auto px-[5%] pb-[5%] flex flex-col gap-[4%] snap-y snap-mandatory">
-
-          {videos.map((video, index) => (
-            <VideoCard 
-              key={video.id} 
-              video={video} 
-              index={index} 
-              filename={formatFilename(createdAt, index)}
-              onDownload={handleDownload} 
-            />
-          ))}
-
-          {/* 하단 여백 확보용 */}
-          <div className="h-[40px] shrink-0" />
+            {/* 하단 여백 확보용 */}
+            <div className="h-[40px] shrink-0" />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

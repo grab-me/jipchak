@@ -33,7 +33,7 @@ export const sessionService = {
   /**
    * 특정 세션의 영상 목록 조회
    */
-  getSessionVideos: async (sessionId: string): Promise<any[]> => {
+  getSessionVideos: async (sessionId: string): Promise<any> => {
     try {
       const response = await axios.get(`${API_BASE}/api/session/${sessionId}/videos`);
       return response.data;
