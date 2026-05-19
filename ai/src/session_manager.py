@@ -191,8 +191,11 @@ class SessionManager:
                         "angle_rad": 0.0,
                         "detections": per_object,
                     }
+            
+            # 학습된 인형(탐지 모델 타겟)이 없을 때는 빈 바닥을 집지 않도록 바로 None 반환
+            return None
 
-        # Full-image fallback
+        # 3. Full-image fallback (Detection이 꺼져있을 때만)
         result = self._grasp.infer(rgb, depth)
         if result is None:
             return None
