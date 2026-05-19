@@ -1,4 +1,5 @@
 import asyncio
+import time
 from typing import Dict, Optional
 
 from fastapi import WebSocket
@@ -42,8 +43,13 @@ class ClientChannel:
     def alive(self) -> bool:
         return self._alive
 
+    # 균일한 frame 도착 보장 (10 fps cap). 너무 자주 보내면 client 처리 jitter,
+    # 너무 드물면 끊김 — 100ms 가 시각적으로 부드러우면서 latency 누적 최소.
+    _MIN_SEND_INTERVAL_S = 0.1
+
     async def _worker(self) -> None:
-        """소비자 루프 — 슬롯에 payload 가 있을 때만 send."""
+        """소비자 루프 — 슬롯의 latest payload 를 균일 fps 로 send."""
+        last_send = 0.0
         try:
             while self._alive:
                 await self._event.wait()
@@ -52,8 +58,21 @@ class ClientChannel:
                 self._slot = None
                 if payload is None:
                     continue
+
+                # rate limit: 마지막 send 후 일정 시간 지났을 때만 보냄.
+                # 더 빨리 도착한 frame 은 slot 에 덮여서 자연스럽게 drop.
+                now = time.monotonic()
+                elapsed = now - last_send
+                if elapsed < self._MIN_SEND_INTERVAL_S:
+                    await asyncio.sleep(self._MIN_SEND_INTERVAL_S - elapsed)
+                    # 대기 동안 새 frame 들이 slot 에 덮였을 수 있음 — 최신 다시 읽기
+                    if self._slot is not None:
+                        payload = self._slot
+                        self._slot = None
+
                 try:
                     await self.ws.send_bytes(payload)
+                    last_send = time.monotonic()
                 except Exception:
                     self._alive = False
                     return
