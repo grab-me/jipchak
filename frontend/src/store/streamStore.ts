@@ -116,6 +116,13 @@ let cancelled = false;
 /** 페이지 마운트 카운트. StrictMode 더블 마운트 / 여러 consumer 동시 호출 대응. */
 let mountCount = 0;
 
+/**
+ * deferred teardown. mountCount → 0 직후 50ms 동안 새 마운트가 들어오면
+ * teardown 자체를 취소. StrictMode 더블 마운트, 라우트 전환 직후 동일 페이지
+ * 재진입에서 WS 가 매번 새로 열리는 churn 을 방지한다.
+ */
+let pendingTeardown: ReturnType<typeof setTimeout> | null = null;
+
 /** 이전 ObjectURL (revoke 대상). 채널별로 따로 관리. */
 let prevFrame2d: string | null = null;
 let prevFrame3d: string | null = null;
@@ -322,8 +329,19 @@ function teardown() {
     cancelled = true;
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     if (detectionStaleTimer) { clearTimeout(detectionStaleTimer); detectionStaleTimer = null; }
-    if (wsInstance && wsInstance.readyState <= WebSocket.OPEN) {
-        wsInstance.close();
+    if (wsInstance) {
+        // 콜백을 먼저 떼서, CONNECTING 상태였던 ws 의 onopen/onclose 가
+        // 나중에 발화해도 store 를 건드리거나 reconnect 를 스케줄하지 않게 한다.
+        wsInstance.onopen = null;
+        wsInstance.onmessage = null;
+        wsInstance.onerror = null;
+        wsInstance.onclose = null;
+        // OPEN 상태에서만 close. CONNECTING 에 close 를 호출하면 브라우저가
+        // "WebSocket is closed before the connection is established." 경고를
+        // 콘솔에 찍는다. 핸들러를 분리했으니 핸드셰이크가 끝나도 무해.
+        if (wsInstance.readyState === WebSocket.OPEN) {
+            wsInstance.close();
+        }
     }
     wsInstance = null;
 
@@ -358,7 +376,12 @@ function teardown() {
 export function useStreamSocket(): void {
     useEffect(() => {
         mountCount += 1;
-        if (mountCount === 1) {
+        // 직전 언마운트의 deferred teardown 이 아직 대기 중이면 취소.
+        if (pendingTeardown) {
+            clearTimeout(pendingTeardown);
+            pendingTeardown = null;
+        }
+        if (!wsInstance) {
             cancelled = false;
             connect();
         }
@@ -366,7 +389,13 @@ export function useStreamSocket(): void {
         return () => {
             mountCount = Math.max(0, mountCount - 1);
             if (mountCount === 0) {
-                teardown();
+                // 즉시 teardown 하지 않고 50ms 유예. StrictMode 더블 마운트나
+                // 같은 페이지로 즉시 재진입하는 라우팅에서 WS 가 매번 끊어졌다
+                // 다시 열리는 churn 을 막는다.
+                pendingTeardown = setTimeout(() => {
+                    pendingTeardown = null;
+                    if (mountCount === 0) teardown();
+                }, 50);
             }
         };
     }, []);
