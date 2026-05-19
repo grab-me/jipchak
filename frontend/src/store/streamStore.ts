@@ -76,6 +76,20 @@ export interface StreamState {
 
     /** 마지막 세션 이벤트. 컴포넌트는 이걸 effect 로 관찰하여 처리한다. */
     lastSessionEvent: SessionEvent | null;
+
+    /**
+     * 마지막 UI 이벤트. 세션과 무관한 단발성 트리거 (모달 인터랙션 / 화면 전환 등).
+     * 같은 이벤트가 연속 도착해도 매번 다른 객체로 setState 되어 effect 가 다시 발화됨.
+     *
+     *   GUIDE              : IDLE 에서 빨강 → 메인 페이지 가이드 모달 호출
+     *   JOY_LEFT / RIGHT   : READY 에서 조이스틱 좌/우 → GameCountModal 옵션 순환
+     *   BACK_TO_HOME       : READY 에서 빨강 → GameCountModal "뒤로" → 메인 페이지
+     *   ROUND_TIMER_START  : PLAYING 에서 조이스틱 첫 입력 → 20초 카운트다운 시작
+     */
+    lastUiEvent: {
+        type: 'GUIDE' | 'JOY_LEFT' | 'JOY_RIGHT' | 'BACK_TO_HOME' | 'ROUND_TIMER_START';
+        ts: number;
+    } | null;
 }
 
 export const useStreamStore = create<StreamState>(() => ({
@@ -86,6 +100,7 @@ export const useStreamStore = create<StreamState>(() => ({
     detections: [],
     graspPose: null,
     lastSessionEvent: null,
+    lastUiEvent: null,
 }));
 
 // ─────────────────────────────────────────
@@ -195,6 +210,17 @@ function connect() {
                             is_caught: msg.is_caught,
                             confidence: msg.confidence,
                         },
+                    });
+                } else if (
+                    msg.event === 'GUIDE' ||
+                    msg.event === 'JOY_LEFT' ||
+                    msg.event === 'JOY_RIGHT' ||
+                    msg.event === 'BACK_TO_HOME' ||
+                    msg.event === 'ROUND_TIMER_START'
+                ) {
+                    // 단발성 UI 이벤트 — ts 매번 갱신해서 같은 type 연속 도착해도 effect 재발화.
+                    useStreamStore.setState({
+                        lastUiEvent: { type: msg.event, ts: Date.now() },
                     });
                 } else if (msg.event === 'SESSION_END') {
                     // 사용자가 POST_GAME 에서 파란 버튼 → 카메라 OFF 로 전환.

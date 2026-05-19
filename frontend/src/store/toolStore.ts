@@ -13,12 +13,16 @@ export interface RecordItem {
 interface ToolState {
   viewType: ToolAreaView;
   qrValue: string;
-  
+
   // 세션 상태 관리
   sessionId: string;
   isSessionActive: boolean;
   records: RecordItem[];
   qrTimer: number;
+
+  // 사용자가 GameCountModal 에서 선택한 판수 (1 / 3 / 5).
+  // addRecord 시 records.length 가 이 값에 도달하면 forceStopGame.
+  maxGames: number;
 
   // 뽑기 프로세스 상태
   isCatching: boolean;
@@ -45,6 +49,8 @@ interface ToolState {
    *   startSession 을 다시 호출하면 records 가 초기화되므로 분리.
    */
   setSessionId: (sessionId: string) => void;
+  /** GameCountModal 에서 사용자가 1/3/5 중 선택 시 호출. */
+  setMaxGames: (max: number) => void;
   addRecord: (record: RecordItem) => void;
   forceStopGame: () => void;
   handleQRConsent: (agreed: boolean) => Promise<void>;
@@ -58,7 +64,7 @@ interface ToolState {
   setAutoStarting: (val: boolean) => void;
 }
 
-const MAX_RECORDS = 5;
+const DEFAULT_MAX_GAMES = 5;
 const QR_TIMEOUT_SECONDS = 60;
 
 /**
@@ -72,6 +78,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   isSessionActive: false,
   records: [],
   qrTimer: 0,
+  maxGames: DEFAULT_MAX_GAMES,
   isCatching: false,
   lastResult: null,
   isAskingNextStep: false,
@@ -103,18 +110,24 @@ export const useToolStore = create<ToolState>((set, get) => ({
     console.log(`[Session] sessionId 갱신: ${prev} → ${sessionId}`);
   },
 
+  // 1-2. GameCountModal 에서 사용자가 1/3/5 선택 시 호출.
+  setMaxGames: (max) => {
+    set({ maxGames: max });
+    console.log(`[Session] maxGames = ${max}`);
+  },
+
   // 2. 게임 한판 끝날 때마다 영상 추가
   addRecord: (record) => {
-    const { isSessionActive, records, forceStopGame } = get();
-    
-    if (!isSessionActive || records.length >= MAX_RECORDS) return;
+    const { isSessionActive, records, maxGames, forceStopGame } = get();
+
+    if (!isSessionActive || records.length >= maxGames) return;
 
     const newRecords = [...records, record];
     set({ records: newRecords });
-    console.log(`[Session] 기록 추가됨: ${newRecords.length} / ${MAX_RECORDS}`);
+    console.log(`[Session] 기록 추가됨: ${newRecords.length} / ${maxGames}`);
 
-    // 최대 개수 도달 시 강제 중지 로직 트리거
-    if (newRecords.length >= MAX_RECORDS) {
+    // 사용자 선택 판수 도달 시 강제 중지 로직 트리거
+    if (newRecords.length >= maxGames) {
       forceStopGame();
     }
   },

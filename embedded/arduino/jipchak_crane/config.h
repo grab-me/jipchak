@@ -10,9 +10,10 @@ const int PIN_JOY_Y_UP    = A2;
 const int PIN_JOY_X_RIGHT = A3;
 
 // --- Button Pins ---
-// 빨강(MAIN) = A5, 파랑(SUB) = A4 — 실측 배선 기준
-const int PIN_BTN_MAIN = A5;
-const int PIN_BTN_SUB  = A4;
+// 역할 스왑: 파랑(A4) = 게임 시작 / 다음 판 (MAIN 의도), 빨강(A5) = 집게 내리기 / 세션 종료 (SUB 의도).
+// 물리 배선 그대로, 코드의 의미만 바뀜.
+const int PIN_BTN_MAIN = A4;
+const int PIN_BTN_SUB  = A5;
 
 // --- Stepper Motor Pins ---
 const int PIN_STEP_X = 2;
@@ -82,5 +83,12 @@ const float DROP_OFF_X_MM = 1.0f;
 const float DROP_OFF_Y_MM = 1.0f;
 
 // --- Game Flow ---
-// PLAYING 상태 진입 후 사용자가 자유 조작 가능한 시간. 만료 시 자동 집기.
-const unsigned long PLAY_TIMEOUT_MS = 15000UL;
+// 조이스틱 첫 입력 후 사용자가 자유 조작 가능한 시간. 만료 시 자동 집기.
+const unsigned long PLAY_TIMEOUT_MS = 20000UL;
+
+// POST_GAME (결과 표시) 후 자동으로 다음 판 PLAYING 진입까지의 대기 시간.
+const unsigned long POST_GAME_TO_PLAYING_MS = 5000UL;
+
+// PLAYING 진입 후 조이스틱 무동작 safety. 이 시간 안에 조이스틱 입력 없으면
+// 사용자 이탈로 판단하고 IDLE 진입 (캠 OFF + 세션 종료).
+const unsigned long PLAYING_IDLE_TIMEOUT_MS = 60000UL;
