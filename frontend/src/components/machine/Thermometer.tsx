@@ -41,8 +41,8 @@ const Thermometer = ({ probability }: ThermometerProps) => {
       className="absolute right-4 bottom-[4%] h-[92%] w-[clamp(30px,4vw,60px)] z-overlay pointer-events-none select-none drop-shadow-lg flex flex-col items-center"
       onContextMenu={(e) => e.preventDefault()} // [컨벤션 147] 우클릭 방지
     >
-      <span className="text-white text-xs font-bold mb-1 tracking-tight" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
-        게이지바
+      <span className="font-bold text-center text-[clamp(10px,1.4vw,16px)] mb-1 select-none [text-shadow:clamp(1px,0.2vw,2.5px)_clamp(1px,0.2vw,2.5px)_0_#1f2937,_-clamp(0.5px,0.15vw,2px)_-clamp(0.5px,0.15vw,2px)_0_#1f2937,clamp(0.5px,0.15vw,2px)_-clamp(0.5px,0.15vw,2px)_0_#1f2937,_-clamp(0.5px,0.15vw,2px)_clamp(0.5px,0.15vw,2px)_0_#1f2937]">
+        게이지
       </span>
       {/* 1. 기둥 (Bar) */}
       <div

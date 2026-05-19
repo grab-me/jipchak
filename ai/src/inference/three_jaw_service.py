@@ -194,9 +194,8 @@ class ThreeJawGraspService:
             PX_PER_MM = 1.0 
             
             # 집게 중심 좌표 보정
-            # 카메라 화면상 집게는 왼쪽(-20mm), 앞으로(-15mm)에 위치함
-            gripper_x = cam_x - (20 * PX_PER_MM)
-            gripper_y = cam_y - (15 * PX_PER_MM)
+            gripper_x = cam_x - (70 * PX_PER_MM)
+            gripper_y = cam_y - (45 * PX_PER_MM)
             
             # 병아리 중심과 '실제 집게 중심' 사이의 거리
             dist = np.sqrt((best.center_x - gripper_x)**2 + (best.center_y - gripper_y)**2)
