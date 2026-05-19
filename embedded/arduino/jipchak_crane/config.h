@@ -89,6 +89,9 @@ const unsigned long PLAY_TIMEOUT_MS = 20000UL;
 // POST_GAME (결과 표시) 후 자동으로 다음 판 PLAYING 진입까지의 대기 시간.
 const unsigned long POST_GAME_TO_PLAYING_MS = 5000UL;
 
+// START 이후 허용할 최대 판수. 기본 2판 고정.
+const int MAX_ROUNDS_PER_SESSION = 2;
+
 // PLAYING 진입 후 조이스틱 무동작 safety. 이 시간 안에 조이스틱 입력 없으면
 // 사용자 이탈로 판단하고 IDLE 진입 (캠 OFF + 세션 종료).
 const unsigned long PLAYING_IDLE_TIMEOUT_MS = 60000UL;

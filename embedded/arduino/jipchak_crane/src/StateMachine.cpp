@@ -34,6 +34,7 @@ StateMachine::StateMachine(
       playStartTime(0),
       playingEnteredTime(0),
       postGameEnteredTime(0),
+      roundsPlayed(0),
       subState(0),
       prevJoyX(0),
       prevJoyY(0) {}
@@ -89,6 +90,7 @@ void StateMachine::update() {
     case IDLE:
         if (input->isBtnMainPressed()) {
             // 파랑 → READY (캠 ON, GameCountModal 표시 시점)
+            roundsPlayed = 0;
             currentState = READY;
         } else if (input->isBtnSubPressed()) {
             // 빨강 → 메인 페이지의 가이드 모달
@@ -209,6 +211,7 @@ void StateMachine::update() {
 
     case RETURN_UP:
         if (motorAuto->isZReachedTarget()) {
+            roundsPlayed += 1;
             postGameEnteredTime = millis();
             currentState = POST_GAME;
         }
@@ -219,7 +222,12 @@ void StateMachine::update() {
     // ────────────────────────────────────────
     case POST_GAME:
         if ((millis() - postGameEnteredTime) >= POST_GAME_TO_PLAYING_MS) {
-            enterPlaying();
+            if (roundsPlayed >= MAX_ROUNDS_PER_SESSION) {
+                // 세션 최대 판수 도달 시 즉시 종료. 이후 조이스틱은 READY/PLAYING에 진입하기 전까지 무효.
+                currentState = IDLE;
+            } else {
+                enterPlaying();
+            }
         }
         // 빨강/파랑 무동작 (Frontend 가 maxGames 도달 시 QR 화면, Arduino safety 는 PLAYING_IDLE_TIMEOUT 으로).
         break;

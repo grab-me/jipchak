@@ -68,6 +68,7 @@ private:
     unsigned long playStartTime;      // 조이스틱 첫 입력 시각 (PLAY_TIMEOUT_MS 타이머용). 0 이면 아직 미입력
     unsigned long playingEnteredTime; // PLAYING 진입 시각 (PLAYING_IDLE_TIMEOUT_MS safety 용)
     unsigned long postGameEnteredTime;// POST_GAME 진입 시각 (POST_GAME_TO_PLAYING_MS 자동 진입 용)
+    int roundsPlayed;                 // 현재 START 세션에서 완료된 판 수
     int subState;                     // 일부 상태에서 단계 진행 캐치용
 
     // 조이스틱 edge detection (READY 의 모달 옵션 순환 / PLAYING 첫 입력 트리거 용)
