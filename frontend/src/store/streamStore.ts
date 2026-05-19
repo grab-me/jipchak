@@ -242,6 +242,31 @@ function connect() {
 
         if (!(event.data instanceof ArrayBuffer)) return;
 
+        // ── frame 도착 통계 (debug) ─────────────────
+        // 1초 윈도우 동안의 frame 도착 수 / 간격 표준편차 / 최대 간격 로그.
+        // 시연 시 콘솔 (F12) 에서 [stream-stat] 줄로 jitter 진단 가능.
+        const _now = performance.now();
+        if (typeof (window as any).__streamStat === 'undefined') {
+            (window as any).__streamStat = { lastTs: _now, intervals: [] as number[], windowStart: _now };
+        }
+        const _stat = (window as any).__streamStat;
+        if (_stat.lastTs > 0) _stat.intervals.push(_now - _stat.lastTs);
+        _stat.lastTs = _now;
+        if (_now - _stat.windowStart >= 1000) {
+            const arr: number[] = _stat.intervals;
+            if (arr.length > 0) {
+                const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
+                const max = Math.max(...arr);
+                const stddev = Math.sqrt(arr.reduce((s, v) => s + (v - avg) ** 2, 0) / arr.length);
+                // fps 평균 / 최대 간격 / jitter (표준편차) / 도착 frame 수
+                console.log(
+                    `[stream-stat] frames=${arr.length} avg=${avg.toFixed(0)}ms max=${max.toFixed(0)}ms jitter(stddev)=${stddev.toFixed(0)}ms`,
+                );
+            }
+            _stat.intervals = [];
+            _stat.windowStart = _now;
+        }
+
         let payload: DecodedPayload;
         try {
             payload = decode(new Uint8Array(event.data)) as DecodedPayload;

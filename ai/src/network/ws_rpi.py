@@ -61,9 +61,9 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
         last_infer_time: float = 0.0
         last_relay_time: float = 0.0
         relay_interval: float = 0.1  # 10fps cap for browser relay
-        # 추론 주기 1초. GPU 환경 (RunPod 등) 에서는 부하 문제 없음.
-        # CPU 환경에서 돌릴 때만 컨테이너 CPU 가 200% 까지 올라가는 점 주의.
-        infer_interval: float = 1.0
+        # 추론 주기 0.5초 (GPU 환경 가정). overlay 갱신 빈도 ↑ → 사용자 체감 반응성 ↑.
+        # CPU 환경에서는 컨테이너 CPU 가 매우 높게 올라가니 주의.
+        infer_interval: float = 0.5
         infer_state = {"running": False}
 
         try:
