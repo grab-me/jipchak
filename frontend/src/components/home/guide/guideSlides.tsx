@@ -31,16 +31,16 @@ export const guideSlides: GuideSlide[] = [
       <>
         <span className="font-black text-yellow-600">Start</span> 클릭 시 플레이 페이지로
         <br></br>
-        <span className="font-black text-yellow-600">Guide</span> 클릭 시 사용법 보여줌
+        <span className="font-black text-yellow-600">Guide</span> 클릭 시 사용법 제공
       </>
     ),
   },
   {
     step: '3',
-    title: '판 개수 선택',
+    title: '연속 플레이 수 선택',
     description: (
       <>
-      1, 3, 5판 중 하나 선택
+      1, 3, 5번 중 하나 선택
       </>
     ),
   },
@@ -49,11 +49,11 @@ export const guideSlides: GuideSlide[] = [
     title: '플레이 페이지',
     description: (
       <>
-        실시간 영상, 집기 확률 확인
+        실시간 영상, <span className="font-black text-green-500">집기 확률 확인</span>
         <br></br>
-        서브 카메라(대각선) 클릭 시
+        <span className="font-black text-red-500">서브 카메라</span> 클릭 시
         <br></br>
-        메인 카메라(탑뷰)와 위치 변경
+        <span className="font-black text-blue-500">메인 카메라</span>와 위치 변경
         <br></br>
         <span className="font-black text-yellow-600">설정</span> 클릭 시 소리 설정
       </>
@@ -64,7 +64,9 @@ export const guideSlides: GuideSlide[] = [
     title: '소리 설정',
     description: (
       <>
-      배경음, 효과음, 안내음 크기 조절
+      배경음, 효과음, 안내음
+      <br></br>
+      크기 조절
       </>
     ),
   },
@@ -75,9 +77,9 @@ export const guideSlides: GuideSlide[] = [
       <>
         선택한 판만큼 플레이하면
         <br></br>
-        한 판 더 할지 선택
+        다운로드 할지 선택
         <br></br>
-        <span className="font-black text-red-500">30초</span> 동안 미 선택 시 자동 종료
+        <span className="font-black text-red-500">30초</span> 동안 미선택 시 자동 종료
       </>
     ),
   },
@@ -86,7 +88,7 @@ export const guideSlides: GuideSlide[] = [
     title: 'QR 코드 생성',
     description: (
       <>
-        <span className="font-black text-yellow-600">그만하기</span>를 고르면
+        <span className="font-black text-yellow-600">다운로드</span>를 고르면
         <br></br>
         <span className="font-black text-yellow-600">QR 코드</span> 생성
         <br></br>
@@ -101,9 +103,9 @@ export const guideSlides: GuideSlide[] = [
       <>
         휴대폰 카메라로 스캔 시
         <br></br>
-        지금까지 저장된 영상 다운로드
+        선택한 수만큼 스트리밍 및 저장
         <br></br>
-        <span className="font-black text-red-500">선택한 판의 수</span>까지만 저장
+        <span className="font-black text-red-500">30분</span> 후 세션 종료
       </>
     ),
   },
