@@ -65,7 +65,9 @@ void StateMachine::startGrabSequence() {
 }
 
 void StateMachine::enterPlaying() {
-    // PLAYING 진입 시 공통: 배출구 복귀 target + 타이머 초기화 + 조이스틱 edge 초기화
+    // PLAYING 진입 시 공통: 집게 열림 보장 + 배출구 복귀 target + 타이머 초기화 + 조이스틱 edge 초기화.
+    // 명시적 open() 으로 매 판 시작 시 열림 상태 보장. Z 하강 시점엔 서보가 이미 위치 도달.
+    claw->open();
     motorAuto->setTarget(DROP_OFF_X_MM, DROP_OFF_Y_MM);
     playStartTime = 0;                    // 조이스틱 첫 입력까지 타이머 정지
     playingEnteredTime = millis();        // safety timeout 기준점
