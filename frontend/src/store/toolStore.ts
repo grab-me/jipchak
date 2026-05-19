@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { sessionService } from '@/services/sessionService';
+import { useStreamStore } from './streamStore';
 
 export type ToolAreaView = 'RECORDS' | 'QR_CONSENT' | 'QR_DISPLAY';
 
@@ -180,6 +181,12 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
   // 6. 세션 초기화 및 홈으로 강제 이동
   resetSession: () => {
+    // Clear stream store frames to prevent auto-start loop on Home page
+    useStreamStore.setState({
+      frame2d: null,
+      frame3d: null,
+    });
+
     set({
       sessionId: '',
       isSessionActive: false,
