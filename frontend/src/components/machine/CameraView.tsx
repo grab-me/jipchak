@@ -47,28 +47,18 @@ const CameraView = ({
   const hasDetection = graspPose !== null || detections.length > 0;
   const currentProbability = hasDetection ? (graspScore ?? 0) * 100 : 0;
 
-<<<<<<< Updated upstream
   // 타이머 작동 상태, 집게 하강 상태, 화면에 표시할 확률값 관리
   const [timerStarted, setTimerStarted] = useState(false);
   const [grabStarted, setGrabStarted] = useState(false);
   const [displayProbability, setDisplayProbability] = useState(0);
-=======
-  // 매 1초 AI 추론마다 detections/graspPose 가 갱신되면 canvas useEffect 가 재실행되어
+
+  // 매 AI 추론마다 detections/graspPose 가 갱신되면 canvas useEffect 가 재실행되어
   // 새 Image() + onload 대기 + redraw 가 frame 그리기와 race → 떨림 / jitter.
-  // 최신 값을 ref 로만 추적하여 useEffect 는 frameUrl/channel 변경 시에만 재실행되게 함.
+  // 최신 값을 ref 로만 추적하여 useEffect 는 frameUrl/channel/grabStarted 변경 시에만 재실행.
   const detectionsRef = useRef(detections);
   const graspPoseRef = useRef(graspPose);
-  const isCatchingRef = useRef(isCatching);
   useEffect(() => { detectionsRef.current = detections; }, [detections]);
   useEffect(() => { graspPoseRef.current = graspPose; }, [graspPose]);
-  useEffect(() => { isCatchingRef.current = isCatching; }, [isCatching]);
-
-  useEffect(() => {
-    if (!isCatching) {
-      lockedScoreRef.current = currentProbability;
-    }
-  }, [currentProbability, isCatching]);
->>>>>>> Stashed changes
 
   const lastUiEvent = useStreamStore((s: StreamState) => s.lastUiEvent);
   const lastStartTs = useRef<number | null>(null);
@@ -222,17 +212,11 @@ const CameraView = ({
       // 4. 렌더링 (3D면 회전된 상태로, 2D면 원본 그대로 출력)
       ctx.drawImage(img, 0, 0, img.width, img.height);
 
-<<<<<<< Updated upstream
-      if (channel === '3d' && !grabStarted) {
-        if (graspPose && graspPose.confidence > 0) {
-=======
       // 최신 detection / graspPose 는 ref 에서 (useEffect 재실행 안 시키려고).
       const curDetections = detectionsRef.current;
       const curGraspPose = graspPoseRef.current;
-      const curIsCatching = isCatchingRef.current;
-      if (channel === '3d' && !curIsCatching) {
+      if (channel === '3d' && !grabStarted) {
         if (curGraspPose && curGraspPose.confidence > 0) {
->>>>>>> Stashed changes
           // AI 결과는 원본 이미지 기준 좌표이므로 원래 크기(img.width, img.height)를 넘겨줌
           drawGraspPose(ctx, curGraspPose, img.width, img.height);
         } else if (curDetections.length > 0) {
@@ -249,14 +233,9 @@ const CameraView = ({
       alive = false;
       img.onload = null;
     };
-<<<<<<< Updated upstream
-  }, [frameUrl, detections, graspPose, channel, grabStarted]);
-=======
-    // detections / graspPose / isCatching 은 ref 로 빼서 dependency 에서 제거.
+    // detections / graspPose 는 ref 로 빼서 dependency 에서 제거.
     // → frame 도착 시에만 redraw, AI 추론 결과 갱신만으론 redraw 안 함 (다음 frame 에 반영).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frameUrl, channel]);
->>>>>>> Stashed changes
+  }, [frameUrl, channel, grabStarted]);
 
   return (
     <div
