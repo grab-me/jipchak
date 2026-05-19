@@ -64,7 +64,7 @@ interface ToolState {
   setAutoStarting: (val: boolean) => void;
 }
 
-const DEFAULT_MAX_GAMES = 5;
+const DEFAULT_MAX_GAMES = 2; // 2판 고정 (GameCountModal 비활성화로 인해 하드코딩)
 const QR_TIMEOUT_SECONDS = 60;
 
 /**

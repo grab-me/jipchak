@@ -30,6 +30,7 @@ const CameraView = ({
     forceStopGame,
     isSessionActive,
     isCatching,
+    setMaxGames,
   } = useToolStore();
 
   const processedRef = useRef<string | null>(null);
@@ -70,6 +71,9 @@ const CameraView = ({
     if (lastSessionEvent.type === 'SESSION_START') {
       const sid = lastSessionEvent.session_id;
       if (!sid) return;
+
+      // GameCountModal 비활성화로 인해 판수를 2판 고정 설정
+      setMaxGames(2);
 
       if (!isSessionActive) {
         startSession(sid);

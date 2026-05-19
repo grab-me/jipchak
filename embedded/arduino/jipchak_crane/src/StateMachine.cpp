@@ -162,7 +162,7 @@ void StateMachine::update() {
     case GRAB_DOWN:
         if (motorAuto->isZReachedTarget()) {
             claw->close();
-            claw->wait(1000);   // 1초 동안 잡은 채로 유지
+            claw->wait(2000);   // 1초 동안 잡은 채로 유지
             currentState = GRAB_CLOSE;
         }
         break;
@@ -195,7 +195,7 @@ void StateMachine::update() {
     case RETURN_DOWN:
         if (motorAuto->isZReachedTarget()) {
             claw->open();
-            claw->wait(500);
+            claw->wait(2000);
             currentState = RETURN_OPEN;
         }
         break;
