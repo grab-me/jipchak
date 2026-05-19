@@ -93,7 +93,7 @@ public class GameLogService {
                 String jsonString = objectMapper.writeValueAsString(dto);
                 String redisKey = "session:" + sessionId;
                 redisTemplate.opsForList().rightPush(redisKey, jsonString);
-                redisTemplate.expire(redisKey, 10, TimeUnit.MINUTES);
+                redisTemplate.expire(redisKey, 3, TimeUnit.MINUTES);
             } catch (Exception e) {
                 log.error("Redis 세션 정보 업데이트 실패: {}", e.getMessage());
             }

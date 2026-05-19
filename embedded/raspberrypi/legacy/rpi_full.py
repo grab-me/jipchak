@@ -39,6 +39,7 @@ import argparse
 import asyncio
 import json
 import signal
+import threading
 import time
 import uuid
 from typing import Optional
@@ -80,7 +81,7 @@ def _install_signal_handlers() -> None:
 # ---------- D435 (pyrealsense2) ----------
 
 class RealSensePipeline:
-    """D435 RGB + Depth 동시 캡처 + align. start/stop 반복 가능."""
+    """D435 RGB + Depth 동시 캡처 + align. start/stop 반복 가능 (멀티스레드 비동기)."""
 
     def __init__(self, width: int, height: int, fps: int) -> None:
         self.width = width
@@ -89,6 +90,12 @@ class RealSensePipeline:
         self.pipeline: Optional[rs.pipeline] = None
         self.align: Optional[rs.align] = None
         self.depth_scale: float = 0.0
+
+        self.latest_color: Optional[np.ndarray] = None
+        self.latest_depth: Optional[np.ndarray] = None
+        self._lock = threading.Lock()
+        self._stop = threading.Event()
+        self._thread: Optional[threading.Thread] = None
 
     def start(self) -> None:
         if self.pipeline is not None:
@@ -103,24 +110,43 @@ class RealSensePipeline:
         self.depth_scale = depth_sensor.get_depth_scale()
         print(f"[d435] started: {self.width}x{self.height} @ {self.fps} fps")
 
+        self._stop.clear()
+        self.latest_color = None
+        self.latest_depth = None
+        self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self._thread.start()
+
+    def _capture_loop(self) -> None:
+        while not self._stop.is_set():
+            if self.pipeline is None:
+                break
+            try:
+                frames = self.pipeline.wait_for_frames(timeout_ms=1000)
+                aligned = self.align.process(frames)
+                color_frame = aligned.get_color_frame()
+                depth_frame = aligned.get_depth_frame()
+                if not color_frame or not depth_frame:
+                    continue
+                color = np.asanyarray(color_frame.get_data())
+                depth = np.asanyarray(depth_frame.get_data())
+                with self._lock:
+                    self.latest_color = color
+                    self.latest_depth = depth
+            except Exception as e:
+                if not self._stop.is_set():
+                    print(f"[d435] capture error: {e}")
+                    time.sleep(0.05)
+
     def get_frames(self):
-        if self.pipeline is None:
-            return None, None
-        try:
-            frames = self.pipeline.wait_for_frames(timeout_ms=1000)
-            aligned = self.align.process(frames)
-            color = aligned.get_color_frame()
-            depth = aligned.get_depth_frame()
-            if not color or not depth:
-                return None, None
-            return np.asanyarray(color.get_data()), np.asanyarray(depth.get_data())
-        except Exception as e:
-            print(f"[d435] frame error: {e}")
-            return None, None
+        with self._lock:
+            return self.latest_color, self.latest_depth
 
     def stop(self) -> None:
         if self.pipeline is None:
             return
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=3)
         try:
             self.pipeline.stop()
         except Exception:
@@ -133,7 +159,7 @@ class RealSensePipeline:
 # ---------- 일반 USB 웹캠 (cv2) ----------
 
 class WebcamCapture:
-    """USB 웹캠. start/stop 반복 가능 (cv2 캡처 객체를 그때마다 재생성)."""
+    """USB 웹캠. start/stop 반복 가능 (멀티스레드 비동기)."""
 
     def __init__(self, device, width: int, height: int, fps: int) -> None:
         self.device = device
@@ -142,6 +168,11 @@ class WebcamCapture:
         self.fps = fps
         self.cap: Optional[cv2.VideoCapture] = None
 
+        self.latest_frame: Optional[np.ndarray] = None
+        self._lock = threading.Lock()
+        self._stop = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+
     def start(self) -> None:
         if self.cap is not None:
             return
@@ -149,6 +180,7 @@ class WebcamCapture:
         if not self.cap.isOpened():
             self.cap = None
             raise RuntimeError(f"webcam open failed (device={self.device})")
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         self.cap.set(cv2.CAP_PROP_FPS, self.fps)
@@ -157,15 +189,32 @@ class WebcamCapture:
         actual_fps = self.cap.get(cv2.CAP_PROP_FPS)
         print(f"[webcam] opened: {actual_w}x{actual_h} @ {actual_fps:.1f} fps (device={self.device})")
 
+        self._stop.clear()
+        self.latest_frame = None
+        self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self._thread.start()
+
+    def _capture_loop(self) -> None:
+        while not self._stop.is_set():
+            if self.cap is None:
+                break
+            ok, frame = self.cap.read()
+            if not ok:
+                time.sleep(0.01)
+                continue
+            with self._lock:
+                self.latest_frame = frame
+
     def read(self):
-        if self.cap is None:
-            return None
-        ok, frame = self.cap.read()
-        return frame if ok else None
+        with self._lock:
+            return self.latest_frame
 
     def release(self) -> None:
         if self.cap is None:
             return
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=3)
         try:
             self.cap.release()
         except Exception:
@@ -398,7 +447,9 @@ async def frame_loop_task(
             continue
 
         webcam_color, d435_color, d435_depth = cam.get_frames()
-        payload = _pack_frame(webcam_color, d435_color, d435_depth, jpeg_q)
+        # 2프레임에 1번만 depth 전송 (대역폭 절감)
+        send_depth = (sent % 2 == 0)
+        payload = _pack_frame(webcam_color, d435_color, d435_depth if send_depth else None, jpeg_q)
         if payload is not None:
             try:
                 async with send_lock:

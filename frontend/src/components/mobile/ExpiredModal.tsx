@@ -40,7 +40,7 @@ const ExpiredModal: React.FC<ExpiredModalProps> = ({ isExpired }) => {
 
             <h2 className="text-[clamp(20px,5vw,26px)] font-bold mb-3 text-crayon-line break-keep text-center">세션이 만료되었습니다</h2>
             <p className="text-[clamp(14px,3.5vw,16px)] text-gray-500 leading-relaxed mb-4 break-keep text-center">
-              보안을 위해 30분이 지난 영상은 서버에서 영구적으로 삭제되었습니다.
+              보안을 위해 시간이 만료된 영상은 영구적으로 삭제됩니다.
             </p>
 
             {/* 버튼은 연결할 곳이 없으므로 삭제됨 */}

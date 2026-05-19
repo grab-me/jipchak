@@ -234,11 +234,7 @@ function drawGraspPose(
   const conf = Math.max(0, Math.min(1, pose.confidence));
 
   const jawCount = 3;
-  const shoulderR = 0;
-  const hingeR = Math.max(26, r * 0.66);
   const tipR = Math.max(34, r * 0.94);
-  const armWidth = Math.max(2.5, r * 0.0525);
-  const tipWidth = Math.max(3.5, r * 0.06);
   const hookDepth = Math.max(10, r * 0.18);
 
   ctx.save();
@@ -250,9 +246,8 @@ function drawGraspPose(
 
   for (let i = 0; i < jawCount; i++) {
     const angle = baseAngle + (i * Math.PI * 2) / jawCount;
-    drawCraneJaw(ctx, cx, cy, angle, shoulderR, hingeR, tipR, armWidth, tipWidth, hookDepth);
 
-    // 3발의 집게 위치를 점선 원 위에 찍어주기
+    // 3발의 집게 위치를 점선 원 위에 찍어주기 (흰색 날개 그리기는 제외)
     const jawX = cx + Math.cos(angle) * outerRadius;
     const jawY = cy + Math.sin(angle) * outerRadius;
     ctx.beginPath();
@@ -291,87 +286,6 @@ function drawOuterGuide(
   ctx.setLineDash([12, 10]);
   ctx.stroke();
   ctx.setLineDash([]);
-}
-
-function drawCraneJaw(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  angle: number,
-  shoulderR: number,
-  hingeR: number,
-  tipR: number,
-  armWidth: number,
-  tipWidth: number,
-  hookDepth: number,
-): void {
-  const ux = Math.cos(angle);
-  const uy = Math.sin(angle);
-  const px = -uy;
-  const py = ux;
-  const bend = hookDepth * 0.48;
-
-  const shoulder = point(cx, cy, ux, uy, shoulderR);
-  const hinge = point(cx, cy, ux, uy, hingeR);
-  const tipBase = point(cx, cy, ux, uy, tipR);
-  const tip = {
-    x: tipBase.x - ux * hookDepth + px * bend,
-    y: tipBase.y - uy * hookDepth + py * bend,
-  };
-
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-
-  ctx.beginPath();
-  ctx.moveTo(shoulder.x, shoulder.y);
-  ctx.quadraticCurveTo(
-    cx + ux * ((shoulderR + hingeR) / 2) + px * bend * 0.28,
-    cy + uy * ((shoulderR + hingeR) / 2) + py * bend * 0.28,
-    hinge.x,
-    hinge.y,
-  );
-  ctx.quadraticCurveTo(
-    cx + ux * ((hingeR + tipR) / 2) - px * bend * 0.1,
-    cy + uy * ((hingeR + tipR) / 2) - py * bend * 0.1,
-    tipBase.x,
-    tipBase.y,
-  );
-  ctx.strokeStyle = 'rgba(154, 198, 226, 0.94)';
-  ctx.lineWidth = armWidth;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(tipBase.x, tipBase.y);
-  ctx.quadraticCurveTo(
-    tipBase.x - ux * hookDepth * 0.42 + px * bend * 0.2,
-    tipBase.y - uy * hookDepth * 0.42 + py * bend * 0.2,
-    tip.x,
-    tip.y,
-  );
-  ctx.strokeStyle = 'rgba(154, 198, 226, 0.94)';
-  ctx.lineWidth = tipWidth;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(hinge.x, hinge.y, Math.max(3.5, armWidth * 0.52), 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(63, 93, 116, 0.96)';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(235, 246, 255, 0.9)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-}
-
-function point(
-  cx: number,
-  cy: number,
-  ux: number,
-  uy: number,
-  distance: number,
-): { x: number; y: number } {
-  return {
-    x: cx + ux * distance,
-    y: cy + uy * distance,
-  };
 }
 
 function drawDetections(

@@ -49,13 +49,13 @@ const float MAX_SPEED_Z = 300.0;
 const float ACCELERATION_Z = 50000.0; // Z축 등속도를 위해 가속도 무한대 설정
 
 // Z-axis movement steps
-const int Z_MOVE_STEPS_DOWN = 640;
+const int Z_MOVE_STEPS_DOWN = 680;
 const int Z_MOVE_STEPS_UP = 670;
 
 // 부팅 시 Z 를 위로 올리기 위한 stroke.
 // 게임 한 판 stroke (670) 보다 약간 크게 잡아 자중으로 더 떨어진 케이스 흡수.
 // 도달 못 해도 MOTOR_READY 에서 stepperZ.run() 계속 호출되어 끝까지 진행.
-const int Z_HOMING_UP_STEPS = 640;
+const int Z_HOMING_UP_STEPS = 680;
 
 // --- Conversion & Homing Configuration ---
 const float STEPS_PER_MM_X = 80.0f;

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RestController
@@ -23,8 +24,18 @@ public class SessionController {
     private final ObjectMapper objectMapper;
 
     @GetMapping("/{sessionId}/videos")
-    public ResponseEntity<List<SessionVideoDto>> getSessionVideos(@PathVariable String sessionId) {
+    public ResponseEntity<Map<String, Object>> getSessionVideos(@PathVariable String sessionId) {
         String redisKey = "session:" + sessionId;
+        Boolean exists = redisTemplate.hasKey(redisKey);
+        if (exists == null || !exists) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Long ttl = redisTemplate.getExpire(redisKey, TimeUnit.SECONDS);
+        if (ttl == null || ttl < 0) {
+            ttl = 0L;
+        }
+
         List<String> jsonStrings = redisTemplate.opsForList().range(redisKey, 0, -1);
         List<SessionVideoDto> videos = new ArrayList<>();
 
@@ -39,7 +50,10 @@ public class SessionController {
             }
         }
 
-        return ResponseEntity.ok(videos);
+        return ResponseEntity.ok(Map.of(
+            "timeLeft", ttl,
+            "videos", videos
+        ));
     }
 
     @PostMapping("/qr")
