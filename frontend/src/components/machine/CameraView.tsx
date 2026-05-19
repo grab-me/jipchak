@@ -155,8 +155,8 @@ const CameraView = ({
       if (channel === '3d') {
         // 1. 캔버스 중심으로 원점 이동
         ctx.translate(cw / 2, ch / 2);
-        // 2. 시계방향 90도 회전
-        ctx.rotate((90 * Math.PI) / 180);
+        // 2. 반시계방향 90도 회전
+        ctx.rotate((-90 * Math.PI) / 180);
         // 3. 원본 이미지 중심을 원점(0,0)에 맞추기 위해 이동
         ctx.translate(-img.width / 2, -img.height / 2);
       }
@@ -265,10 +265,10 @@ function drawGraspPose(
 
   // 중심에 집게로 인형을 뽑을 확률 수치 표시
   ctx.fillStyle = 'white';
-  ctx.font = 'bold 16px Arial';
+  ctx.font = 'bold 80px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(`${(pose.confidence * 100).toFixed(0)}`, cx, cy - 14);
+  ctx.fillText(`${(pose.confidence * 100).toFixed(0)}`, cx, cy);
 
   ctx.restore();
 }
