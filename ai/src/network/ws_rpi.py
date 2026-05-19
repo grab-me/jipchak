@@ -4,6 +4,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
+import msgpack
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..session_manager import SessionManager
@@ -84,11 +85,11 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
                 if not payload:
                     continue
 
-                # ① 브라우저로 릴레이 (FPS 제한 + fire-and-forget)
+                # ① 브라우저로 릴레이 (FPS 제한 + fire-and-forget + depth 제거로 대역폭 최적화)
                 now = time.monotonic()
                 if now - last_relay_time >= relay_interval:
                     last_relay_time = now
-                    asyncio.create_task(relay_hub.broadcast(payload))
+                    asyncio.create_task(_relay_without_depth(relay_hub, payload))
 
                 # ② 프레임 디코딩 + 녹화를 백그라운드 스레드에서 실행 (이벤트 루프 논블로킹)
                 if current_session is not None:
@@ -204,3 +205,21 @@ async def _apply_control(
 
     print(f"[ws_rpi] unknown control: {data}")
     return current_session
+
+
+async def _relay_without_depth(relay_hub: RelayHub, payload_bytes: bytes) -> None:
+    try:
+        # msgpack 디코딩 (이미지 디코딩 없이 키/값만 파싱하므로 매우 빠름)
+        data = msgpack.unpackb(payload_bytes, raw=True)
+        if isinstance(data, dict):
+            # depth 관련 키 제거
+            data.pop(b"depth_3d", None)
+            data.pop(b"depth_3d_shape", None)
+            # 재인코딩 후 브라우저로 릴레이
+            lean_payload = msgpack.packb(data)
+            await relay_hub.broadcast(lean_payload)
+        else:
+            await relay_hub.broadcast(payload_bytes)
+    except Exception as e:
+        print(f"[ws_rpi] failed to strip depth: {e}")
+        await relay_hub.broadcast(payload_bytes)
