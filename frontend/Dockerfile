@@ -9,6 +9,10 @@ WORKDIR /app
 ARG VITE_ADMIN_PASSWORD=
 ENV VITE_ADMIN_PASSWORD=${VITE_ADMIN_PASSWORD}
 
+# WebSocket stream endpoint — 절대 URL 이면 외부 도메인 (예: RunPod), 상대 경로 ('/ws/stream') 이면 nginx proxy 경유.
+ARG VITE_WS_STREAM_PATH=/ws/stream
+ENV VITE_WS_STREAM_PATH=${VITE_WS_STREAM_PATH}
+
 # npm 버전을 특정 버전으로 고정
 RUN npm install -g npm@11.6.2
 

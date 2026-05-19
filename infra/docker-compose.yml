@@ -132,6 +132,9 @@ services:
       args:
         # Vite 빌드 시점에 번들에 박히는 변수들 (런타임 주입 불가)
         VITE_ADMIN_PASSWORD: ${VITE_ADMIN_PASSWORD}
+        # WS stream endpoint — RunPod 등 외부 AI 서버 가리킬 때 절대 URL 로 (예: wss://xxx-8000.proxy.runpod.net/ws/stream).
+        # 미설정 시 default '/ws/stream' (nginx proxy 경유).
+        VITE_WS_STREAM_PATH: ${VITE_WS_STREAM_PATH:-/ws/stream}
     container_name: frontend-jipchak
     restart: on-failure
     # 호스트 외부 노출 차단. nginx 가 docker network 로 직접 호출.
