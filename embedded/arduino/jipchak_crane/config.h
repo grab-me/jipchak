@@ -71,9 +71,9 @@ const long HOMING_TRAVEL_STEPS_Y = -10000;
 // --- Auto Target Safety Limits (mm) ---
 // 호밍 후 (0,0) = 좌하단(배출구) → 작업영역은 X+, Y+ 방향으로 펼쳐짐.
 // 실제 작업영역 측정 전까지 보수적 값으로 설정 (대각선 ~40mm 정도만 허용).
-const float AUTO_TARGET_X_MIN_MM = -10.0f;
+const float AUTO_TARGET_X_MIN_MM = 0.0f;
 const float AUTO_TARGET_X_MAX_MM = 40.0f;
-const float AUTO_TARGET_Y_MIN_MM = -10.0f;
+const float AUTO_TARGET_Y_MIN_MM = 0.0f;
 const float AUTO_TARGET_Y_MAX_MM = 40.0f;
 
 // --- Drop-off Position (mm) ---
