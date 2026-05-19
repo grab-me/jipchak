@@ -44,6 +44,9 @@ void StateMachine::init() {
     motor->init();
     claw->init();
     input->init();
+    // 부팅 직후 3초 쿨다운 적용. millis() 0 기준이면 부팅 직후 가드가
+    // 통과되어 손에 닿은 버튼이 즉시 READY 진입을 트리거할 수 있다.
+    idleEnteredTime = millis();
 }
 
 bool StateMachine::isPlayingTimeout() const {
@@ -169,7 +172,7 @@ void StateMachine::update() {
     case GRAB_DOWN:
         if (motorAuto->isZReachedTarget()) {
             claw->close();
-            claw->wait(2000);   // 1초 동안 잡은 채로 유지
+            claw->wait(2000);   // 2초 동안 잡은 채로 유지
             currentState = GRAB_CLOSE;
         }
         break;
