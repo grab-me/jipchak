@@ -29,7 +29,7 @@ GRCONVNET_CHECKPOINT = os.getenv(
 GRASP_DEVICE = os.getenv("GRASP_DEVICE", "cpu")
 
 # Object Detection (SSDLite)
-DETECTION_ENABLED = os.getenv("DETECTION_ENABLED", "true").lower() == "true"
+DETECTION_ENABLED = False  # 무조건 비활성화 (기존: os.getenv("DETECTION_ENABLED", "true").lower() == "true")
 DETECTION_THRESHOLD = float(os.getenv("DETECTION_THRESHOLD", "0.35"))
 DETECTION_TARGET_LABELS = [
     int(x) for x in os.getenv("DETECTION_TARGET_LABELS", "88").split(",") if x.strip()

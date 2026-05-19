@@ -61,11 +61,10 @@ class Yolo26sSegWrapper:
                 total_area = h * w
 
                 for i in range(len(masks)):
-                    # 1. 클래스 체크: 0번(병아리)만 (주석 처리하여 모든 클래스를 임시로 허용)
-                    # 새로 학습한 모델의 클래스 ID가 0이 아닐 수 있습니다.
-                    # if int(classes[i]) != 0:
-                    #     print(f"[Yolo26sSeg] dropped: cls={int(classes[i])} != 0 (conf={confs[i]:.2f})")
-                    #     continue
+                    # 1. 클래스 체크: 0번(병아리)만 허용
+                    if int(classes[i]) != 0:
+                        print(f"[Yolo26sSeg] dropped: cls={int(classes[i])} != 0 (conf={confs[i]:.2f})")
+                        continue
                     print(f"[Yolo26sSeg] accepted: cls={int(classes[i])} (conf={confs[i]:.2f})") # 어떤 클래스가 잡히는지 확인용 로그
 
                     # 2. bbox area ratio filtering
@@ -195,9 +194,9 @@ class ThreeJawGraspService:
             PX_PER_MM = 1.0 
             
             # 집게 중심 좌표 보정
-            # 카메라가 집게보다 오른쪽으로 90mm 있으므로, 카메라 화면상 집게는 왼쪽(-90mm)에 위치함
-            gripper_x = cam_x - (90 * PX_PER_MM)
-            gripper_y = cam_y  # 앞뒤 단차(Y축)에 대한 언급이 없으므로 일단 중앙(0)으로 둡니다
+            # 카메라 화면상 집게는 왼쪽(-20mm), 앞으로(-15mm)에 위치함
+            gripper_x = cam_x - (20 * PX_PER_MM)
+            gripper_y = cam_y - (15 * PX_PER_MM)
             
             # 병아리 중심과 '실제 집게 중심' 사이의 거리
             dist = np.sqrt((best.center_x - gripper_x)**2 + (best.center_y - gripper_y)**2)

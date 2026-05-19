@@ -29,6 +29,7 @@ const CameraView = ({
     setSessionId,
     forceStopGame,
     isSessionActive,
+    isCatching,
   } = useToolStore();
 
   const processedRef = useRef<string | null>(null);
@@ -42,6 +43,18 @@ const CameraView = ({
   const detections = useStreamStore((s: StreamState) => s.detections);
   const graspPose = useStreamStore((s: StreamState) => s.graspPose);
   const lastSessionEvent = useStreamStore((s: StreamState) => s.lastSessionEvent);
+
+  const hasDetection = graspPose !== null || detections.length > 0;
+  const currentProbability = hasDetection ? (graspScore ?? 0) * 100 : 0;
+  const lockedScoreRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!isCatching) {
+      lockedScoreRef.current = currentProbability;
+    }
+  }, [currentProbability, isCatching]);
+
+  const displayProbability = isCatching ? lockedScoreRef.current : currentProbability;
 
   useEffect(() => {
     latestFrameRef.current = frameUrl ?? null;
@@ -129,19 +142,38 @@ const CameraView = ({
     img.onload = () => {
       if (!alive) return;
 
-      if (canvas.width !== img.width) canvas.width = img.width;
-      if (canvas.height !== img.height) canvas.height = img.height;
+      // D435(3D)일 때만 시계방향 90도 회전을 위해 가로/세로 길이를 스왑
+      const cw = channel === '3d' ? img.height : img.width;
+      const ch = channel === '3d' ? img.width : img.height;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      if (canvas.width !== cw) canvas.width = cw;
+      if (canvas.height !== ch) canvas.height = ch;
 
+      ctx.clearRect(0, 0, cw, ch);
+
+      ctx.save();
       if (channel === '3d') {
+        // 1. 캔버스 중심으로 원점 이동
+        ctx.translate(cw / 2, ch / 2);
+        // 2. 시계방향 90도 회전
+        ctx.rotate((90 * Math.PI) / 180);
+        // 3. 원본 이미지 중심을 원점(0,0)에 맞추기 위해 이동
+        ctx.translate(-img.width / 2, -img.height / 2);
+      }
+
+      // 4. 렌더링 (3D면 회전된 상태로, 2D면 원본 그대로 출력)
+      ctx.drawImage(img, 0, 0, img.width, img.height);
+
+      if (channel === '3d' && !isCatching) {
         if (graspPose && graspPose.confidence > 0) {
-          drawGraspPose(ctx, graspPose, canvas.width, canvas.height);
+          // AI 결과는 원본 이미지 기준 좌표이므로 원래 크기(img.width, img.height)를 넘겨줌
+          drawGraspPose(ctx, graspPose, img.width, img.height);
         } else if (detections.length > 0) {
           drawDetections(ctx, detections);
         }
       }
+
+      ctx.restore();
     };
 
     img.src = frameUrl;
@@ -150,7 +182,7 @@ const CameraView = ({
       alive = false;
       img.onload = null;
     };
-  }, [frameUrl, detections, graspPose, channel]);
+  }, [frameUrl, detections, graspPose, channel, isCatching]);
 
   return (
     <div
@@ -176,73 +208,11 @@ const CameraView = ({
         title={connected ? 'WS connected' : 'WS disconnected'}
       />
 
-      {isMainView && <Thermometer probability={(graspScore ?? 0) * 100} />}
+      {isMainView && <Thermometer probability={displayProbability} />}
     </div>
   );
 };
 
-function drawStar(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  outerR: number,
-  innerR: number,
-  spikes = 5,
-): void {
-  const step = Math.PI / spikes;
-  let angle = -Math.PI / 2;
-
-  ctx.beginPath();
-  ctx.moveTo(x + Math.cos(angle) * outerR, y + Math.sin(angle) * outerR);
-
-  for (let i = 0; i < spikes; i++) {
-    ctx.lineTo(x + Math.cos(angle) * outerR, y + Math.sin(angle) * outerR);
-    angle += step;
-    ctx.lineTo(x + Math.cos(angle) * innerR, y + Math.sin(angle) * innerR);
-    angle += step;
-  }
-
-  ctx.closePath();
-  ctx.fillStyle = '#FFEB3B';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 140, 0, 0.95)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-}
-
-function drawProbabilityGauge(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  radius: number,
-  confidence: number,
-): void {
-  const maxConf = 0.9;
-  const progress = Math.min(confidence / maxConf, 1);
-  const hue = progress * 120;
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-  ctx.lineWidth = 8;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
-  ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-  ctx.lineWidth = 8;
-  ctx.lineCap = 'round';
-  ctx.shadowBlur = 14;
-  ctx.shadowColor = `hsl(${hue}, 100%, 55%)`;
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-
-  ctx.fillStyle = 'white';
-  ctx.font = 'bold 12px Arial';
-  ctx.textAlign = 'center';
-  ctx.fillText(`${(confidence * 100).toFixed(0)}%`, cx, cy + radius + 18);
-  ctx.textAlign = 'left';
-}
 
 function drawGraspPose(
   ctx: CanvasRenderingContext2D,
@@ -271,21 +241,36 @@ function drawGraspPose(
   ctx.shadowBlur = 10;
   ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
 
-  drawOuterGuide(ctx, cx, cy, tipR + hookDepth * 0.35, conf);
+  const outerRadius = tipR + hookDepth * 0.35;
+  drawOuterGuide(ctx, cx, cy, outerRadius, conf);
 
   for (let i = 0; i < jawCount; i++) {
     const angle = baseAngle + (i * Math.PI * 2) / jawCount;
     drawCraneJaw(ctx, cx, cy, angle, shoulderR, hingeR, tipR, armWidth, tipWidth, hookDepth);
+
+    // 3발의 집게 위치를 점선 원 위에 찍어주기
+    const jawX = cx + Math.cos(angle) * outerRadius;
+    const jawY = cy + Math.sin(angle) * outerRadius;
+    ctx.beginPath();
+    ctx.arc(jawX, jawY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'red';
+    ctx.fill();
   }
 
-  ctx.restore();
+  // 집게 중심에 아주 작은 빨간색 원
+  ctx.beginPath();
+  ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+  ctx.fillStyle = 'red';
+  ctx.fill();
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  ctx.fillRect(8, 8, 160, 28);
+  // 중심에 집게로 인형을 뽑을 확률 수치 표시
   ctx.fillStyle = 'white';
-  ctx.font = 'bold 14px Arial';
-  ctx.textAlign = 'left';
-  ctx.fillText(`AI Score: ${(pose.confidence * 100).toFixed(1)}%`, 14, 27);
+  ctx.font = 'bold 16px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${(pose.confidence * 100).toFixed(0)}`, cx, cy - 14);
+
+  ctx.restore();
 }
 
 function drawOuterGuide(
@@ -298,8 +283,8 @@ function drawOuterGuide(
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.strokeStyle = getThermometerColor(confidence, 0.72);
-  ctx.lineWidth = 2;
-  ctx.setLineDash([8, 7]);
+  ctx.lineWidth = 4;
+  ctx.setLineDash([12, 10]);
   ctx.stroke();
   ctx.setLineDash([]);
 }
@@ -359,7 +344,7 @@ function drawCraneJaw(
     tip.x,
     tip.y,
   );
-  ctx.strokeStyle = 'rgba(238, 248, 255, 0.98)';
+  ctx.strokeStyle = 'rgba(154, 198, 226, 0.94)';
   ctx.lineWidth = tipWidth;
   ctx.stroke();
 
@@ -427,12 +412,13 @@ function drawDetections(
 
   if (Array.isArray(best.grasp_center_px) && best.grasp_center_px.length >= 2) {
     const [gx, gy] = best.grasp_center_px as [number, number];
-    const [xmin, ymin, xmax, ymax] = best.bbox;
-    const bboxR = Math.max(xmax - xmin, ymax - ymin) / 2;
-    const gaugeR = Math.min(bboxR + 10, 80);
-
-    drawProbabilityGauge(ctx, gx, gy, gaugeR, best.grasp_confidence);
-    drawStar(ctx, gx, gy, 14, 7);
+    ctx.beginPath();
+    ctx.arc(gx, gy, 6, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 50, 50, 0.9)';
+    ctx.fill();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
