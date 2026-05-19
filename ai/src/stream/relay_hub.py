@@ -1,96 +1,142 @@
 import asyncio
-from typing import Set
+from typing import Dict, Optional
 
 from fastapi import WebSocket
 
 
+class ClientChannel:
+    """
+    한 브라우저 client 별 전용 채널.
+
+    핵심 — **latest frame only** 정책:
+      - producer (broadcast) 는 `offer(payload)` 로 최신 payload 만 슬롯에 덮어씀.
+      - consumer (worker coroutine) 는 슬롯에서 가장 최근 frame 을 꺼내 ws.send_bytes.
+      - 한 client 의 네트워크가 느려도 옛 frame 은 자동 drop → latency 누적 안 됨.
+    """
+
+    def __init__(self, ws: WebSocket) -> None:
+        self.ws = ws
+        self._slot: Optional[bytes] = None
+        self._event = asyncio.Event()
+        self._alive = True
+        self._worker_task: Optional[asyncio.Task] = None
+
+    def offer(self, payload: bytes) -> None:
+        """Producer 가 호출. 옛 frame 은 덮어써짐 (drop)."""
+        self._slot = payload
+        self._event.set()
+
+    async def start(self) -> None:
+        self._worker_task = asyncio.create_task(self._worker())
+
+    async def stop(self) -> None:
+        self._alive = False
+        self._event.set()
+        if self._worker_task is not None:
+            try:
+                await asyncio.wait_for(self._worker_task, timeout=1.0)
+            except (asyncio.TimeoutError, Exception):
+                self._worker_task.cancel()
+
+    @property
+    def alive(self) -> bool:
+        return self._alive
+
+    async def _worker(self) -> None:
+        """소비자 루프 — 슬롯에 payload 가 있을 때만 send."""
+        try:
+            while self._alive:
+                await self._event.wait()
+                self._event.clear()
+                payload = self._slot
+                self._slot = None
+                if payload is None:
+                    continue
+                try:
+                    await self.ws.send_bytes(payload)
+                except Exception:
+                    self._alive = False
+                    return
+        except asyncio.CancelledError:
+            return
+
+
 class RelayHub:
     """
-    RPi에서 받은 영상을 구독 중인 브라우저(WebSocket)들에게 fan-out 한다.
+    RPi 영상을 브라우저 구독자들에게 fan-out.
 
-    - subscribe()로 새 브라우저 연결을 등록
-    - unsubscribe()로 끊긴 브라우저 제거
-    - broadcast()로 한 프레임을 전체 구독자에게 즉시 송신
-    - 송신 실패한 클라이언트는 자동 정리 (느린 클라이언트가 전체를 막지 않게)
+    구조:
+      - subscribe()/unsubscribe() 로 client 등록/해제
+      - broadcast(payload) 는 각 client 의 channel.offer() 만 호출 (즉시 return)
+      - 각 client 는 전용 worker 가 자기 속도로 latest frame 만 send
+      - 한 client 가 느려도 다른 client 영향 X, latency 누적 X
     """
 
     def __init__(self) -> None:
-        self._clients: Set[WebSocket] = set()
+        self._clients: Dict[WebSocket, ClientChannel] = {}
         self._lock = asyncio.Lock()
 
     async def subscribe(self, ws: WebSocket) -> None:
         async with self._lock:
-            self._clients.add(ws)
+            if ws in self._clients:
+                return
+            channel = ClientChannel(ws)
+            self._clients[ws] = channel
+        await channel.start()
         print(f"[RelayHub] subscribed (total={len(self._clients)})")
 
     async def unsubscribe(self, ws: WebSocket) -> None:
         async with self._lock:
-            self._clients.discard(ws)
+            channel = self._clients.pop(ws, None)
+        if channel is not None:
+            await channel.stop()
         print(f"[RelayHub] unsubscribed (total={len(self._clients)})")
 
     async def broadcast(self, payload: bytes) -> None:
+        """RPi 가 보낸 frame 을 모든 channel 에 offer (즉시 return).
+
+        실제 네트워크 send 는 각 channel worker 가 비동기 처리. 옛 frame 은 자동 drop.
+        """
         if not self._clients:
             return
 
-        # 송신 중 set이 변경되지 않게 스냅샷
+        dead: list = []
         async with self._lock:
-            targets = list(self._clients)
+            channels = list(self._clients.items())
+        for ws, channel in channels:
+            if channel.alive:
+                channel.offer(payload)
+            else:
+                dead.append(ws)
 
-        # 모든 클라이언트에 동시 송신, 실패한 것만 수거
-        results = await asyncio.gather(
-            *[self._safe_send(ws, payload) for ws in targets],
-            return_exceptions=False,
-        )
-        dead = [ws for ws, ok in zip(targets, results) if not ok]
         if dead:
             async with self._lock:
                 for ws in dead:
-                    self._clients.discard(ws)
+                    ch = self._clients.pop(ws, None)
+                    if ch is not None:
+                        await ch.stop()
             print(f"[RelayHub] cleaned {len(dead)} dead client(s)")
 
     async def broadcast_text(self, data: bytes) -> None:
-        """텍스트(JSON) 메시지를 모든 브라우저 구독자에게 전송."""
+        """텍스트(JSON) 이벤트 — 영상 frame 보다 훨씬 작아 buffer 누적 위험 X.
+        그래도 dead client 정리 위해 try/except 로 직접 send.
+        """
         if not self._clients:
             return
         async with self._lock:
-            targets = list(self._clients)
-        results = await asyncio.gather(
-            *[self._safe_send_text(ws, data) for ws in targets],
-            return_exceptions=False,
-        )
-        dead = [ws for ws, ok in zip(targets, results) if not ok]
+            targets = list(self._clients.keys())
+        dead: list = []
+        for ws in targets:
+            try:
+                await ws.send_text(data.decode())
+            except Exception:
+                dead.append(ws)
         if dead:
             async with self._lock:
                 for ws in dead:
-                    self._clients.discard(ws)
-
-    # frame 단위 send timeout. 느린 client (대역폭 부족) 가 backpressure 로
-    # 다음 frame 들 queue 에 누적시키면 영상 latency 가 무한 증가한다.
-    # 일정 시간 안에 못 보낸 frame 은 skip (jitter 발생하지만 latency 누적은 방지).
-    _SEND_TIMEOUT_S = 0.1
-
-    @staticmethod
-    async def _safe_send(ws: WebSocket, payload: bytes) -> bool:
-        try:
-            await asyncio.wait_for(ws.send_bytes(payload), timeout=RelayHub._SEND_TIMEOUT_S)
-            return True
-        except asyncio.TimeoutError:
-            # 이 frame 만 skip — 클라이언트는 유지. 다음 frame 부터 fresh.
-            # latency 누적 방지가 핵심 (영상 끊김 < 영상 1초 늦음).
-            return True
-        except Exception:
-            return False
-
-    @staticmethod
-    async def _safe_send_text(ws: WebSocket, data: bytes) -> bool:
-        try:
-            await asyncio.wait_for(ws.send_text(data.decode()), timeout=RelayHub._SEND_TIMEOUT_S)
-            return True
-        except asyncio.TimeoutError:
-            # 이벤트 메시지는 짧으니 timeout 거의 안 일어남. 일어나면 skip.
-            return True
-        except Exception:
-            return False
+                    ch = self._clients.pop(ws, None)
+                    if ch is not None:
+                        await ch.stop()
 
     @property
     def subscriber_count(self) -> int:
