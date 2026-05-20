@@ -219,14 +219,18 @@ async def _apply_control(
 
 async def _relay_without_depth(relay_hub: RelayHub, payload_bytes: bytes) -> None:
     try:
-        # msgpack 디코딩 (이미지 디코딩 없이 키/값만 파싱하므로 매우 빠름)
+        # raw=True 로 unpack 하면 string key 가 bytes 로 변환되어 브라우저의
+        # @msgpack/msgpack decode 결과에서 payload.color_2d 같은 접근이 깨진다.
+        # → key 만 다시 string 으로 변환 후 packb 한다. JPEG bytes(value) 는 그대로 유지.
         data = msgpack.unpackb(payload_bytes, raw=True)
         if isinstance(data, dict):
-            # depth 관련 키 제거
-            data.pop(b"depth_3d", None)
-            data.pop(b"depth_3d_shape", None)
-            # 재인코딩 후 브라우저로 릴레이
-            lean_payload = msgpack.packb(data)
+            normalized = {
+                (k.decode() if isinstance(k, (bytes, bytearray)) else k): v
+                for k, v in data.items()
+            }
+            normalized.pop("depth_3d", None)
+            normalized.pop("depth_3d_shape", None)
+            lean_payload = msgpack.packb(normalized)
             await relay_hub.broadcast(lean_payload)
         else:
             await relay_hub.broadcast(payload_bytes)
