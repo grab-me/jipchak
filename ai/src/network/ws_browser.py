@@ -10,13 +10,14 @@ from ..stream.relay_hub import RelayHub
 
 def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRouter:
     """
-    React 브라우저용 WebSocket 엔드포인트.
+    React 브라우저 클라이언트 WebSocket 핸들러.
 
     수신:
-      - 텍스트 `{"event":"REQUEST_START"}` : 브라우저 시작 버튼. 활성 세션 없으면
-        새 session_id 발급 후 SESSION_START broadcast. 이미 있으면 START_REJECTED 회신.
+      - 텍스트 `{"event":"REQUEST_START"}` : 브라우저 시작 버튼.
+        활성 세션이 없으면 새 session_id 발급 후 SESSION_START broadcast.
+        활성 세션이 있으면 기존 session_id로 SESSION_START 회신.
 
-    송신: msgpack 프레임 + JSON 이벤트 (RelayHub fan-out).
+    송신: msgpack 프레임 + JSON 이벤트(RelayHub fan-out).
     """
     router = APIRouter()
 
@@ -57,12 +58,12 @@ async def _handle_request_start(
 ) -> None:
     active = session_manager.get_active_session_id()
     if active is not None:
-        # 다른 노트북/탭에서 이미 진행 중. 요청 보낸 브라우저에만 거부 알림.
+        # 진행 중 세션이 있으면 거절하지 않고 그 세션으로 합류시킨다.
         try:
             await ws.send_text(json.dumps({
-                "event": "START_REJECTED",
-                "reason": "session_in_progress",
-                "active_session_id": active,
+                "event": "SESSION_START",
+                "session_id": active,
+                "reused": True,
             }))
         except Exception:
             pass

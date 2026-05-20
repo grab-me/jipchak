@@ -11,7 +11,7 @@ import { SOUND_ASSETS } from '@/constants/soundConfig';
 
 const Home = () => {
   const navigate = useNavigate();
-  const { isAutoStarting, setAutoStarting } = useToolStore();
+  const { isAutoStarting, setAutoStarting, startSession } = useToolStore();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const { playSfx } = useAudio();
 
@@ -37,10 +37,13 @@ const Home = () => {
     if (lastSessionEvent?.type !== 'SESSION_START') return;
     const sid = lastSessionEvent.session_id;
     if (!sid) return;
+    // PlayGround 진입 가드(isSessionActive)에 걸리지 않도록
+    // 라우팅 전에 세션 활성화를 먼저 보장한다.
+    startSession(sid);
     if (navigatedRef.current === sid) return;
     navigatedRef.current = sid;
     navigate('/play');
-  }, [lastSessionEvent, navigate]);
+  }, [lastSessionEvent, navigate, startSession]);
 
   // �🔴 빨강 버튼 (IDLE) → GUIDE 이벤트 → 사용 가이드 모달 자동 오픈.
   // ts 가 매번 새 값이라 같은 사용자가 빨강 두 번 눌러도 effect 가 다시 실행됨.
