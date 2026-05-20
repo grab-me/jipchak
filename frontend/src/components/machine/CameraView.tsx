@@ -252,7 +252,9 @@ const CameraView = ({
       {frameUrl && (
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+          className={`absolute inset-0 w-full h-full object-cover select-none pointer-events-none ${
+            channel === '3d' ? '-rotate-90' : ''
+          }`}
         />
       )}
 
