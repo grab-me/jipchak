@@ -49,8 +49,8 @@ jipchak:
   video:
     # 디스크에 보관할 최대 영상 개수. 초과 시 가장 오래된 것부터 자동 삭제.
     max-count: ${JIPCHAK_VIDEO_MAX_COUNT:50}
-    # 영상 저장 베이스 디렉토리 (기본은 프로세스 작업 디렉토리/videos).
-    base-dir: ${JIPCHAK_VIDEO_BASE_DIR:videos}
+    # 영상 저장 베이스 디렉토리 (기본: ai/data/recordings).
+    base-dir: ${JIPCHAK_VIDEO_BASE_DIR:../ai/data/recordings}
   cors:
     # 허용 Origin 패턴 (콤마 구분). 운영에서는 반드시 도메인만 명시할 것.
     # 와일드카드 "*" 는 사용 금지. allowedOriginPatterns 문법을 따른다.
