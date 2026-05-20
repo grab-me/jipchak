@@ -389,6 +389,11 @@ async def serial_reader_task(
             was_idle = last_state == ARDUINO_STATE_IDLE
             now_idle = state == ARDUINO_STATE_IDLE
             if was_idle and not now_idle:
+                # 파란 버튼 누름 (IDLE -> READY) → 홈 화면에서 게임 화면으로 자동 전환하기 위한 이벤트
+                async with send_lock:
+                    await ws.send(json.dumps({"event": "BLUE_BUTTON_PRESS"}))
+                print(f"[serial] event forwarded: BLUE_BUTTON_PRESS")
+
                 if not session.is_active():
                     session.start()
             elif not was_idle and now_idle:

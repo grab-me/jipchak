@@ -14,13 +14,9 @@ const Home = () => {
   const { startSession, isAutoStarting, setAutoStarting } = useToolStore();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const { playSfx } = useAudio();
-  const mountTimeRef = useRef<number>(Date.now());
-
   // 메인 페이지에서도 WS 연결 유지 — 아두이노 버튼으로 페이지 자동 전환 / 모달 호출.
   // streamStore 의 mountCount 가 PlayGround 와 공유하므로 추가 비용 없음.
   useStreamSocket();
-  const frame2d = useStreamStore((s: StreamState) => s.frame2d);
-  const frame3d = useStreamStore((s: StreamState) => s.frame3d);
   const lastUiEvent = useStreamStore((s: StreamState) => s.lastUiEvent);
 
   const handleStart = () => {
@@ -30,21 +26,17 @@ const Home = () => {
     navigate('/play');
   };
 
-  // � 파랑 버튼 → IDLE→READY → 카메라 ON → frame 도착 시점에 자동 navigate.
-  // 기존 START 버튼 클릭 동선과 동일한 effect, 진입 자체만 키오스크 친화적.
+  // 🔵 파랑 버튼 (물리) → BLUE_BUTTON_PRESS 이벤트 수신 → 게임 화면으로 자동 전환
+  const lastBlueButtonTs = useRef<number | null>(null);
   useEffect(() => {
-    if (frame2d || frame3d) {
-      // 세션 종료 후 홈으로 이동 시 카메라가 꺼지기 전 마지막 프레임이 남아있거나
-      // 소켓 종료/카메라 종료 딜레이로 인해 즉시 재진입하는 현상을 방지하기 위해 2초 쿨다운 적용.
-      if (Date.now() - mountTimeRef.current < 2000) {
-        console.log('[Home] 세션 종료 직후 재진입 방지를 위한 쿨다운 중...');
-        return;
-      }
+    if (lastUiEvent?.type === 'BLUE_BUTTON_PRESS') {
+      if (lastBlueButtonTs.current === lastUiEvent.ts) return;
+      lastBlueButtonTs.current = lastUiEvent.ts;
       handleStart();
     }
     // handleStart 를 의존성에 넣지 않음 — 매 렌더마다 새 함수라 무한 루프 됨.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frame2d, frame3d]);
+  }, [lastUiEvent]);
 
   // �🔴 빨강 버튼 (IDLE) → GUIDE 이벤트 → 사용 가이드 모달 자동 오픈.
   // ts 가 매번 새 값이라 같은 사용자가 빨강 두 번 눌러도 effect 가 다시 실행됨.
