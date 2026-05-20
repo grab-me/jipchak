@@ -1,15 +1,23 @@
+import json
+import time
+import uuid
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from ..session_manager import SessionManager
 from ..stream.relay_hub import RelayHub
 
 
-def build_router(relay_hub: RelayHub) -> APIRouter:
+def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRouter:
     """
-    React 브라우저용 WebSocket 엔드포인트를 만든다.
+    React 브라우저 클라이언트 WebSocket 핸들러.
 
-    브라우저는 ws://<host>/ws/stream 에 접속해서
-    msgpack(JPEG/LZ4) 페이로드를 수신한다.
-    디코딩 책임은 클라이언트에 있다(단순 fan-out).
+    수신:
+      - 텍스트 `{"event":"REQUEST_START"}` : 브라우저 시작 버튼.
+        활성 세션이 없으면 새 session_id 발급 후 SESSION_START broadcast.
+        활성 세션이 있으면 기존 session_id로 SESSION_START 회신.
+
+    송신: msgpack 프레임 + JSON 이벤트(RelayHub fan-out).
     """
     router = APIRouter()
 
@@ -18,16 +26,53 @@ def build_router(relay_hub: RelayHub) -> APIRouter:
         await ws.accept()
         await relay_hub.subscribe(ws)
         try:
-            # 브라우저는 송신할 일이 없지만 ping/close를 수신해야 하므로 receive 로 대기.
-            # disconnect 메시지를 받은 직후 다시 receive() 를 호출하면 starlette 가
-            # RuntimeError 를 던지므로, type 을 보고 명시적으로 break.
             while True:
                 msg = await ws.receive()
                 if msg.get("type") == "websocket.disconnect":
                     break
+
+                text = msg.get("text")
+                if not text:
+                    continue
+
+                try:
+                    data = json.loads(text)
+                except json.JSONDecodeError:
+                    continue
+
+                if data.get("event") == "REQUEST_START":
+                    await _handle_request_start(ws, session_manager, relay_hub)
+
         except WebSocketDisconnect:
             pass
         finally:
             await relay_hub.unsubscribe(ws)
 
     return router
+
+
+async def _handle_request_start(
+    ws: WebSocket,
+    session_manager: SessionManager,
+    relay_hub: RelayHub,
+) -> None:
+    active = session_manager.get_active_session_id()
+    if active is not None:
+        # 진행 중 세션이 있으면 거절하지 않고 그 세션으로 합류시킨다.
+        try:
+            await ws.send_text(json.dumps({
+                "event": "SESSION_START",
+                "session_id": active,
+                "reused": True,
+            }))
+        except Exception:
+            pass
+        return
+
+    session_id = f"session_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
+    await session_manager.start(session_id)
+    await relay_hub.broadcast_text(json.dumps({
+        "event": "SESSION_START",
+        "session_id": session_id,
+    }).encode())
+    print(f"[ws_browser] REQUEST_START -> SESSION_START broadcast: {session_id}")

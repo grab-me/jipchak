@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToolStore } from '@/store/toolStore';
-import { useStreamSocket, useStreamStore, StreamState } from '@/store/streamStore';
+import { useStreamSocket, useStreamStore, StreamState, sendStartRequest } from '@/store/streamStore';
 import StartButton from '@/components/home/StartButton';
 import GuideButton from '@/components/home/GuideButton';
 import CrayonWrapper from '@/components/common/CrayonWrapper';
@@ -11,7 +11,7 @@ import { SOUND_ASSETS } from '@/constants/soundConfig';
 
 const Home = () => {
   const navigate = useNavigate();
-  const { startSession, isAutoStarting, setAutoStarting } = useToolStore();
+  const { isAutoStarting, setAutoStarting, startSession } = useToolStore();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const { playSfx } = useAudio();
   // 메인 페이지에서도 WS 연결 유지 — 아두이노 버튼으로 페이지 자동 전환 / 모달 호출.
@@ -19,11 +19,20 @@ const Home = () => {
   useStreamSocket();
   const lastUiEvent = useStreamStore((s: StreamState) => s.lastUiEvent);
 
+  // 메인 페이지에서도 WS 연결 유지 — 시작 버튼으로 REQUEST_START 전송 + SESSION_START 수신.
+  useStreamSocket();
+  const lastSessionEvent = useStreamStore((s: StreamState) => s.lastSessionEvent);
+
+  // 시작 버튼 → AI 서버에 REQUEST_START 송신. session_id 발급/세션 활성화/navigate 는
+  // SESSION_START 이벤트 도착 시 처리 (CameraView 가 startSession, 아래 effect 가 navigate).
   const handleStart = () => {
     playSfx(SOUND_ASSETS.SFX.BUTTON_CLICK);
-    startSession(); // 세션 시작
-    if (isAutoStarting) setAutoStarting(false); // 자동 시작 플래그 해제
-    navigate('/play');
+    const sent = sendStartRequest();
+    if (!sent) {
+      alert('카메라 서버 연결을 확인 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    if (isAutoStarting) setAutoStarting(false);
   };
 
   // 🔵 파랑 버튼 (물리) → BLUE_BUTTON_PRESS 이벤트 수신 → 게임 화면으로 자동 전환
@@ -37,17 +46,22 @@ const Home = () => {
     // handleStart 를 의존성에 넣지 않음 — 매 렌더마다 새 함수라 무한 루프 됨.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastUiEvent]);
+  // SESSION_START 도착 (서버가 발급한 session_id 포함) → PlayGround 진입.
+  const navigatedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastSessionEvent?.type !== 'SESSION_START') return;
+    const sid = lastSessionEvent.session_id;
+    if (!sid) return;
+    // PlayGround 진입 가드(isSessionActive)에 걸리지 않도록
+    // 라우팅 전에 세션 활성화를 먼저 보장한다.
+    startSession(sid);
+    if (navigatedRef.current === sid) return;
+    navigatedRef.current = sid;
+    navigate('/play');
+  }, [lastSessionEvent, navigate, startSession]);
 
   // �🔴 빨강 버튼 (IDLE) → GUIDE 이벤트 → 사용 가이드 모달 자동 오픈.
   // ts 가 매번 새 값이라 같은 사용자가 빨강 두 번 눌러도 effect 가 다시 실행됨.
-  const lastGuideTs = useRef<number | null>(null);
-  useEffect(() => {
-    if (lastUiEvent?.type !== 'GUIDE') return;
-    if (lastGuideTs.current === lastUiEvent.ts) return;
-    lastGuideTs.current = lastUiEvent.ts;
-    setIsGuideOpen(true);
-  }, [lastUiEvent]);
-
   const handleAdminAccess = () => {
     const expected = import.meta.env.VITE_ADMIN_PASSWORD;
     if (!expected) {

@@ -41,6 +41,7 @@ import json
 import signal
 import threading
 import time
+import uuid
 from typing import Optional
 
 import cv2
@@ -306,15 +307,13 @@ class GameSession:
     """현재 진행 중인 한 판의 ID. PLAYING 진입마다 새 ID 발급."""
 
     def __init__(self) -> None:
-        self._counter: int = 0
         self.id: Optional[str] = None
 
     def is_active(self) -> bool:
         return self.id is not None
 
     def start(self) -> str:
-        self._counter += 1
-        self.id = str(self._counter)
+        self.id = f"rpi-{uuid.uuid4()}"
         return self.id
 
     def stop(self) -> Optional[str]:
@@ -396,6 +395,11 @@ async def serial_reader_task(
 
                 if not session.is_active():
                     session.start()
+                sid = session.id
+                if sid:
+                    async with send_lock:
+                        await ws.send(json.dumps({"event": "START", "session_id": sid}))
+                    print(f"[serial] session START: {sid} (state {last_state} -> {state})")
             elif not was_idle and now_idle:
                 session.stop()
                 # (POST_GAME timeout / PLAYING idle timeout / READY 빨강 뒤로 등 모든 경로).
@@ -406,7 +410,7 @@ async def serial_reader_task(
             # ───── 판(round) 이벤트 ─────
             #   PLAYING 진입(=한 판 시작) : START (기존 session_id 재사용)
             #   POST_GAME 진입(=한 판 끝) : STOP
-            if state == ARDUINO_STATE_PLAYING and last_state != ARDUINO_STATE_PLAYING:
+            if state == ARDUINO_STATE_PLAYING and last_state == ARDUINO_STATE_POST_GAME:
                 sid = session.id
                 if sid:
                     async with send_lock:
