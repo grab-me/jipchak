@@ -13,14 +13,14 @@ export interface GuideSlide {
 export const guideSlides: GuideSlide[] = [
   {
     step: '1',
-    title: '조작기기',
+    title: '조작방법',
     description: (
       <>
-        <span className="font-black text-red-500">빨간</span> 버튼 클릭 시 인형뽑기가 시작됩니다.
+        <span className="font-black text-blue-500">파란</span> 버튼 누르면 뽑기 시작
         <br></br>
-        <span className="font-black text-blue-500">파란</span> 버튼 클릭 시 집게가 내려옵니다.
+        <span className="font-black text-red-500">빨간</span> 버튼 누르면 집게 하강
         <br></br>
-        <span className="font-black text-green-500">조이스틱</span>을 움직여 집게를 상하좌우로 이동시킵니다.
+        <span className="font-black text-green-500">조이스틱</span>으로 집게 위치 이동
       </>
     ),
   },
@@ -29,120 +29,89 @@ export const guideSlides: GuideSlide[] = [
     title: '메인 페이지',
     description: (
       <>
-        <span className="font-black text-yellow-600">Start</span> 버튼 클릭 시 플레이 페이지로 이동하며,
+        <span className="font-black text-yellow-600">Start</span> 클릭 시 플레이 페이지로
         <br></br>
-        영상 녹화가 시작됩니다.
-        <br></br>
-        <span className="font-black text-yellow-600">Guide</span> 버튼 클릭 시 사용 가이드를 보여줍니다.
+        <span className="font-black text-yellow-600">Guide</span> 클릭 시 사용법 제공
       </>
     ),
   },
   {
     step: '3',
-    title: '플레이 페이지',
+    title: '플레이 수 선택',
     description: (
       <>
-        실시간 영상,
-        <br></br>
-        뽑기 확률,
-        <br></br>
-        저장된 영상을 확인할 수 있습니다.
-        <br></br>
-        <span className="font-black text-yellow-600">설정</span> 버튼 클릭 시 소리 설정을 보여줍니다.
+      1, 3, 5번 중 하나 선택
       </>
     ),
   },
   {
     step: '4',
-    title: '메인 카메라',
+    title: '플레이 페이지',
     description: (
       <>
-        <span className="font-black text-yellow-600">깊이 카메라</span> 버전의 실시간 영상을 보여줍니다.
+        실시간 영상, <span className="font-black text-green-500">집기 확률</span>,
+        <br></br>
+        나의 기록 확인
+        <br></br>
+        <span className="font-black text-red-500">서브 카메라</span> 클릭 시
+        <br></br>
+        <span className="font-black text-blue-500">메인 카메라</span>와 위치 변경
+        <br></br>
+        <span className="font-black text-yellow-600">설정</span> 클릭 시 소리 설정
       </>
     ),
   },
   {
     step: '5',
-    title: '서브 카메라',
+    title: '소리 설정',
     description: (
       <>
-        <span className="font-black text-yellow-600">웹 카메라</span> 버전의 실시간 영상을 보여줍니다.
-        <br></br>
-        화면을 클릭 시 깊이 카메라와 영상 위치가 바뀝니다.
-        <br></br>
-        해당 버전으로 녹화가 진행됩니다.
+      배경음, 효과음, 안내음
+      <br></br>
+      크기 조절
       </>
     ),
   },
   {
     step: '6',
-    title: '확률',
+    title: '뽑기 완료',
     description: (
       <>
-        집게 움직임 기반의 뽑기 확률을 색으로 보여줍니다.
+        선택한 수만큼 플레이하면
+        <br></br>
+        다운로드 할지 선택
+        <br></br>
+        <span className="font-black text-red-500">30초</span> 동안 미선택 시 자동 종료
       </>
     ),
   },
   {
     step: '7',
-    title: '소리 설정',
+    title: 'QR 코드 생성',
     description: (
       <>
-      배경음, 효과음, 안내음의 소리 크기를 설정할 수 있습니다.
+        <span className="font-black text-yellow-600">다운로드</span> 선택 시
+        <br></br>
+        <span className="font-black text-yellow-600">QR 코드</span> 생성
+        <br></br>
+        카메라 스캔 시
+        <br></br>
+        <span className="font-black text-yellow-600">다운로드 링크</span> 제공
+        <br></br>
+        <span className="font-black text-red-500">1분</span> 동안만 활성화
       </>
     ),
   },
   {
     step: '8',
-    title: '뽑기 이후',
+    title: '다운로드',
     description: (
       <>
-        매 판 종료 후 해당 녹화본은 저장되며,
+        선택한 수만큼
         <br></br>
-        <span className="font-black text-yellow-600">한 번 더 할지</span> 선택할 수 있습니다.
+        스트리밍 및 저장
         <br></br>
-        선택은 <span className="font-black text-red-500">4번</span>까지 가능하며,
-        <br></br>
-        <span className="font-black text-red-500">30초</span> 동안 미선택 시 자동 종료됩니다.
-      </>
-    ),
-  },
-  {
-    step: '9',
-    title: '이어하기',
-    description: (
-      <>
-        <span className="font-black text-yellow-600">이어하기</span>를 고르면
-        <br></br>
-        녹화 영상이 <span className="font-black text-yellow-600">나의 기록</span>에 누적되어 보여집니다.
-        <br></br>
-        영상은 <span className="font-black text-red-500">5개</span>까지 저장됩니다.        
-      </>
-    ),
-  },
-  {
-    step: '10',
-    title: '종료하기',
-    description: (
-      <>
-        <span className="font-black text-yellow-600">그만하기</span>를 고르면
-        <br></br>
-        지금까지 저장된 영상을 다운로드 받을 수 있는 <span className="font-black text-yellow-600">QR 코드</span>가 생성됩니다.
-        <br></br>
-        QR 코드는 <span className="font-black text-red-500">30초</span> 동안만 활성화됩니다.
-      </>
-    ),
-  },
-  {
-    step: '11',
-    title: 'QR 영상 확인',
-    description: (
-      <>
-        휴대폰 카메라로 스캔하면
-        <br></br>
-        지금까지 저장된 영상을 확인할 수 있습니다.
-        <br></br>
-        영상은 <span className="font-black text-red-500">5개</span>까지 저장됩니다.
+        <span className="font-black text-red-500">30분</span> 후 세션 종료
       </>
     ),
   },
