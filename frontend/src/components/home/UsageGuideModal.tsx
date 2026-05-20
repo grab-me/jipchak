@@ -17,7 +17,7 @@ interface UsageGuideModalProps {
  * UsageGuideModal
  * 사용 가이드를 위한 모달입니다.
  * 슬라이드를 좌우 스와이프로 넘겨 내용을 확인할 수 있습니다.
- * 슬라이드는 5초 후 자동으로 넘어갑니다.
+ * 슬라이드는 10초 후 자동으로 넘어갑니다.
  */
 const slideVariants = {
   enter: (direction: number) => ({
@@ -35,7 +35,7 @@ const slideVariants = {
 };
 
 const SWIPE_THRESHOLD = 50;
-const AUTO_ADVANCE_DELAY = 5000;
+const AUTO_ADVANCE_DELAY = 10000;
 
 const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -156,7 +156,7 @@ const UsageGuideModal = ({ isOpen, onClose }: UsageGuideModalProps) => {
                   onDragEnd={handleDragEnd}
                   onPointerDown={handleInteractionStart}
                   onPointerUp={handleInteractionEnd}
-                  className="flex flex-row items-stretch h-[clamp(320px,55vh,480px)] w-full px-[var(--guide-side-pad)] gap-[clamp(10px,1.4vw,16px)]"
+                  className="flex flex-row items-stretch h-[clamp(320px,55vh,480px)] w-full pl-[var(--guide-side-pad)] pr-[calc(var(--guide-side-pad)*3/5)] gap-[clamp(10px,1.4vw,16px)]"
                 >
                   <GuideImage step={guideSlides[currentIndex].step} />
                   <GuideText 
