@@ -88,7 +88,7 @@ export interface StreamState {
      *   ROUND_TIMER_START  : PLAYING 에서 조이스틱 첫 입력 → 20초 카운트다운 시작
      */
     lastUiEvent: {
-        type: 'GUIDE' | 'JOY_LEFT' | 'JOY_RIGHT' | 'BACK_TO_HOME' | 'ROUND_TIMER_START' | 'GRAB_START';
+        type: 'GUIDE' | 'JOY_LEFT' | 'JOY_RIGHT' | 'BACK_TO_HOME' | 'ROUND_TIMER_START' | 'GRAB_START' | 'BLUE_BUTTON_PRESS';
         ts: number;
     } | null;
 }
@@ -227,7 +227,8 @@ function connect() {
                     msg.event === 'JOY_RIGHT' ||
                     msg.event === 'BACK_TO_HOME' ||
                     msg.event === 'ROUND_TIMER_START' ||
-                    msg.event === 'GRAB_START'
+                    msg.event === 'GRAB_START' ||
+                    msg.event === 'BLUE_BUTTON_PRESS'
                 ) {
                     // 단발성 UI 이벤트 — ts 매번 갱신해서 같은 type 연속 도착해도 effect 재발화.
                     useStreamStore.setState({

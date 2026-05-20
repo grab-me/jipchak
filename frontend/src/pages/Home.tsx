@@ -14,6 +14,10 @@ const Home = () => {
   const { isAutoStarting, setAutoStarting, startSession } = useToolStore();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const { playSfx } = useAudio();
+  // 메인 페이지에서도 WS 연결 유지 — 아두이노 버튼으로 페이지 자동 전환 / 모달 호출.
+  // streamStore 의 mountCount 가 PlayGround 와 공유하므로 추가 비용 없음.
+  useStreamSocket();
+  const lastUiEvent = useStreamStore((s: StreamState) => s.lastUiEvent);
 
   // 메인 페이지에서도 WS 연결 유지 — 시작 버튼으로 REQUEST_START 전송 + SESSION_START 수신.
   useStreamSocket();
@@ -31,6 +35,17 @@ const Home = () => {
     if (isAutoStarting) setAutoStarting(false);
   };
 
+  // 🔵 파랑 버튼 (물리) → BLUE_BUTTON_PRESS 이벤트 수신 → 게임 화면으로 자동 전환
+  const lastBlueButtonTs = useRef<number | null>(null);
+  useEffect(() => {
+    if (lastUiEvent?.type === 'BLUE_BUTTON_PRESS') {
+      if (lastBlueButtonTs.current === lastUiEvent.ts) return;
+      lastBlueButtonTs.current = lastUiEvent.ts;
+      handleStart();
+    }
+    // handleStart 를 의존성에 넣지 않음 — 매 렌더마다 새 함수라 무한 루프 됨.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastUiEvent]);
   // SESSION_START 도착 (서버가 발급한 session_id 포함) → PlayGround 진입.
   const navigatedRef = useRef<string | null>(null);
   useEffect(() => {

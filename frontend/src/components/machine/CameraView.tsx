@@ -32,7 +32,7 @@ const CameraView = ({
     setMaxGames,
   } = useToolStore();
 
-  const processedRef = useRef<string | null>(null);
+  const lastProcessedTs = useRef<number>(0);
   const latestFrameRef = useRef<string | null>(null);
   const { playSfx } = useAudio();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -108,9 +108,8 @@ const CameraView = ({
   useEffect(() => {
     if (!lastSessionEvent || !isMainView) return;
 
-    const eventKey = `${lastSessionEvent.type}_${lastSessionEvent.session_id ?? 'none'}`;
-    if (processedRef.current === eventKey) return;
-    processedRef.current = eventKey;
+    if (lastSessionEvent.ts && lastProcessedTs.current === lastSessionEvent.ts) return;
+    if (lastSessionEvent.ts) lastProcessedTs.current = lastSessionEvent.ts;
 
     if (lastSessionEvent.type === 'SESSION_START') {
       const sid = lastSessionEvent.session_id;
@@ -163,7 +162,23 @@ const CameraView = ({
     if (lastSessionEvent.type === 'SESSION_END') {
       setCatching(false);
       setLastResult(null);
-      forceStopGame();
+
+      // 마지막 판인 경우 곧 GAME_RESULT가 올 것이므로 forceStopGame() 호출을 미룹니다.
+      // 만약 이전 판(예: 에러나 강제 중단)에 SESSION_END가 왔다면 즉시 이동합니다.
+      const currentRecords = useToolStore.getState().records;
+      const currentMaxGames = useToolStore.getState().maxGames;
+      if (currentRecords.length + 1 < currentMaxGames) {
+        forceStopGame();
+      } else {
+        // 마지막 판의 GAME_RESULT가 올 때까지 최대 5초 대기 (네트워크 지연 대비 안전장치)
+        const timeoutId = window.setTimeout(() => {
+          const state = useToolStore.getState();
+          if (state.viewType !== 'QR_CONSENT') {
+            state.forceStopGame();
+          }
+        }, 5000);
+        return () => window.clearTimeout(timeoutId);
+      }
     }
   }, [
     lastSessionEvent,
@@ -176,6 +191,7 @@ const CameraView = ({
     playSfx,
     addRecord,
     forceStopGame,
+    setMaxGames,
   ]);
 
   useEffect(() => {
