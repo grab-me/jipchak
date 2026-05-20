@@ -16,7 +16,7 @@ export const guideSlides: GuideSlide[] = [
     title: '조작방법',
     description: (
       <>
-        <span className="font-black text-blue-500">파란</span> 버튼 누르면 인형뽑기 시작
+        <span className="font-black text-blue-500">파란</span> 버튼 누르면 뽑기 시작
         <br></br>
         <span className="font-black text-red-500">빨간</span> 버튼 누르면 집게 하강
         <br></br>
@@ -37,7 +37,7 @@ export const guideSlides: GuideSlide[] = [
   },
   {
     step: '3',
-    title: '연속 플레이 수 선택',
+    title: '플레이 수 선택',
     description: (
       <>
       1, 3, 5번 중 하나 선택
@@ -49,7 +49,9 @@ export const guideSlides: GuideSlide[] = [
     title: '플레이 페이지',
     description: (
       <>
-        실시간 영상, <span className="font-black text-green-500">집기 확률 확인</span>
+        실시간 영상, <span className="font-black text-green-500">집기 확률</span>,
+        <br></br>
+        나의 기록 확인
         <br></br>
         <span className="font-black text-red-500">서브 카메라</span> 클릭 시
         <br></br>
@@ -75,7 +77,7 @@ export const guideSlides: GuideSlide[] = [
     title: '뽑기 완료',
     description: (
       <>
-        선택한 판만큼 플레이하면
+        선택한 수만큼 플레이하면
         <br></br>
         다운로드 할지 선택
         <br></br>
@@ -88,9 +90,13 @@ export const guideSlides: GuideSlide[] = [
     title: 'QR 코드 생성',
     description: (
       <>
-        <span className="font-black text-yellow-600">다운로드</span>를 고르면
+        <span className="font-black text-yellow-600">다운로드</span> 선택 시
         <br></br>
         <span className="font-black text-yellow-600">QR 코드</span> 생성
+        <br></br>
+        카메라 스캔 시
+        <br></br>
+        <span className="font-black text-yellow-600">다운로드 링크</span> 제공
         <br></br>
         <span className="font-black text-red-500">1분</span> 동안만 활성화
       </>
@@ -101,9 +107,9 @@ export const guideSlides: GuideSlide[] = [
     title: '다운로드',
     description: (
       <>
-        휴대폰 카메라로 스캔 시
+        선택한 수만큼
         <br></br>
-        선택한 수만큼 스트리밍 및 저장
+        스트리밍 및 저장
         <br></br>
         <span className="font-black text-red-500">30분</span> 후 세션 종료
       </>
