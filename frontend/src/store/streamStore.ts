@@ -28,6 +28,7 @@ export interface SessionEvent {
     session_id?: string;
     is_caught?: boolean;
     confidence?: number;
+    ts?: number;
 }
 
 export interface DetectionItem {
@@ -206,8 +207,9 @@ function connect() {
                     });
                     armDetectionStaleTimer();
                 } else if (msg.event === 'SESSION_START') {
+                    (window as any).__streamStat = { lastTs: performance.now(), intervals: [], windowStart: performance.now() };
                     useStreamStore.setState({
-                        lastSessionEvent: { type: 'SESSION_START', session_id: msg.session_id },
+                        lastSessionEvent: { type: 'SESSION_START', session_id: msg.session_id, ts: Date.now() },
                     });
                 } else if (msg.event === 'GAME_RESULT') {
                     useStreamStore.setState({
@@ -216,6 +218,7 @@ function connect() {
                             session_id: msg.session_id,
                             is_caught: msg.is_caught,
                             confidence: msg.confidence,
+                            ts: Date.now(),
                         },
                     });
                 } else if (
@@ -231,12 +234,13 @@ function connect() {
                         lastUiEvent: { type: msg.event, ts: Date.now() },
                     });
                 } else if (msg.event === 'SESSION_END') {
+                    (window as any).__streamStat = { lastTs: 0, intervals: [], windowStart: performance.now() };
                     // 사용자가 POST_GAME 에서 파란 버튼 → 카메라 OFF 로 전환.
                     // 마지막 frame 도 비워서 검정 화면이 되도록 한다.
                     if (prevFrame2d) { URL.revokeObjectURL(prevFrame2d); prevFrame2d = null; }
                     if (prevFrame3d) { URL.revokeObjectURL(prevFrame3d); prevFrame3d = null; }
                     useStreamStore.setState({
-                        lastSessionEvent: { type: 'SESSION_END' },
+                        lastSessionEvent: { type: 'SESSION_END', ts: Date.now() },
                         frame2d: null,
                         frame3d: null,
                         graspScore: 0,
