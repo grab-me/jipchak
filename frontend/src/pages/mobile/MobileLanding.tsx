@@ -10,37 +10,102 @@ import VideoCard from '../../components/mobile/VideoCard';
 // --- 세션 설정 상수 ---
 const MOCK_SESSION_TIME_MINUTES = 10; // 10분 유효기간
 
+// 백엔드 영상 업로드가 아직 불안정해서 Redis 가 비어있는 경우를 대비한
+// 임시 목업 데이터. 실제 영상이 들어오면 자동으로 대체된다.
+// TODO: AI→Spring 업로드 파이프라인 안정화 후 제거.
+const MOCK_VIDEOS = [
+  { id: 'mock-1', url: '', thumb: '/logo.png', isSuccess: true },
+  { id: 'mock-2', url: '', thumb: '/logo.png', isSuccess: false },
+];
+
+// sessionId 별 첫 방문 시각을 localStorage 에 저장해서 새로고침해도
+// 만료 시점을 보존한다. (서버 Redis TTL 이 불안정한 동안 클라이언트 안전망)
+const STORAGE_PREFIX = 'jipchak-mobile-firstAt:';
+
 const MobileLanding = () => {
   const { sessionId } = useParams();
 
-  // 비디오 데이터 관리
-  const [videos, setVideos] = useState<any[]>([]);
+  // 비디오 데이터 관리 — 초기값은 목업으로 두어 페이지가 무조건 뜨도록 한다.
+  const [videos, setVideos] = useState<any[]>(MOCK_VIDEOS);
 
-  useEffect(() => {
-    if (sessionId) {
-      console.log(`[MobileLanding] Session ID ${sessionId} 데이터 로드 시작.`);
-      sessionService.getSessionVideos(sessionId)
-        .then(data => {
-          // 백엔드가 반환한 { timeLeft, videos } 구조 사용
-          setVideos(data.videos || []);
-          const now = Date.now();
-          const targetExpire = now + (data.timeLeft || 0) * 1000;
-          setCreatedAt(targetExpire - MOCK_SESSION_TIME_MINUTES * 60 * 1000);
-        })
-        .catch(err => {
-          console.error("데이터 로드 실패:", err);
-          setIsExpired(true);
-        });
+  // 첫 방문 시각: sessionId 가 정해진 이후에 lazy 계산해서 새로고침에도 유지.
+  // 같은 sessionId 로 재방문하면 동일한 firstAt 반환, 새 sessionId 면 now 저장.
+  const [createdAt, setCreatedAt] = useState<number>(() => {
+    if (!sessionId) return Date.now();
+    const key = STORAGE_PREFIX + sessionId;
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (!Number.isNaN(parsed)) return parsed;
     }
-  }, [sessionId]);
-
-  // 가상의 생성 시간 (방금 생성된 것으로 가정 — 만료까지 5분)
-  const [createdAt, setCreatedAt] = useState<number>(Date.now());
+    const now = Date.now();
+    localStorage.setItem(key, String(now));
+    return now;
+  });
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isExpired, setIsExpired] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (!sessionId) return;
 
-  // 실시간 만료 체크 로직
+    // 이미 만료된 sessionId 로 (새로고침) 재진입 시 즉시 모달.
+    const elapsed = Date.now() - createdAt;
+    if (elapsed >= MOCK_SESSION_TIME_MINUTES * 60 * 1000) {
+      setIsExpired(true);
+      return;
+    }
+
+    // 실제 영상이 있으면 목업을 덮어쓰고, 없으면 60초까지 폴링.
+    // 폴링 끝까지 실패해도 목업 유지 (만료 모달은 타이머가 다 됐을 때만).
+    const POLL_INTERVAL_MS = 2000;
+    const MAX_ATTEMPTS = 30;
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const schedule = () => {
+      timer = setTimeout(load, POLL_INTERVAL_MS);
+    };
+
+    const load = async () => {
+      if (cancelled) return;
+      try {
+        const data = await sessionService.getSessionVideos(sessionId);
+        if (cancelled) return;
+        const fetched = data.videos || [];
+
+        if (fetched.length === 0 && attempts < MAX_ATTEMPTS) {
+          attempts += 1;
+          schedule();
+          return;
+        }
+
+        if (fetched.length > 0) {
+          setVideos(fetched);
+        }
+        // fetched.length === 0 & 폴링 한계 도달 → 목업 유지
+      } catch (err) {
+        if (cancelled) return;
+        if (attempts < MAX_ATTEMPTS) {
+          attempts += 1;
+          schedule();
+          return;
+        }
+        console.warn("데이터 로드 실패, 목업 데이터 유지:", err);
+      }
+    };
+
+    console.log(`[MobileLanding] Session ID ${sessionId} 데이터 로드 시작.`);
+    load();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [sessionId, createdAt]);
+
+
+  // 실시간 만료 체크 로직 — 타이머가 0 이 되면 ExpiredModal.
   useEffect(() => {
     const expireTime = createdAt + MOCK_SESSION_TIME_MINUTES * 60 * 1000;
 

@@ -37,7 +37,7 @@ const int PIN_ENDSTOP_Y_DOWN  = 12;
 const int PIN_SERVO = 13;
 
 const int CLAW_ANGLE_OPEN  = 90;
-const int CLAW_ANGLE_CLOSE = 20;
+const int CLAW_ANGLE_CLOSE = 0;
 const int CLAW_ANGLE_IDLE  = 90;
 
 // --- Stepper Motor Configuration ---
@@ -49,13 +49,15 @@ const float MAX_SPEED_Z = 300.0;
 const float ACCELERATION_Z = 50000.0; // Z축 등속도를 위해 가속도 무한대 설정
 
 // Z-axis movement steps
-const int Z_MOVE_STEPS_DOWN = 680;
+const int Z_MOVE_STEPS_DOWN = 670;
 const int Z_MOVE_STEPS_UP = 670;
 
 // 부팅 시 Z 를 위로 올리기 위한 stroke.
 // 게임 한 판 stroke (670) 보다 약간 크게 잡아 자중으로 더 떨어진 케이스 흡수.
 // 도달 못 해도 MOTOR_READY 에서 stepperZ.run() 계속 호출되어 끝까지 진행.
 const int Z_HOMING_UP_STEPS = 680;
+
+const int Z_CLAW_UP_STEPS = 500;
 
 // --- Conversion & Homing Configuration ---
 const float STEPS_PER_MM_X = 80.0f;
@@ -71,9 +73,9 @@ const long HOMING_TRAVEL_STEPS_Y = -10000;
 // --- Auto Target Safety Limits (mm) ---
 // 호밍 후 (0,0) = 좌하단(배출구) → 작업영역은 X+, Y+ 방향으로 펼쳐짐.
 // 실제 작업영역 측정 전까지 보수적 값으로 설정 (대각선 ~40mm 정도만 허용).
-const float AUTO_TARGET_X_MIN_MM = 0.0f;
+const float AUTO_TARGET_X_MIN_MM = -10.0f;
 const float AUTO_TARGET_X_MAX_MM = 40.0f;
-const float AUTO_TARGET_Y_MIN_MM = 0.0f;
+const float AUTO_TARGET_Y_MIN_MM = -10.0f;
 const float AUTO_TARGET_Y_MAX_MM = 40.0f;
 
 // --- Drop-off Position (mm) ---
