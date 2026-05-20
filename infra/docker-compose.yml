@@ -81,7 +81,7 @@ services:
       - REDIS_PORT=${REDIS_PORT}
       # Spring 의 영상 저장 base dir. 컨테이너 user(uid 1000) 는 /app 에 write 못 함 →
       # 마운트된 /data/videos 를 명시적으로 가리키도록 환경변수로 주입.
-      - JIPCHAK_VIDEO_BASE_DIR=/data/videos
+      - JIPCHAK_VIDEO_BASE_DIR=/data/recordings
       # JVM default timezone — EC2 가 UTC 라 파일명 timestamp 가 UTC 로 찍히던 문제.
       # 코드는 명시적 KST 사용하지만 다른 곳에서 default 쓰는 케이스 대비.
       - TZ=Asia/Seoul
@@ -92,7 +92,7 @@ services:
       - .env
     # 영상 영속화 (JIPCHAK_VIDEO_BASE_DIR 와 매핑된 /data/videos 경로, QR 다운로드용)
     volumes:
-      - ${HOST_VIDEO_DIR}:/data/videos
+      - ${HOST_VIDEO_DIR}:/data/recordings
     depends_on:
       db-jipchak:
         condition: service_healthy
