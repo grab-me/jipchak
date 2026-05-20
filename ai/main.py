@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="JIPCHAK AI Server", lifespan=lifespan)
 app.include_router(ws_rpi.build_router(relay_hub, session_manager))
-app.include_router(ws_browser.build_router(relay_hub))
+app.include_router(ws_browser.build_router(relay_hub, session_manager))
 
 
 @app.get("/health")

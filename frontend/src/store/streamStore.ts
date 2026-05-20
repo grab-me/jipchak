@@ -233,6 +233,9 @@ function connect() {
                     useStreamStore.setState({
                         lastUiEvent: { type: msg.event, ts: Date.now() },
                     });
+                } else if (msg.event === 'START_REJECTED') {
+                    console.warn('[stream] START_REJECTED:', msg.reason, 'active:', msg.active_session_id);
+                    alert('이미 다른 화면에서 게임이 진행 중입니다.');
                 } else if (msg.event === 'SESSION_END') {
                     (window as any).__streamStat = { lastTs: 0, intervals: [], windowStart: performance.now() };
                     // 사용자가 POST_GAME 에서 파란 버튼 → 카메라 OFF 로 전환.
@@ -367,6 +370,20 @@ function teardown() {
 // ─────────────────────────────────────────
 // 공개 훅
 // ─────────────────────────────────────────
+
+/**
+ * 시작 버튼 → AI 서버에 REQUEST_START 송신.
+ * 서버가 active 세션 없으면 새 session_id 발급 후 SESSION_START broadcast.
+ * 이미 진행 중이면 START_REJECTED 회신 (현재는 콘솔 로그만).
+ */
+export function sendStartRequest(): boolean {
+    if (!wsInstance || wsInstance.readyState !== WebSocket.OPEN) {
+        console.warn('[stream] sendStartRequest: WS not open');
+        return false;
+    }
+    wsInstance.send(JSON.stringify({ event: 'REQUEST_START' }));
+    return true;
+}
 
 /**
  * 페이지 레벨에서 1회 호출하여 WebSocket 라이프사이클을 관리한다.

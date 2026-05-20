@@ -53,6 +53,12 @@ class SessionManager:
         self._lock = asyncio.Lock()
         self.last_judge_result: Optional["JudgeResult"] = None
 
+    def get_active_session_id(self) -> Optional[str]:
+        """현재 활성 세션 id 하나만 반환. 인형뽑기 기계 1대 = 동시 세션 1개 가정."""
+        if not self._sessions:
+            return None
+        return next(iter(self._sessions))
+
     async def start(self, session_id: str) -> None:
         """
         새 세션 시작. 이미 같은 session_id가 진행 중이면

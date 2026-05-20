@@ -91,6 +91,11 @@ def build_router(relay_hub: RelayHub, session_manager: SessionManager) -> APIRou
                     last_relay_time = now
                     asyncio.create_task(_relay_without_depth(relay_hub, payload))
 
+                # ws_browser 의 REQUEST_START 로 시작된 세션을 RPi 측에서도 인지하도록
+                # 매 프레임마다 SessionManager 의 active id 와 동기화.
+                if current_session is None:
+                    current_session = session_manager.get_active_session_id()
+
                 # ② 프레임 디코딩 + 녹화를 백그라운드 스레드에서 실행 (이벤트 루프 논블로킹)
                 if current_session is not None:
                     asyncio.get_running_loop().run_in_executor(
@@ -191,10 +196,15 @@ async def _apply_control(
     # 사용자가 POST_GAME 에서 파란 버튼을 눌러 세션을 명시적으로 종료한 경우.
     # 5판 미만이어도 즉시 QR 안내 화면으로 전환하도록 브라우저에 릴레이.
     if event == "SESSION_END":
+        # ws_browser 의 REQUEST_START 로 시작된 세션이라면 RPi 는 그 id 를 모르므로
+        # SessionManager 에서 active id 를 가져와 정리. 영상 업로드까지 처리.
+        active_id = current_session or session_manager.get_active_session_id()
+        if active_id is not None:
+            await session_manager.stop(active_id)
         await relay_hub.broadcast_text(json.dumps({
             "event": "SESSION_END",
         }).encode())
-        return current_session
+        return None
 
     # 그 외 단발성 UI 이벤트 (GUIDE / JOY_LEFT / JOY_RIGHT / BACK_TO_HOME /
     # ROUND_TIMER_START / PLAYING_IDLE_TIMEOUT 등) 는 그대로 브라우저로 forward.

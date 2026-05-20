@@ -90,7 +90,10 @@ export const useToolStore = create<ToolState>((set, get) => ({
   // 1. 시작하기 버튼 클릭 또는 SESSION_START 수신 시 세션 시작.
   //    서버 id 를 넘기면 그대로 채택하여 Spring 백엔드 / 모바일과 동일한 키 사용.
   startSession: (sessionId?: string) => {
-    const newSessionId = sessionId ?? '';
+    // 서버(AI/RPi)가 발급한 id 만 사용. 인자 없이 호출되는 경우는 더 이상 없음
+    // (Home 의 시작 버튼은 REQUEST_START 후 SESSION_START 받고 CameraView 에서 startSession(sid) 호출).
+    // 만에 하나 호출되면 client fallback id 로 진행 (SessionGuard 우회 안전망).
+    const newSessionId = sessionId ?? `client_${Date.now()}`;
     set({
       sessionId: newSessionId,
       isSessionActive: true,
