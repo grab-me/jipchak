@@ -37,15 +37,6 @@ export const guideSlides: GuideSlide[] = [
   },
   {
     step: '3',
-    title: '플레이 수 선택',
-    description: (
-      <>
-      1, 3, 5번 중 하나 선택
-      </>
-    ),
-  },
-  {
-    step: '4',
     title: '플레이 페이지',
     description: (
       <>
@@ -62,18 +53,18 @@ export const guideSlides: GuideSlide[] = [
     ),
   },
   {
-    step: '5',
+    step: '4',
     title: '소리 설정',
     description: (
       <>
-      배경음, 효과음, 안내음
-      <br></br>
-      크기 조절
+        배경음, 효과음, 안내음
+        <br></br>
+        크기 조절
       </>
     ),
   },
   {
-    step: '6',
+    step: '5',
     title: '뽑기 완료',
     description: (
       <>
@@ -86,7 +77,7 @@ export const guideSlides: GuideSlide[] = [
     ),
   },
   {
-    step: '7',
+    step: '6',
     title: 'QR 코드 생성',
     description: (
       <>
@@ -103,7 +94,7 @@ export const guideSlides: GuideSlide[] = [
     ),
   },
   {
-    step: '8',
+    step: '7',
     title: '다운로드',
     description: (
       <>

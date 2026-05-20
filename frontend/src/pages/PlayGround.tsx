@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToolStore } from '@/store/toolStore';
-import { useStreamSocket, useStreamStore, StreamState } from '@/store/streamStore';
+import { useStreamSocket, useStreamStore, StreamState, sendStartRequest } from '@/store/streamStore';
 import { useAudio } from '@/hooks/useAudio';
 import { useCameraSwap } from '@/hooks/useCameraSwap';
 import { useGameKeyboard } from '@/hooks/useGameKeyboard';
@@ -49,11 +49,28 @@ const PlayGround = () => {
     const lastUiEvent = useStreamStore((s: StreamState) => s.lastUiEvent);
     const lastBackTs = useRef<number | null>(null);
     useEffect(() => {
-        if (lastUiEvent?.type !== 'BACK_TO_HOME') return;
-        if (lastBackTs.current === lastUiEvent.ts) return;
-        lastBackTs.current = lastUiEvent.ts;
-        resetSession(); // 세션 / 카메라 / QR 상태 정리 + 홈으로 navigate
+        if (lastUiEvent?.type === 'BACK_TO_HOME') {
+            if (lastBackTs.current === lastUiEvent.ts) return;
+            lastBackTs.current = lastUiEvent.ts;
+            resetSession(); // 세션 / 카메라 / QR 상태 정리 + 홈으로 navigate
+        }
     }, [lastUiEvent, resetSession]);
+
+    // 1판 종료 후 호밍 복귀 (READY 상태)에서 조이스틱 이동 시 다음 판 자동 시작
+    const lastJoyTs = useRef<number | null>(null);
+    useEffect(() => {
+        if (!lastUiEvent) return;
+        if (lastUiEvent.type === 'JOY_LEFT' || lastUiEvent.type === 'JOY_RIGHT') {
+            if (lastJoyTs.current === lastUiEvent.ts) return;
+            lastJoyTs.current = lastUiEvent.ts;
+            
+            // maxGames에 도달하지 않았고 현재 게임 진행 중이 아닐 때만 시작 요청
+            const { records, maxGames, isCatching } = useToolStore.getState();
+            if (records.length > 0 && records.length < maxGames && !isCatching) {
+                sendStartRequest();
+            }
+        }
+    }, [lastUiEvent]);
 
     // 페이지 진입 시 BGM 재생, 이탈 시 정지
     useEffect(() => {
