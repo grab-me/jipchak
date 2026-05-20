@@ -9,8 +9,6 @@ interface VideoCardProps {
 }
 
 const VideoCard: React.FC<VideoCardProps> = ({ video, index, filename, onDownload }) => {
-  const isSuccess = video.isSuccess;
-
   return (
     <motion.div
       initial={{ y: 20, opacity: 0 }}
@@ -34,10 +32,10 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, index, filename, onDownloa
       {/* 하단 컨트롤 영역 (2단 구조로 개선) */}
       <div className="p-[4%] flex flex-col bg-[#FAFAFA] border-t-[3px] border-crayon-line">
 
-        {/* 상단: 성공/실패 안내 문구 */}
-        <div className={`w-full text-center py-2.5 rounded-xl mb-3 border-2 ${isSuccess ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
-          <p className={`text-[clamp(14px,3.8vw,17px)] font-bold break-keep ${isSuccess ? 'text-blue-600' : 'text-red-500'}`}>
-            이 영상은 뽑기에 <span className="underline underline-offset-4 decoration-[3px]">{isSuccess ? '성공' : '실패'}</span>한 영상이에요!
+        {/* 상단: 성공/실패 뱃지는 잠시 비활성화하고 다운로드 안내만 표시 */}
+        <div className="w-full text-center py-2.5 rounded-xl mb-3 border-2 bg-gray-50 border-gray-200">
+          <p className="text-[clamp(14px,3.8vw,17px)] font-bold break-keep text-gray-700">
+            촬영된 영상을 확인하고 다운로드할 수 있어요
           </p>
         </div>
 

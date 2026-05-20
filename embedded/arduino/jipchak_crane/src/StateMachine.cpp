@@ -114,13 +114,9 @@ void StateMachine::update() {
             enterPlaying();
             break;
         }
-        if (input->isBtnSubPressed()) {
-            // 빨강 → 모달 "뒤로" → IDLE 복귀, Frontend 가 메인 페이지로 navigate
-            comm->sendEvent("BACK_TO_HOME");
-            currentState = IDLE;
-            idleEnteredTime = millis();
-            break;
-        }
+        // 빨강 버튼은 READY 에서 홈 이동 트리거로 사용하지 않는다.
+        // (오입력으로 홈 화면으로 빠지는 문제 방지)
+        input->isBtnSubPressed();
         // 조이스틱 X edge → 모달 옵션 순환 이벤트
         int xDir = input->getJoystickX();
         if (xDir != 0 && prevJoyX == 0) {

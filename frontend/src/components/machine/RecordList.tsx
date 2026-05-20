@@ -35,7 +35,8 @@ const RecordList = () => {
           <>
             {[...records].reverse().map((record, index) => {
               const displayIndex = records.length - index;
-              const success = record.isSuccess;
+              // 성공/실패 판정 로직 안정화 전까지 훈장(성공 강조) UI 비활성화
+              const success = false;
 
               return (
                 <div 
