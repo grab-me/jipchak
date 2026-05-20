@@ -12,8 +12,6 @@ services:
       - .env
     # 호스트 외부에서의 직접 접근 차단. localhost 와 호스트 내부 디버깅만 허용.
     # 외부 트래픽은 모두 nginx 를 통해서만 들어오게 한다.
-    ports:
-      - "127.0.0.1:${DB_PORT}:3306"
     volumes:
       - ./mysql_data:/var/lib/mysql
     healthcheck:

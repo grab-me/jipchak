@@ -389,13 +389,10 @@ async def serial_reader_task(
             was_idle = last_state == ARDUINO_STATE_IDLE
             now_idle = state == ARDUINO_STATE_IDLE
             if was_idle and not now_idle:
-                cam.turn_on()
                 if not session.is_active():
                     session.start()
             elif not was_idle and now_idle:
-                cam.turn_off()
                 session.stop()
-                # 어떤 이유로든 세션이 끝났음을 브라우저에 알림
                 # (POST_GAME timeout / PLAYING idle timeout / READY 빨강 뒤로 등 모든 경로).
                 async with send_lock:
                     await ws.send(json.dumps({"event": "SESSION_END"}))
@@ -496,6 +493,9 @@ async def run(
                 print(f"[main] connecting to {url} ...")
                 async with websockets.connect(url, max_size=None, ping_interval=20, ping_timeout=20) as ws:
                     print("[main] connected")
+                    # [수정] 웹 UI에서 언제든 게임을 시작할 수 있도록, 연결 시점에 카메라를 켭니다.
+                    # 이로 인해 홈 화면에서도 카메라가 켜져 있게 됩니다.
+                    cam.turn_on()
                     backoff = 1.0  # 성공 시 백오프 리셋
 
                     tasks = [
@@ -530,6 +530,8 @@ async def run(
                     # WS 끊김 외 사유로 task 종료 → 재연결 시도
                     print("[main] connection lost, reconnecting ...")
             except (websockets.ConnectionClosed, OSError, asyncio.TimeoutError) as e:
+                # [수정] 연결 실패 시에도 카메라를 끕니다.
+                cam.turn_off()
                 print(f"[main] connect failed: {e}; retry in {backoff:.1f}s")
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 30.0)
@@ -545,8 +547,8 @@ def main() -> None:
     p.add_argument("--webcam", default="0", help="웹캠 인덱스 또는 /dev/v4l/by-id/... path")
     p.add_argument("--width", type=int, default=640)
     p.add_argument("--height", type=int, default=480)
-    p.add_argument("--fps", type=int, default=30)
-    p.add_argument("--jpeg-quality", type=int, default=80)
+    p.add_argument("--fps", type=int, default=15)
+    p.add_argument("--jpeg-quality", type=int, default=40)
     args = p.parse_args()
 
     def _to_device(v):

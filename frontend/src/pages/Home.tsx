@@ -30,7 +30,7 @@ const Home = () => {
     navigate('/play');
   };
 
-  // 🔵 파랑 버튼 → IDLE→READY → 카메라 ON → frame 도착 시점에 자동 navigate.
+  // � 파랑 버튼 → IDLE→READY → 카메라 ON → frame 도착 시점에 자동 navigate.
   // 기존 START 버튼 클릭 동선과 동일한 effect, 진입 자체만 키오스크 친화적.
   useEffect(() => {
     if (frame2d || frame3d) {
@@ -46,7 +46,7 @@ const Home = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frame2d, frame3d]);
 
-  // 🔴 빨강 버튼 (IDLE) → GUIDE 이벤트 → 사용 가이드 모달 자동 오픈.
+  // �🔴 빨강 버튼 (IDLE) → GUIDE 이벤트 → 사용 가이드 모달 자동 오픈.
   // ts 가 매번 새 값이라 같은 사용자가 빨강 두 번 눌러도 effect 가 다시 실행됨.
   const lastGuideTs = useRef<number | null>(null);
   useEffect(() => {

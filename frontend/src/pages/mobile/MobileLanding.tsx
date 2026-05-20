@@ -8,7 +8,7 @@ import LandingHeader from '../../components/mobile/LandingHeader';
 import VideoCard from '../../components/mobile/VideoCard';
 
 // --- 세션 설정 상수 ---
-const MOCK_SESSION_TIME_MINUTES = 3; // 3분 유효기간
+const MOCK_SESSION_TIME_MINUTES = 10; // 10분 유효기간
 
 const MobileLanding = () => {
   const { sessionId } = useParams();

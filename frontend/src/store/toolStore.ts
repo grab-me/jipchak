@@ -66,7 +66,7 @@ interface ToolState {
 }
 
 const DEFAULT_MAX_GAMES = 2; // 2판 고정 (GameCountModal 비활성화로 인해 하드코딩)
-const QR_TIMEOUT_SECONDS = 60;
+const QR_TIMEOUT_SECONDS = 30;
 
 /**
  * useToolStore
@@ -90,7 +90,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   // 1. 시작하기 버튼 클릭 또는 SESSION_START 수신 시 세션 시작.
   //    서버 id 를 넘기면 그대로 채택하여 Spring 백엔드 / 모바일과 동일한 키 사용.
   startSession: (sessionId?: string) => {
-    const newSessionId = sessionId ?? `session_${Date.now()}`;
+    const newSessionId = sessionId ?? '';
     set({
       sessionId: newSessionId,
       isSessionActive: true,
@@ -181,10 +181,15 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
   // 6. 세션 초기화 및 홈으로 강제 이동
   resetSession: () => {
-    // Clear stream store frames to prevent auto-start loop on Home page
+    // Clear stream store frames and events to prevent auto-start loop on Home page
     useStreamStore.setState({
       frame2d: null,
       frame3d: null,
+      lastSessionEvent: null,
+      lastUiEvent: null,
+      graspScore: 0,
+      detections: [],
+      graspPose: null,
     });
 
     set({
