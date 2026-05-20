@@ -195,7 +195,7 @@ void StateMachine::update() {
     // ────────────────────────────────────────
     case RETURN_MOVE:
         if (motorAuto->isReachedTarget()) {
-            motorAuto->moveZ(-Z_MOVE_STEPS_DOWN);
+            motorAuto->moveZ(-Z_CLAW_UP_STEPS);
             currentState = RETURN_DOWN;
         }
         break;
@@ -210,7 +210,7 @@ void StateMachine::update() {
 
     case RETURN_OPEN:
         if (claw->isWaitFinished()) {
-            motorAuto->moveZ(Z_MOVE_STEPS_UP);
+            motorAuto->moveZ(Z_CLAW_UP_STEPS);
             currentState = RETURN_UP;
         }
         break;
