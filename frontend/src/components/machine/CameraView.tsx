@@ -190,9 +190,8 @@ const CameraView = ({
     img.onload = () => {
       if (!alive) return;
 
-      // D435(3D)일 때만 시계방향 90도 회전을 위해 가로/세로 길이를 스왑
-      const cw = channel === '3d' ? img.height : img.width;
-      const ch = channel === '3d' ? img.width : img.height;
+      const cw = img.width;
+      const ch = img.height;
 
       if (canvas.width !== cw) canvas.width = cw;
       if (canvas.height !== ch) canvas.height = ch;
@@ -200,25 +199,17 @@ const CameraView = ({
       ctx.clearRect(0, 0, cw, ch);
 
       ctx.save();
-      if (channel === '3d') {
-        // 1. 캔버스 중심으로 원점 이동
-        ctx.translate(cw / 2, ch / 2);
-        // 2. 반시계방향 90도 회전
-        ctx.rotate((-90 * Math.PI) / 180);
-        // 3. 원본 이미지 중심을 원점(0,0)에 맞추기 위해 이동
-        ctx.translate(-img.width / 2, -img.height / 2);
-      }
 
-      // 4. 렌더링 (3D면 회전된 상태로, 2D면 원본 그대로 출력)
-      ctx.drawImage(img, 0, 0, img.width, img.height);
+      // 렌더링 (원본 그대로 출력)
+      ctx.drawImage(img, 0, 0, cw, ch);
 
       // 최신 detection / graspPose 는 ref 에서 (useEffect 재실행 안 시키려고).
       const curDetections = detectionsRef.current;
       const curGraspPose = graspPoseRef.current;
       if (channel === '3d' && !grabStarted) {
         if (curGraspPose && curGraspPose.confidence > 0) {
-          // AI 결과는 원본 이미지 기준 좌표이므로 원래 크기(img.width, img.height)를 넘겨줌
-          drawGraspPose(ctx, curGraspPose, img.width, img.height);
+          // AI 결과는 원본 이미지 기준 좌표이므로 원래 크기(cw, ch)를 넘겨줌
+          drawGraspPose(ctx, curGraspPose, cw, ch);
         } else if (curDetections.length > 0) {
           drawDetections(ctx, curDetections);
         }
