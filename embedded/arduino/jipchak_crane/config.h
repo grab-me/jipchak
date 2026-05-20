@@ -79,8 +79,8 @@ const float AUTO_TARGET_Y_MAX_MM = 40.0f;
 // --- Drop-off Position (mm) ---
 // 인형 떨굼 좌표. endstop 에 직접 닿으면 chatter 가 checkLimit 트리거를
 // 무한 반복시켜 모터가 멈추지 않는다. 1mm 정도 안쪽으로 잡아 endstop 회피.
-const float DROP_OFF_X_MM = 1.0f;
-const float DROP_OFF_Y_MM = 1.0f;
+const float DROP_OFF_X_MM = -1.0f;
+const float DROP_OFF_Y_MM = -1.0f;
 
 // --- Game Flow ---
 // 조이스틱 첫 입력 후 사용자가 자유 조작 가능한 시간. 만료 시 자동 집기.
