@@ -136,11 +136,26 @@ export const useToolStore = create<ToolState>((set, get) => ({
     }
   },
 
-  // 3. 5개가 차면 강제 중지 및 동의 화면 전환
-  forceStopGame: () => {
-    console.log('[Session] 최대 기록 도달. 게임을 강제 중지하고 QR 동의를 받습니다.');
-    // TODO: 게임 로직 멈추는 트리거(전역 상태 변경 등) 필요 시 여기에 추가
-    set({ viewType: 'QR_CONSENT' });
+  // 3. 2개가 차면 강제 중지 및 QR 표시 화면 전환
+  forceStopGame: async () => {
+    console.log('[Session] 최대 기록 도달. 게임을 강제 중지하고 QR을 표시합니다.');
+    const { sessionId } = get();
+    try {
+      const qrUrl = await sessionService.generateSessionQr(sessionId);
+      set({ 
+        qrValue: qrUrl, 
+        viewType: 'QR_DISPLAY',
+        qrTimer: QR_TIMEOUT_SECONDS
+      });
+    } catch (error) {
+      console.error('[Session] QR 생성 중 오류 발생, fallback URL 사용:', error);
+      const fallbackUrl = `${window.location.origin}${window.location.pathname}#/m/${sessionId}`;
+      set({ 
+        qrValue: fallbackUrl, 
+        viewType: 'QR_DISPLAY',
+        qrTimer: QR_TIMEOUT_SECONDS
+      });
+    }
   },
 
   // 4. QR 수락 / 거절 처리

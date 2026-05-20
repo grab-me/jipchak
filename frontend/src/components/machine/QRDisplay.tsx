@@ -44,10 +44,10 @@ const QRDisplay = () => {
         />
       </div>
 
-      {/* 완료 버튼: 세로 높이 최소화 */}
       <button
+        type="button"
         onClick={resetSession}
-        className="px-[clamp(20px,2.4vw,36px)] py-[clamp(8px,1vw,14px)] bg-gray-800 text-white rounded-[255px_15px_225px_15px/15px_225px_15px_255px] font-bold shadow-lg border-[clamp(1px,0.2vw,2px)] border-white active:scale-95 transition-transform text-[clamp(14px,1.8vw,18px)]"
+        className="w-full py-[clamp(10px,1.2vw,18px)] mt-3 bg-yellow-400 text-gray-800 rounded-[15px_225px_15px_255px/255px_15px_225px_15px] font-bold shadow-lg border-[clamp(1px,0.2vw,2px)] border-yellow-600 active:scale-95 transition-transform text-[clamp(14px,1.8vw,18px)]"
       >
         처음으로 돌아가기
       </button>
