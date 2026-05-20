@@ -41,7 +41,6 @@ import json
 import signal
 import threading
 import time
-import uuid
 from typing import Optional
 
 import cv2
@@ -307,13 +306,15 @@ class GameSession:
     """현재 진행 중인 한 판의 ID. PLAYING 진입마다 새 ID 발급."""
 
     def __init__(self) -> None:
+        self._counter: int = 0
         self.id: Optional[str] = None
 
     def is_active(self) -> bool:
         return self.id is not None
 
     def start(self) -> str:
-        self.id = f"rpi-{uuid.uuid4().hex[:8]}"
+        self._counter += 1
+        self.id = str(self._counter)
         return self.id
 
     def stop(self) -> Optional[str]:
