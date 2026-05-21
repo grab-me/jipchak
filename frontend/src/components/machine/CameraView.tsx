@@ -51,6 +51,7 @@ const CameraView = ({
   const [timerStarted, setTimerStarted] = useState(false);
   const [grabStarted, setGrabStarted] = useState(false);
   const [displayProbability, setDisplayProbability] = useState(0);
+  const [returnMaskVisible, setReturnMaskVisible] = useState(false);
 
   // 매 AI 추론마다 detections/graspPose 가 갱신되면 canvas useEffect 가 재실행되어
   // 새 Image() + onload 대기 + redraw 가 frame 그리기와 race → 떨림 / jitter.
@@ -70,13 +71,19 @@ const CameraView = ({
 
   // 세션 이벤트에 따라 상태 초기화 (게임 리셋 및 다음 판 전환 시 게이지바 0)
   useEffect(() => {
-    if (
-      lastSessionEvent?.type === 'SESSION_START' ||
-      lastSessionEvent?.type === 'GAME_RESULT' ||
-      lastSessionEvent?.type === 'SESSION_END'
-    ) {
+    if (lastSessionEvent?.type === 'SESSION_END') {
       setTimerStarted(false);
       setGrabStarted(false);
+      setReturnMaskVisible(false);
+      setDisplayProbability(0);
+      return;
+    }
+
+    if (
+      lastSessionEvent?.type === 'SESSION_START' ||
+      lastSessionEvent?.type === 'GAME_RESULT'
+    ) {
+      setTimerStarted(false);
       setDisplayProbability(0);
     }
   }, [lastSessionEvent?.type, lastSessionEvent?.session_id]);
@@ -89,12 +96,14 @@ const CameraView = ({
       lastStartTs.current = lastUiEvent.ts;
       setTimerStarted(true);
       setGrabStarted(false);
+      setReturnMaskVisible(false);
     }
     if (lastUiEvent.type === 'GRAB_START') {
       if (lastGrabTs.current === lastUiEvent.ts) return;
       lastGrabTs.current = lastUiEvent.ts;
       setTimerStarted(false);
       setGrabStarted(true);
+      setReturnMaskVisible(true);
     }
   }, [lastUiEvent]);
 
@@ -252,7 +261,7 @@ const CameraView = ({
       {frameUrl && (
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+          className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
         />
       )}
 
@@ -260,6 +269,10 @@ const CameraView = ({
         <span className="text-white/20 font-bold text-[clamp(24px,5vw,64px)] select-none uppercase tracking-widest">
           {label}
         </span>
+      )}
+
+      {isMainView && returnMaskVisible && (
+        <div className="absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black via-black to-transparent z-sub pointer-events-none" />
       )}
 
       <span
